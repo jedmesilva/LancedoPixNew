@@ -1949,8 +1949,11 @@ function paintAm(){
   g.disabled=!(v>0);g.textContent=v>0?'Criar recarga simulada de '+brl(v):'Informe um valor';
 }
 function paintTimer(){$('apt').textContent='Expira em '+mmss(W.pay.left)}
+let dismissedPaymentId=null;
 function amView(){
-  const P=W.pay,s=P?P.state:'amount',res=s==='paid'||s==='expired'||s==='failed';
+  const currentPay=W.pay;
+  const P=currentPay?.id===dismissedPaymentId?null:currentPay;
+  const s=P?P.state:'amount',res=s!=='amount'&&s!=='pending';
   $('ama').hidden=s!=='amount';$('amp').hidden=s!=='pending';$('amc').hidden=!res;$('amsim').hidden=s!=='pending';
   $('amsim').querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',PS[i][0]===s));
   $('amb').textContent=brl(W.bal);
@@ -1969,7 +1972,8 @@ async function gen(){if(await Server.pix.create(num($('amv').value)))amView()}
 async function amBack(){await Server.pix.discard();amView();paintAm()}
 function openAm(){
   const P=W.pay;
-  if(!P||P.state!=='pending'){if(P&&P.state==='paid')$('amv').value=dv();Server.pix.discard()}
+  if(P?.state==='pending')dismissedPaymentId=null;
+  else{dismissedPaymentId=P?.id??null;if(P?.state==='paid')$('amv').value=dv()}
   amView();paintAm();am.showModal();
 }
 /* ═══ 8. EVENTOS · modal de créditos ═══ */
