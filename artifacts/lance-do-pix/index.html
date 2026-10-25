@@ -1819,6 +1819,7 @@ const S=[{id:'live',l:'ao vivo',c:'Ao vivo',s:()=>'Disputa rolando. Dê o maior 
 const CK='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 let myBid=0,seen=-1,activeVictoryBidId=null,bidSubmitting=false;
 const shownVictoryBidIds=new Set();
+let victoryOwner=null;
 const idx=id=>S.findIndex(s=>s.id===id);
 /* ═══ 2. COMPONENTES · render da disputa ═══
    Cada paint*() é o único lugar que escreve no DOM do seu componente. */
@@ -1884,6 +1885,11 @@ function render(){
 }
 function paintWin(){
   const bids=Server.myBids();
+  const owner=U.signedIn?U.email:null;
+  if(owner!==victoryOwner){
+    bids.filter(b=>b.status==='won').forEach(b=>shownVictoryBidIds.add(b.id));
+    victoryOwner=owner;
+  }
   const active=vm.open&&activeVictoryBidId
     ?bids.find(b=>b.id===activeVictoryBidId&&b.status==='won')
     :null;
