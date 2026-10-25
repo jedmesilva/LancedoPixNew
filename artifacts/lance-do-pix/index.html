@@ -1836,7 +1836,7 @@ function paintSheet(){
   $('ctl').hidden=ended||isSoon;$('val').textContent=fmt(myBid);
   if(isSoon){c.textContent='Aguardando início';c.disabled=true;g.hidden=true}
   else if(ended){c.textContent=mine?(paid?'Solicitação registrada':'Solicitar resgate'):'Disputa encerrada';c.disabled=mine&&paid;g.hidden=true}
-  else{c.textContent=!live?'Disputa pausada':mine?'Seu lance é o maior':low?'Adicionar créditos':'Superar com '+brl(myBid);c.disabled=!live||mine;g.hidden=true}
+  else{c.textContent=!live?'Disputa pausada':mine?'Seu lance é o maior':low?'Adicionar créditos':A.leader<0?'Dar o primeiro lance de '+brl(myBid):'Superar com '+brl(myBid);c.disabled=!live||mine;g.hidden=true}
   const cn=$('cn');cn.hidden=!low;
   if(low)cn.textContent='Saldo insuficiente: você tem '+brl(W.bal)+' e este lance consome '+brl(cost)+'.';
   document.querySelectorAll('.sq,[data-add]').forEach(x=>{x.disabled=!live});
