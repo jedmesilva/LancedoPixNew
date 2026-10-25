@@ -73,7 +73,7 @@ export const disputeCashReservationsTable = pgTable(
 
 export const insertDisputeCashReservationSchema = createInsertSchema(
   disputeCashReservationsTable,
-).omit({ id: true, createdAt: true, updatedAt: true });
+).omit({ createdAt: true, updatedAt: true });
 export type InsertDisputeCashReservation = z.infer<
   typeof insertDisputeCashReservationSchema
 >;

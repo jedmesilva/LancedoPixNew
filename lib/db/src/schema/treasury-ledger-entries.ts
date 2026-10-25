@@ -63,7 +63,7 @@ export const treasuryLedgerEntriesTable = pgTable(
 
 export const insertTreasuryLedgerEntrySchema = createInsertSchema(
   treasuryLedgerEntriesTable,
-).omit({ id: true, createdAt: true });
+).omit({ createdAt: true });
 export type InsertTreasuryLedgerEntry = z.infer<
   typeof insertTreasuryLedgerEntrySchema
 >;

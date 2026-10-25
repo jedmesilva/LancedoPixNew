@@ -4,15 +4,10 @@ import {
   disputeCashReservationsTable,
   disputesTable,
   treasuryLedgerEntriesTable,
-  type TreasuryLedgerEntry,
 } from "@workspace/db";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-type LedgerEntryInput = Omit<
-  TreasuryLedgerEntry,
-  "id" | "createdAt"
->;
+type LedgerEntryInput = typeof treasuryLedgerEntriesTable.$inferInsert;
 
 export async function recordLedgerEntry(
   transaction: Transaction,
