@@ -1251,6 +1251,31 @@ html:has(dialog[open]) {
   font-size: 16px;
 }
 
+.redeem-status {
+  display: grid;
+  gap: 5px;
+  margin-top: 14px;
+  padding: 13px 14px;
+  border-radius: var(--r-xs);
+  background: var(--bn);
+  color: var(--gt);
+  font-size: 14px;
+}
+.redeem-status b { color: var(--tx); }
+.redeem-status small { color: var(--mu); line-height: 1.4; }
+#rdm .tf + .tf { margin-top: 14px; }
+#rdm .redemption-note {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--r-xs);
+  background: var(--bg);
+  color: var(--mu);
+  font-size: 13px;
+  line-height: 1.5;
+}
+#rdm .cta { margin-top: 18px; }
+#rdm .cta.g { margin-top: 10px; }
+
 #lo .nt {
   padding-top: 4px;
 }
@@ -1440,6 +1465,21 @@ html:has(dialog[open]) {
 <dialog id="bm" aria-labelledby="bmt"><div class="mh"><div class="id"><button class="mx bk" id="bmb" type="button" aria-label="Voltar para a conta"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><h2 id="bmt">Meus lances</h2></div><button class="mx" id="bmx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 <p class="nt" id="bms"></p>
 <div id="bml" role="list"></div></dialog>
+<dialog id="rdm" aria-labelledby="rdmt"><div class="mh"><div class="id"><button class="mx bk" id="rdback" type="button" aria-label="Voltar para a chave Pix" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><h2 id="rdmt">Resgatar prêmio</h2></div><button class="mx" id="rdx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+ <form id="rdf" novalidate>
+  <section id="rdkey">
+   <p class="nt">Informe a chave Pix em que deseja receber o prêmio.</p>
+   <div class="tf"><label for="rdpix">Chave Pix</label><input id="rdpix" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="CPF, e-mail, celular ou chave aleatória" aria-describedby="rdpixe"><p class="fe" id="rdpixe" hidden></p></div>
+   <button class="cta" id="rdcontinue" type="button">Continuar resgate</button>
+  </section>
+  <section id="rddetails" hidden>
+   <div class="tf"><label for="rdname">Nome completo</label><input id="rdname" type="text" autocomplete="off" placeholder="Seu nome completo" aria-describedby="rdnamee"><p class="fe" id="rdnamee" hidden></p></div>
+   <div class="tf"><label for="rdcpf">CPF</label><input id="rdcpf" type="text" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00" aria-describedby="rdcpfe"><p class="fe" id="rdcpfe" hidden></p></div>
+   <p class="redemption-note" role="note">Esta é uma demonstração. Seus dados ficam apenas nesta tela: não são enviados nem armazenados, e nenhum Pix é processado.</p>
+   <p class="er" id="rderror" role="alert" hidden></p>
+   <button class="cta" id="rdsubmit" type="submit">Confirmar resgate</button>
+  </section>
+ </form></dialog>
 <dialog id="lo" aria-labelledby="lot"><div class="mh"><h2 id="lot"></h2><button class="mx" id="lox" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 <p class="nt" id="lov"></p>
 <button class="gb" id="log" type="button" data-m="in up"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><i class="rot" hidden aria-hidden="true"></i><span id="lgt"></span></button>
@@ -1747,13 +1787,13 @@ $('cta').onclick=async()=>{const id=A.phase;
   if(!U.signedIn&&(id==='live'||(id==='ended'&&A.leader===0))){authOpen();return}
   if(id==='live'){if(await place()==='funds')openAm()}
   else if(id==='soon')Server.notifyStart();
-  else if(id==='ended'){if(A.leader===0)Server.requestPayout();else Server.nextRound()}};
+  else if(id==='ended'){if(A.leader===0)openRedemption(Server.myBids().find(b=>b.status==='won')?.id);else Server.nextRound()}};
 $('cta2').onclick=()=>Server.nextRound();
-const hm=$('hm'),vm=$('vm'),ac=$('ac'),bm=$('bm'),lo=$('lo');
+const hm=$('hm'),vm=$('vm'),ac=$('ac'),bm=$('bm'),rdm=$('rdm'),lo=$('lo');
 $('hwb').onclick=()=>hm.showModal();
 $('hmx').onclick=$('hmok').onclick=()=>hm.close();
 $('vmx').onclick=()=>vm.close();
-$('vok').onclick=()=>Server.requestPayout();
+$('vok').onclick=()=>{vm.close();openRedemption(Server.myBids().find(b=>b.status==='won')?.id)};
 $('vnx').onclick=()=>{vm.close();Server.nextRound()};
 [hm,vm,ac,bm].forEach(d=>d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}));
 /* ═══ 5. CRÉDITOS · ícones e utilitários de tela ═══
@@ -1826,6 +1866,64 @@ $('apy').onclick=async()=>{
 const ST={won:['w','Venceu'],leading:['l','Ganhando'],outbid:['','Superado']};
 const CKS='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 const ini=()=>U.name.trim().charAt(0).toUpperCase();
+let redemptionBidId=null;
+function setRedemptionStep(step){
+  const first=step==='key';
+  $('rdkey').hidden=!first;$('rddetails').hidden=first;$('rdback').hidden=first;
+  if(rdm.open){if(first)$('rdpix').focus();else $('rdname').focus()}
+}
+function resetRedemption(){
+  redemptionBidId=null;$('rdf').reset();setRedemptionStep('key');
+  ['rdpix','rdname','rdcpf'].forEach(id=>$(id).removeAttribute('aria-invalid'));
+  ['rdpixe','rdnamee','rdcpfe'].forEach(id=>{$(id).textContent='';$(id).hidden=true});
+  $('rderror').textContent='';$('rderror').hidden=true;$('rdsubmit').disabled=false;
+}
+function openRedemption(id){
+  if(!Number.isFinite(id))return;
+  resetRedemption();redemptionBidId=id;rdm.showModal();$('rdpix').focus();
+}
+function fieldError(inputId,errorId,message){
+  const input=$(inputId),error=$(errorId);
+  input.setAttribute('aria-invalid',String(Boolean(message)));
+  error.textContent=message;error.hidden=!message;
+}
+function validCpf(value){
+  const digits=value.replace(/\D/g,'');
+  if(digits.length!==11||/^(\d)\1{10}$/.test(digits))return false;
+  const digitAt=(length,factor)=>{let sum=0;for(let i=0;i<length;i++)sum+=Number(digits[i])*(factor-i);const digit=(sum*10)%11;return digit===10?0:digit};
+  return digitAt(9,10)===Number(digits[9])&&digitAt(10,11)===Number(digits[10]);
+}
+function maskCpf(value){
+  const d=value.replace(/\D/g,'').slice(0,11);
+  return d.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1-$2');
+}
+function continueRedemption(){
+  const key=$('rdpix').value.trim();
+  fieldError('rdpix','rdpixe',key?'':'Informe sua chave Pix.');
+  if(key)setRedemptionStep('details');
+}
+async function submitRedemption(event){
+  event.preventDefault();
+  const name=$('rdname').value.trim(),cpf=$('rdcpf').value;
+  fieldError('rdname','rdnamee',name.split(/\s+/).filter(Boolean).length>=2?'':'Informe seu nome e sobrenome.');
+  fieldError('rdcpf','rdcpfe',validCpf(cpf)?'':'Informe um CPF válido.');
+  if($('rdname').getAttribute('aria-invalid')==='true'||$('rdcpf').getAttribute('aria-invalid')==='true')return;
+  const submit=$('rdsubmit');submit.disabled=true;
+  $('rderror').textContent='';$('rderror').hidden=true;
+  const result=await Server.redeem(redemptionBidId);
+  if(result==='ok'){rdm.close();return}
+  $('rderror').textContent='Não foi possível registrar o resgate. Confira se o prêmio ainda está disponível e tente novamente.';
+  $('rderror').hidden=false;submit.disabled=false;
+}
+function returnToPixKey(){setRedemptionStep('key')}
+$('rdcontinue').onclick=continueRedemption;
+$('rdf').addEventListener('submit',submitRedemption);
+$('rdback').onclick=returnToPixKey;$('rdx').onclick=()=>rdm.close();
+$('rdcpf').addEventListener('input',event=>{event.target.value=maskCpf(event.target.value);fieldError('rdcpf','rdcpfe','')});
+$('rdname').addEventListener('input',()=>fieldError('rdname','rdnamee',''));
+$('rdpix').addEventListener('input',()=>fieldError('rdpix','rdpixe',''));
+$('rdpix').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();continueRedemption()}});
+rdm.addEventListener('close',resetRedemption);
 function paintAvatar(){
   const n=Server.redeemable();
   $('avl').textContent=ini();$('avd').hidden=n<1;
@@ -1844,7 +1942,8 @@ function bidHTML(b){
     +'<div class="tp"><div><b class="vl">'+brl(b.value)+'</b><span class="dt">'+fdt(b.at)+'</span></div><span class="tg '+c+'">'+(won?CKS:'')+l+'</span></div>'
     +'<div class="pr"><span>Prêmio da disputa</span><b>'+brl(b.prize)+'</b></div>'
     +(won&&b.bonus>0?'<div class="pr"><span>Bônus</span><b>+ '+brl(b.bonus)+'</b></div>':'')
-    +(won?'<button class="cta" type="button" data-redeem="'+b.id+'"'+(b.redeemed?' disabled':'')+'>'+(b.redeemed?'Pix solicitado':'Resgatar prêmio')+'</button>':'')
+    +(won&&b.redeemed?'<div class="redeem-status" role="status"><b>Resgate solicitado</b><span>Status: solicitação recebida</span><small>Acompanhe as atualizações por aqui. Esta demonstração não realiza pagamentos.</small></div>':'')
+    +(won&&!b.redeemed?'<button class="cta" type="button" data-redeem="'+b.id+'">Resgatar prêmio</button>':'')
     +'</div>';
 }
 function paintBids(){
@@ -1857,7 +1956,7 @@ function paintSession(){
   const on=U.signedIn;
   $('balb').hidden=$('avb').hidden=!on;$('lgb').hidden=on;
   if(on){if(lo.open)lo.close();return}
-  [hm,vm,ac,bm,am].forEach(d=>{if(d.open)d.close()});
+  [hm,vm,ac,bm,rdm,am].forEach(d=>{if(d.open)d.close()});
   /* Deslogado: o cabeçalho mostra o botão Entrar. O #lo (entrar) abre pelo botão ou ao tentar dar lance. */
 }
 $('avb').onclick=()=>{paintAcct();ac.showModal()};
@@ -1866,7 +1965,7 @@ $('aca').onclick=()=>{ac.close();openAm()};
 $('acl').onclick=()=>{ac.close();paintBids();bm.showModal()};
 $('bmb').onclick=()=>{bm.close();paintAcct();ac.showModal()};
 $('bmx').onclick=()=>bm.close();
-$('bml').onclick=e=>{const b=e.target.closest('[data-redeem]');if(b)Server.redeem(Number(b.dataset.redeem))};
+$('bml').onclick=e=>{const b=e.target.closest('[data-redeem]');if(b)openRedemption(Number(b.dataset.redeem))};
 $('aco').onclick=()=>Server.logout();
 /* ═══ 9b. AUTH · modal de entrada (#lo) ═══
    Modos: in (entrar), up (criar conta), reset (recuperar senha). AU.busy: '' | 'google' | 'form'.
