@@ -1970,7 +1970,7 @@ function resetRedemption(){
   $('rderror').textContent='';$('rderror').hidden=true;$('rdsubmit').disabled=false;
 }
 function openRedemption(id){
-  if(!Number.isFinite(id))return;
+  if(typeof id!=='string'||!id.trim())return;
   resetRedemption();redemptionBidId=id;rdm.showModal();$('rdpix').focus();
 }
 function fieldError(inputId,errorId,message){
