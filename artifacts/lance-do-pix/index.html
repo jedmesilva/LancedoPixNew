@@ -706,6 +706,19 @@ h1 {
   cursor: not-allowed;
 }
 
+.cta[data-loading]::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  vertical-align: -4px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spn .7s linear infinite;
+}
+
 .cta.g {
   margin-top: 10px;
   background: none;
@@ -1404,7 +1417,8 @@ html:has(dialog[open]) {
   dialog[open],
   #vm .ck,
   .bd::before,
-  .rot {
+  .rot,
+  .cta[data-loading]::before {
     animation: none;
   }
 }
@@ -1791,7 +1805,7 @@ const S=[{id:'live',l:'ao vivo',c:'Ao vivo',s:()=>'Disputa rolando. Dê o maior 
 {id:'ended',l:'encerrada',c:'Encerrada',s:n=>'Há um vencedor. '+n+' venceu a disputa e ganhou o prêmio.'},
 {id:'soon',l:'começa em breve',c:'Em breve',s:()=>''}];
 const CK='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
-let myBid=0,seen=-1,activeVictoryBidId=null;
+let myBid=0,seen=-1,activeVictoryBidId=null,bidSubmitting=false;
 const shownVictoryBidIds=new Set();
 const idx=id=>S.findIndex(s=>s.id===id);
 /* ═══ 2. COMPONENTES · render da disputa ═══
@@ -1838,6 +1852,8 @@ function paintSheet(){
   if(isSoon){c.textContent='Aguardando início';c.disabled=true;g.hidden=true}
   else if(ended){c.textContent=mine?(paid?'Solicitação registrada':'Solicitar resgate'):'Disputa encerrada';c.disabled=mine&&paid;g.hidden=true}
   else{c.textContent=!live?'Disputa pausada':mine?'Seu lance é o maior':low?'Adicionar créditos':A.leader<0?'Dar o primeiro lance de '+brl(myBid):'Superar com '+brl(myBid);c.disabled=!live||mine;g.hidden=true}
+  if(bidSubmitting){c.textContent='Enviando lance…';c.disabled=true;c.dataset.loading='';c.setAttribute('aria-busy','true')}
+  else{delete c.dataset.loading;c.removeAttribute('aria-busy')}
   const cn=$('cn');cn.hidden=!low;
   if(low)cn.textContent='Saldo insuficiente: você tem '+brl(W.bal)+' e este lance consome '+brl(cost)+'.';
   document.querySelectorAll('.sq,[data-add]').forEach(x=>{x.disabled=!live});
@@ -1890,9 +1906,9 @@ const place=()=>Server.placeBid(myBid);
 /* ═══ 4. EVENTOS · disputa compartilhada ═══ */
 $('minus').onclick=()=>bump(-STEP);$('plusb').onclick=()=>bump(STEP);
 document.querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>bump(Number(b.dataset.add))});
-$('cta').onclick=async()=>{const id=A.phase;
+$('cta').onclick=async()=>{if(bidSubmitting)return;const id=A.phase;
   if(!U.signedIn&&(id==='live'||(id==='ended'&&A.leader===0))){authOpen();return}
-  if(id==='live'){if(await place()==='funds')openAm()}
+  if(id==='live'){bidSubmitting=true;paintSheet();try{if(await place()==='funds')openAm()}finally{bidSubmitting=false;paintSheet()}}
   else if(id==='ended'&&A.leader===0)openRedemption(Server.myBids().find(b=>b.status==='won')?.id)};
 const hm=$('hm'),vm=$('vm'),ac=$('ac'),ep=$('ep'),bm=$('bm'),rdm=$('rdm'),lo=$('lo');
 $('hwb').onclick=()=>hm.showModal();
