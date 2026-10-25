@@ -1,69 +1,220 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: API de contas, carteira e disputas do Lance do Pix
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
-  - name: lance-demo
-    description: Estado e ações do protótipo demonstrativo Lance do Pix
+    description: Estado do servidor
+  - name: auth
+    description: Contas e sessões
+  - name: lance
+    description: Disputas, lances e carteira
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
+      summary: Verificar disponibilidade da API
       responses:
         "200":
-          description: Healthy
+          description: API disponível
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
-  /lance-demo/state:
+  /auth/session:
     get:
-      operationId: getLanceDemoState
-      tags: [lance-demo]
-      summary: Get the current demo session state
+      operationId: getAuthSession
+      tags: [auth]
+      summary: Consultar a sessão atual
       responses:
         "200":
-          description: Current auction, wallet, account, and bid data for this demo session
+          description: Conta autenticada ou sessão anônima
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LanceDemoState"
-  /lance-demo/actions:
+                $ref: "#/components/schemas/AuthSession"
+  /auth/sign-up:
     post:
-      operationId: postLanceDemoAction
-      tags: [lance-demo]
-      summary: Apply a validated demo action
+      operationId: signUp
+      tags: [auth]
+      summary: Criar conta com e-mail e senha
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LanceDemoAction"
+              type: object
+              properties:
+                name: { type: string, minLength: 2, maxLength: 80 }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 8, maxLength: 128 }
+              required: [name, email, password]
       responses:
-        "200":
-          description: Action result and authoritative state after processing
+        "201":
+          description: Conta criada
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LanceDemoActionResponse"
+                $ref: "#/components/schemas/AuthSession"
         "400":
-          description: Invalid action or input
+          description: Dados inválidos
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-        "403":
-          description: Demo controls are disabled in this environment
+        "409":
+          description: E-mail já cadastrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/sign-in:
+    post:
+      operationId: signIn
+      tags: [auth]
+      summary: Entrar com e-mail e senha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 1, maxLength: 128 }
+              required: [email, password]
+      responses:
+        "200":
+          description: Sessão iniciada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/sign-out:
+    post:
+      operationId: signOut
+      tags: [auth]
+      summary: Encerrar a sessão atual
+      responses:
+        "200":
+          description: Sessão encerrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
+  /auth/google-test:
+    post:
+      operationId: createGoogleTestAccount
+      tags: [auth]
+      summary: Criar uma conta persistente de teste no lugar do OAuth do Google
+      responses:
+        "201":
+          description: Conta de teste criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+  /auth/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Atualizar o nome da conta atual
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 2, maxLength: 80 }
+              required: [name]
+      responses:
+        "200":
+          description: Perfil atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Alterar a senha da conta atual
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentPassword: { type: string, minLength: 1, maxLength: 128 }
+                newPassword: { type: string, minLength: 8, maxLength: 128 }
+              required: [currentPassword, newPassword]
+      responses:
+        "200":
+          description: Senha alterada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Senha atual inválida ou autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /lance/state:
+    get:
+      operationId: getLanceState
+      tags: [lance]
+      summary: Consultar disputa, carteira e lances persistidos
+      responses:
+        "200":
+          description: Estado atual da disputa e da conta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanceState"
+  /lance/actions:
+    post:
+      operationId: postLanceAction
+      tags: [lance]
+      summary: Registrar um lance, uma recarga simulada ou um pedido de resgate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LanceAction"
+      responses:
+        "200":
+          description: Resultado da ação e novo estado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanceActionResponse"
+        "400":
+          description: Ação inválida
           content:
             application/json:
               schema:
@@ -73,130 +224,96 @@ components:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
+      required: [status]
     ApiError:
       type: object
       properties:
-        error:
-          type: string
+        error: { type: string }
       required: [error]
-    DemoPrize:
+    Prize:
       type: object
       properties:
-        v:
-          type: number
-        b:
-          type: number
+        v: { type: number }
+        b: { type: number }
       required: [v, b]
-    DemoHistoryEntry:
+    HistoryEntry:
       type: object
       properties:
-        n:
-          type: integer
-        v:
-          type: number
-        t:
-          type: integer
+        n: { type: integer }
+        v: { type: number }
+        t: { type: integer }
       required: [n, v, t]
-    DemoBid:
+    User:
       type: object
       properties:
-        id:
-          type: integer
-        round:
-          type: integer
-        value:
-          type: number
-        at:
-          type: integer
-        prize:
-          type: number
-        bonus:
-          type: number
-        res:
-          type: [string, "null"]
-          enum: [won, lost, null]
-        redeemed:
-          type: boolean
-        status:
-          type: string
-          enum: [won, leading, outbid]
-      required: [id, round, value, at, prize, bonus, res, redeemed, status]
-    DemoPayment:
+        id: { type: [string, "null"], format: uuid }
+        name: { type: string }
+        email: { type: string }
+        signedIn: { type: boolean }
+        testAccount: { type: boolean }
+      required: [id, name, email, signedIn, testAccount]
+    AuthSession:
       type: object
       properties:
-        amt:
-          type: number
-        state:
-          type: string
-          enum: [pending, paid, expired, failed]
-        left:
-          type: integer
-        credited:
-          type: boolean
-        seed:
-          type: integer
-        code:
-          type: string
-      required: [amt, state, left, credited, seed, code]
-    DemoUser:
+        user:
+          anyOf:
+            - $ref: "#/components/schemas/User"
+            - type: "null"
+      required: [user]
+    Payment:
       type: object
       properties:
-        name:
-          type: string
-        email:
-          type: string
-        signedIn:
-          type: boolean
-      required: [name, email, signedIn]
-    DemoWallet:
+        id: { type: string, format: uuid }
+        amt: { type: number }
+        state: { type: string, enum: [pending, paid, expired, failed] }
+        left: { type: integer }
+        credited: { type: boolean }
+        seed: { type: integer }
+        code: { type: string }
+      required: [id, amt, state, left, credited, seed, code]
+    Wallet:
       type: object
       properties:
-        bal:
-          type: number
+        bal: { type: number }
         pay:
           anyOf:
-            - $ref: "#/components/schemas/DemoPayment"
+            - $ref: "#/components/schemas/Payment"
             - type: "null"
       required: [bal, pay]
-    DemoAuction:
+    Auction:
       type: object
       properties:
-        round:
-          type: integer
-        p:
-          type: integer
-        phase:
-          type: string
-          enum: [live, paused, ended, soon]
-        value:
-          type: number
-        leader:
-          type: integer
-        left:
-          type: integer
-        soon:
-          type: integer
-        bonusSecs:
-          type: integer
-        notify:
-          type: boolean
+        round: { type: integer }
+        p: { type: integer }
+        phase: { type: string, enum: [live, paused, ended, soon] }
+        value: { type: number }
+        leader: { type: integer }
+        left: { type: integer }
+        soon: { type: integer }
+        bonusSecs: { type: integer }
+        notify: { type: boolean }
         H:
           type: array
-          items:
-            $ref: "#/components/schemas/DemoHistoryEntry"
-        paid:
-          type: boolean
-        minimumBid:
-          type: number
-        bonus:
-          type: [number, "null"]
-      required:
-        [round, p, phase, value, leader, left, soon, bonusSecs, notify, H, paid, minimumBid, bonus]
-    LanceDemoState:
+          items: { $ref: "#/components/schemas/HistoryEntry" }
+        paid: { type: boolean }
+        minimumBid: { type: number }
+        bonus: { type: [number, "null"] }
+      required: [round, p, phase, value, leader, left, soon, bonusSecs, notify, H, paid, minimumBid, bonus]
+    Bid:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        round: { type: integer }
+        value: { type: number }
+        at: { type: integer }
+        prize: { type: number }
+        bonus: { type: number }
+        res: { type: [string, "null"], enum: [won, lost, null] }
+        redeemed: { type: boolean }
+        status: { type: string, enum: [won, leading, outbid] }
+      required: [id, round, value, at, prize, bonus, res, redeemed, status]
+    LanceState:
       type: object
       properties:
         cfg:
@@ -204,84 +321,41 @@ components:
           properties:
             V:
               type: array
-              items:
-                $ref: "#/components/schemas/DemoPrize"
+              items: { $ref: "#/components/schemas/Prize" }
             N:
               type: array
-              items:
-                type: string
-            TOTAL:
-              type: integer
-            START:
-              type: integer
-            STEP:
-              type: number
+              items: { type: string }
+            TOTAL: { type: integer }
+            START: { type: integer }
+            STEP: { type: number }
           required: [V, N, TOTAL, START, STEP]
-        auction:
-          $ref: "#/components/schemas/DemoAuction"
-        wallet:
-          $ref: "#/components/schemas/DemoWallet"
-        user:
-          $ref: "#/components/schemas/DemoUser"
+        auction: { $ref: "#/components/schemas/Auction" }
+        wallet: { $ref: "#/components/schemas/Wallet" }
+        user: { $ref: "#/components/schemas/User" }
         bids:
           type: array
-          items:
-            $ref: "#/components/schemas/DemoBid"
-        redeemable:
-          type: integer
-        controlsEnabled:
-          type: boolean
+          items: { $ref: "#/components/schemas/Bid" }
+        redeemable: { type: integer }
+        controlsEnabled: { type: boolean }
       required: [cfg, auction, wallet, user, bids, redeemable, controlsEnabled]
-    LanceDemoAction:
+    LanceAction:
       type: object
       properties:
         action:
           type: string
-          enum:
-            - bid
-            - nextRound
-            - notifyStart
-            - requestPayout
-            - redeem
-            - logout
-            - createPix
-            - discardPix
-            - setPixState
-            - setPrize
-            - setPhase
-            - rivalBid
-            - hurry
-            - demoSignIn
-            - demoSignUp
-            - demoGoogle
-            - demoReset
-            - updateName
-        amount:
-          type: number
-        bidId:
-          type: integer
-        prizeIndex:
-          type: integer
-        phase:
-          type: string
-          enum: [live, paused, ended, soon]
-        paymentState:
-          type: string
-          enum: [pending, paid, expired, failed]
-        name:
-          type: string
-          minLength: 2
-          maxLength: 80
-        email:
-          type: string
+          enum: [bid, createPix, discardPix, setPixState, redeem, updateName]
+        amount: { type: number }
+        bidId: { type: string, format: uuid }
+        paymentState: { type: string, enum: [pending, paid, expired, failed] }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        pixKey: { type: string, minLength: 1, maxLength: 254 }
+        keyType: { type: string, enum: [cpf, email, phone, random] }
+        holderName: { type: string, minLength: 5, maxLength: 120 }
+        cpf: { type: string, minLength: 11, maxLength: 14 }
       required: [action]
-    LanceDemoActionResponse:
+    LanceActionResponse:
       type: object
       properties:
-        result:
-          type: string
-          enum: [ok, funds, invalid, exists, creds, not-found]
-        state:
-          $ref: "#/components/schemas/LanceDemoState"
+        result: { type: string, enum: [ok, funds, invalid, exists, creds, not-found] }
+        state: { $ref: "#/components/schemas/LanceState" }
       required: [result, state]
-

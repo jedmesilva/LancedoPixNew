@@ -19,6 +19,7 @@
 
 export * from "./lance-demo-sessions";
 export * from "./users";
+export * from "./user-sessions";
 export * from "./auth-identities";
 export * from "./auth-tokens";
 export * from "./wallets";

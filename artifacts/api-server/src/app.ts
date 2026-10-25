@@ -1,5 +1,4 @@
 import express, { type Express } from "express";
-import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -9,7 +8,7 @@ const app: Express = express();
 const sessionSecret = process.env.SESSION_SECRET;
 
 if (!sessionSecret) {
-  throw new Error("SESSION_SECRET is required for signed demo sessions.");
+  throw new Error("SESSION_SECRET is required for authenticated sessions.");
 }
 
 app.use(
@@ -32,8 +31,8 @@ app.use(
   }),
 );
 app.use(cookieParser(sessionSecret));
-app.use(cors());
-app.use(express.json());
+app.set("trust proxy", 1);
+app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

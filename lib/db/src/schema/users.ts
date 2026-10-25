@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import {
+  boolean,
   pgTable,
   text,
   timestamp,
@@ -17,6 +18,7 @@ export const usersTable = pgTable(
     publicName: text("public_name").notNull(),
     email: text("email").notNull(),
     passwordHash: text("password_hash"),
+    testAccount: boolean("test_account").notNull().default(false),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     avatarUrl: text("avatar_url"),
     createdAt: timestamp("created_at", { withTimezone: true })

@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
-import lanceDemoRouter from "./lance-demo";
+import authRouter from "./auth";
+import lanceRouter from "./lance";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
-router.use(lanceDemoRouter);
+router.use(authRouter);
+router.use(lanceRouter);
 
 export default router;

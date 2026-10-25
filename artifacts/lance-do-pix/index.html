@@ -1478,19 +1478,16 @@ try {
 </script>
 <header>
 <div class="lg"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 22.5 12 12 22.5 1.5 12z" fill="#D4FF4F" stroke="#0F1208" stroke-width="1.6" stroke-linejoin="round"/></svg>Lance do Pix</div>
-<div class="rt"><button class="bl" id="balb" type="button" aria-label="Saldo R$ 390,00. Adicionar créditos"><span id="bal">R$ 390,00</span><span class="pl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B0C10" stroke-width="3.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></span></button><button class="av" id="avb" type="button" aria-haspopup="dialog" aria-label="Minha conta"><span id="avl">M</span><i id="avd" aria-hidden="true"></i></button><button class="cta" id="lgb" type="button" hidden>Entrar</button></div>
+<div class="rt"><button class="bl" id="balb" type="button" aria-label="Saldo R$ 0,00. Adicionar créditos"><span id="bal">R$ 0,00</span><span class="pl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B0C10" stroke-width="3.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></span></button><button class="av" id="avb" type="button" aria-haspopup="dialog" aria-label="Minha conta"><span id="avl">M</span><i id="avd" aria-hidden="true"></i></button><button class="cta" id="lgb" type="button" hidden>Entrar</button></div>
 </header>
 <main class="app" id="app">
 <div><h1 id="hd" aria-live="polite"></h1><p class="sub" id="sb"></p></div>
 <section class="win" id="win" hidden><span class="ck"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Você venceu!</b>Parabéns, o prêmio é seu.</div></section>
 <section><div class="ey">Valor em disputa</div><div class="pz" id="pz"></div><div class="bn" id="bn" hidden></div></section>
 <section class="cd rg" id="nxt" hidden><div class="ring"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="rb" cx="20" cy="20" r="17" pathLength="100"/><circle class="rf" cx="20" cy="20" r="17" pathLength="100"/></svg><b id="nxs" role="timer"></b></div><div><div class="t2" id="nxa"></div><p class="nt">Lances liberados ao começar</p></div></section>
-<section class="cd" id="how" hidden><div class="ey">Como funciona</div><div class="sp"><span>1</span>Dê um lance acima do atual</div><div class="sp"><span>2</span>Fique na frente por 1 minuto</div><div class="sp"><span>3</span>Receba o prêmio por Pix</div></section>
+<section class="cd" id="how" hidden><div class="ey">Como funciona</div><div class="sp"><span>1</span>Dê um lance acima do atual</div><div class="sp"><span>2</span>Fique na frente pelo tempo da disputa</div><div class="sp"><span>3</span>Solicite o resgate do prêmio</div></section>
 <section class="cd" id="bid"><div class="ey" id="bl"></div><div class="bv" id="bv"></div><div class="ld"><span id="who"></span><span class="tm" id="clk" role="timer"></span></div><div class="br" id="bar"><i id="fill"></i></div><div class="nb" id="nb"><div><p class="nt" id="ntm" aria-live="polite"></p></div></div></section>
 <section id="rec"><div class="ey" style="margin-bottom:6px">Lances recentes</div><div id="hist" role="list"></div></section>
-<div class="sim" id="simP"><em>Simular valor</em></div>
-<div class="sim" id="simS"><em>Simular status</em></div>
-<div class="sim" id="simB"><em>Simular lance</em></div>
 <dialog id="hm" aria-labelledby="hmt"><div class="mh"><h2 id="hmt">Como funciona</h2><button class="mx" id="hmx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 <div class="sp"><span>1</span><div><b>Dê um lance maior que o atual</b><p>O mínimo é <data data-how="step"></data> a mais que o lance atual.</p></div></div>
 <div class="sp"><span>2</span><div><b>Seu lance precisa continuar sendo o maior por <data data-how="dur"></data></b><p>Se ninguém superar nesse tempo, você vence.</p></div></div>
@@ -1519,15 +1516,13 @@ try {
 <label class="fld"><span>R$</span><input id="amv" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-label="Valor a adicionar, em reais"></label>
 <div class="ey" style="margin-top:18px">Sugestões</div><div class="sg" id="sg"></div>
 <button class="cta" id="amg" type="button"></button>
-<p class="nt" style="text-align:center">Pagamento por Pix. Os créditos entram assim que o pagamento é confirmado.</p></div>
-<div id="amp" hidden><div style="text-align:center"><div class="ey" style="margin-top:4px">Valor do Pix</div><div class="bv" id="apv" style="margin-top:6px"></div><div style="margin-top:12px"><span class="bd">Aguardando pagamento</span></div><p class="nt" id="apt" role="timer" style="padding-top:8px"></p></div>
-<div class="qr" id="apq"></div>
-<p class="nt" style="text-align:center">Abra o app do seu banco, escolha Pix e leia o QR code ou use o código copia e cola.</p>
-<div class="cc"><input id="apc" readonly aria-label="Código Pix copia e cola"><button class="cpy" id="apy" type="button">Copiar</button></div>
+<p class="nt" style="text-align:center">A integração Pix ainda não está ativa. Esta confirmação é simulada e não envia nem cobra um Pix.</p></div>
+<div id="amp" hidden><div style="text-align:center"><div class="ey" style="margin-top:4px">Valor da recarga simulada</div><div class="bv" id="apv" style="margin-top:6px"></div><div style="margin-top:12px"><span class="bd">Aguardando confirmação simulada</span></div><p class="nt" id="apt" role="timer" style="padding-top:8px"></p></div>
+<p class="nt" style="text-align:center">Recarga simulada. Nenhuma cobrança, transferência ou confirmação bancária será realizada.</p>
 <button class="cta g" id="apa" type="button">Alterar valor</button></div>
 <div id="amc" hidden role="status" style="text-align:center"><span class="ck" id="rk"></span><h3 class="rtl" id="rt"></h3><p class="vs" id="rd"></p><p class="nt" id="rn"></p>
 <button class="cta" id="rc" type="button"></button><button class="cta g" id="rg2" type="button">Alterar valor</button></div>
-<div class="sim" id="amsim" hidden style="margin-top:22px;padding-top:16px;border-top:1px dashed var(--ln)"><em>Simular pagamento</em></div></dialog>
+<div class="sim" id="amsim" style="margin-top:22px;padding-top:16px;border-top:1px dashed var(--ln)"><em>Simulação de status do pagamento</em></div></dialog>
 <dialog id="ac" aria-labelledby="act"><div class="mh"><div class="id"><span class="av" id="acv" aria-hidden="true"></span><div><h2 id="act"></h2><p class="nt" id="acm"></p></div></div><button class="mx" id="acx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 <button class="lk" id="acedit" type="button" aria-haspopup="dialog" aria-controls="ep" data-testid="button-edit-profile"><span><b>Editar perfil</b><small>Nome e senha</small></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
 <button class="lk theme-row" id="theme-toggle" type="button" role="switch" aria-checked="false" aria-label="Ativar modo escuro" data-testid="switch-theme"><span><b>Aparência</b><small id="theme-value">Modo claro</small></span><span class="theme-track" aria-hidden="true"><span class="theme-knob"></span></span></button>
@@ -1542,13 +1537,13 @@ try {
 </form>
 <section class="profile-security" aria-labelledby="password-title">
 <div class="ey" id="password-title">Senha</div>
-<div id="password-form" role="group" aria-label="Simulação de alteração de senha">
+<div id="password-form" role="group" aria-label="Alterar senha">
 <div class="tf"><label for="current-password">Senha atual</label><input id="current-password" type="password" autocomplete="off" aria-describedby="current-password-error" data-testid="input-current-password"><p class="fe" id="current-password-error" role="alert" hidden></p></div>
 <div class="tf"><label for="new-password">Nova senha</label><input id="new-password" type="password" autocomplete="off" minlength="8" aria-describedby="new-password-error password-hint" data-testid="input-new-password"><p class="fe" id="new-password-error" role="alert" hidden></p><p class="nt" id="password-hint">Use pelo menos 8 caracteres.</p></div>
 <div class="tf"><label for="confirm-password">Confirmar nova senha</label><input id="confirm-password" type="password" autocomplete="off" aria-describedby="confirm-password-error" data-testid="input-confirm-password"><p class="fe" id="confirm-password-error" role="alert" hidden></p></div>
-<p class="profile-note" role="note">Protótipo: não use uma senha real. Estes campos não são enviados nem armazenados; a autenticação real ainda não está conectada.</p>
+<p class="profile-note" role="note">A senha é armazenada como hash seguro. A recuperação por e-mail ainda não está disponível.</p>
 <p class="ok" id="password-status" role="status" hidden></p>
-<button class="cta g" id="password-save" type="button" data-testid="button-simulate-password-change">Simular troca de senha</button>
+<button class="cta g" id="password-save" type="button" data-testid="button-change-password">Alterar senha</button>
 </div>
 </section></dialog>
 <dialog id="bm" aria-labelledby="bmt"><div class="mh"><div class="id"><button class="mx bk" id="bmb" type="button" aria-label="Voltar para a conta"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><h2 id="bmt">Meus lances</h2></div><button class="mx" id="bmx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
@@ -1564,7 +1559,7 @@ try {
   <section id="rddetails" hidden>
    <div class="tf"><label for="rdname">Nome completo</label><input id="rdname" type="text" autocomplete="off" placeholder="Seu nome completo" aria-describedby="rdnamee"><p class="fe" id="rdnamee" hidden></p></div>
    <div class="tf"><label for="rdcpf">CPF</label><input id="rdcpf" type="text" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00" aria-describedby="rdcpfe"><p class="fe" id="rdcpfe" hidden></p></div>
-   <p class="redemption-note" role="note">Esta é uma demonstração. Seus dados ficam apenas nesta tela: não são enviados nem armazenados, e nenhum Pix é processado.</p>
+   <p class="redemption-note" role="note">A solicitação e os dados informados serão armazenados de forma protegida. A transferência Pix ainda não é automática e depende de processamento manual.</p>
    <p class="er" id="rderror" role="alert" hidden></p>
    <button class="cta" id="rdsubmit" type="submit">Confirmar resgate</button>
   </section>
@@ -1583,7 +1578,7 @@ try {
 <button class="cta" id="los" type="submit"></button>
 </form>
 <p class="nt ft"><span id="lfx"></span><button class="tb" id="lom" type="button"></button></p>
-<div class="sim" style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--ln)"><em>Simular</em><button id="lfl" type="button">Usar conta de teste</button></div></dialog>
+<p class="nt" data-m="in up" style="text-align:center">O Google ainda não está integrado; esta opção cria uma conta persistente de teste.</p></dialog>
 </main>
 <div class="sheet" id="sheet" role="region" aria-label="Dar lance">
 <div id="ctl"><div class="sk"><h3>SEU PRÓXIMO LANCE</h3><button class="hw" id="hwb" type="button" aria-haspopup="dialog">Como funciona</button></div>
@@ -1595,13 +1590,17 @@ try {
 </div>
 <script type="module">
 /* ═══════════════════════════════════════════════════════════════
-   SERVIDOR (simulado) · regras, estado e relógio
-   Não usa document nem $. Em produção, este bloco vira o backend:
-   o cliente já só conversa por Server.* e pelos eventos de subscribe().
+   API · estado persistido no PostgreSQL e sincronizado entre sessões.
    ═══════════════════════════════════════════════════════════════ */
 import {
-  getLanceDemoState,
-  postLanceDemoAction,
+  changePassword,
+  createGoogleTestAccount,
+  getLanceState,
+  postLanceAction,
+  signIn,
+  signOut,
+  signUp,
+  updateProfile,
 } from "@workspace/api-client-react";
 
 const Server = (() => {
@@ -1641,7 +1640,7 @@ const Server = (() => {
   };
 
   async function refresh(initial = false) {
-    const value = await getLanceDemoState();
+    const value = await getLanceState();
     const key = stableKey(value);
     apply(value);
     if (initial) {
@@ -1663,7 +1662,7 @@ const Server = (() => {
 
   async function send(action, values = {}, event = "render") {
     try {
-      const response = await postLanceDemoAction({ action, ...values });
+      const response = await postLanceAction({ action, ...values });
       apply(response.state);
       lastStableState = stableKey(response.state);
       if (event) emit(event);
@@ -1674,9 +1673,16 @@ const Server = (() => {
     }
   }
 
-  const authAction = async (action, values = {}) => {
-    const result = await send(action, values, "session");
-    if (result !== "ok") throw result;
+  const authCall = async operation => {
+    try {
+      await operation();
+      await refresh();
+      emit("session");
+    } catch (error) {
+      if (error?.status === 409) throw "exists";
+      if (error?.status === 401) throw "creds";
+      throw "invalid";
+    }
   };
   const startPolling = () => {
     if (pollTimer) clearInterval(pollTimer);
@@ -1707,36 +1713,36 @@ const Server = (() => {
       }
       return result;
     },
-    nextRound: () => send("nextRound", {}, "render"),
-    notifyStart: () => send("notifyStart", {}, "sheet"),
-    requestPayout: () => send("requestPayout", {}, "render"),
     myBids: () => state?.bids ?? [],
     redeemable: () => state?.redeemable ?? 0,
-    redeem: async id => {
-      const result = await send("redeem", { bidId: id }, null);
+    redeem: async (id, details) => {
+      const result = await send("redeem", { bidId: id, ...details }, null);
       if (result === "ok") {
         emit("bids");
         emit("sheet");
       }
       return result;
     },
-    logout: () => send("logout", {}, "session"),
-    updateName: name => authAction("updateName", { name }),
+    logout: async () => {
+      await signOut();
+      await refresh();
+      emit("session");
+    },
+    updateName: name => authCall(() => updateProfile({ name })),
+    changePassword: (currentPassword, newPassword) =>
+      authCall(() => changePassword({ currentPassword, newPassword })),
     auth: {
-      google: () => authAction("demoGoogle"),
-      signin: email => authAction("demoSignIn", { email }),
-      signup: (name, email) => authAction("demoSignUp", { name, email }),
-      reset: email => authAction("demoReset", { email }),
+      google: () => authCall(() => createGoogleTestAccount()),
+      signin: (email, password) =>
+        authCall(() => signIn({ email, password })),
+      signup: (name, email, password) =>
+        authCall(() => signUp({ name, email, password })),
     },
     pix: {
       create: async amount => (await send("createPix", { amount }, "wallet")) === "ok",
       discard: () => send("discardPix", {}, "wallet"),
     },
     sim: {
-      setPrize: prizeIndex => send("setPrize", { prizeIndex }, "render"),
-      setPhase: phase => send("setPhase", { phase }, "render"),
-      rivalBid: () => send("rivalBid", {}, "bid"),
-      hurry: () => send("hurry", {}, "tick-bid"),
       setPayState: paymentState =>
         send("setPixState", { paymentState }, "wallet"),
     },
@@ -1759,7 +1765,7 @@ try {
   const error = document.createElement("p");
   error.setAttribute("role", "alert");
   error.style.cssText = "margin:32px auto;max-width:720px;padding:20px;font:16px system-ui;color:#9b1c1c;background:#fff1f1;border-radius:12px";
-  error.textContent = "Não foi possível carregar o Lance do Pix. O servidor da demonstração precisa estar disponível.";
+  error.textContent = "Não foi possível carregar o Lance do Pix. Verifique a conexão com o servidor.";
   document.body.prepend(error);
   throw new Error("Lance do Pix API is unavailable");
 }
@@ -1808,19 +1814,18 @@ function paintHist(){
   $('hist').innerHTML=A.H.map(h=>'<div class="rw" role="listitem"><div><span>'+N[h.n]+'</span><b>'+brl(h.v)+'</b></div><span>Superado aos '+h.t+'s</span></div>').join('');
 }
 function paintBid(){
-  const H=A.H,id=A.phase,ended=id==='ended',live=id==='live',mine=A.leader===0,n=N[A.leader],urg=live&&A.left<=10;
-  $('bl').textContent=ended?'Lance vencedor':'Lance atual';
+  const H=A.H,id=A.phase,ended=id==='ended',live=id==='live',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':N[A.leader],urg=live&&!noLeader&&A.left<=10;
+  $('bl').textContent=ended?'Lance vencedor':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(A.value);
-  $('who').textContent=n+(ended?' venceu':' está ganhando');
-  $('clk').innerHTML=ended?CK:mmss(A.left);
-  $('bar').hidden=ended;$('fill').style.width=(A.left/TOTAL*100)+'%';
-  const out=!mine&&H.length>0&&H[0].n===0,prev=H.length&&H[0].n!==0?N[H[0].n]:null;
-  const msg=!live?'':mine?(urg?'Falta pouco! Se ninguém superar, o prêmio é seu.':(prev?'Você superou o lance de '+prev+'. ':'Você deu um lance. ')+'Se ninguém superar, o prêmio é seu.'):urg?'Últimos segundos! Supere agora.':out?n+' superou seu lance. Dê um maior para voltar à frente.':prev?n+' superou o lance de '+prev+'. Dê um maior para ficar à frente.':'';
+  $('who').textContent=noLeader?'Aguardando o primeiro lance':n+(ended?' venceu':' está ganhando');
+  $('clk').innerHTML=ended?CK:noLeader?'—':mmss(A.left);
+  $('bar').hidden=ended||noLeader;$('fill').style.width=(A.left/TOTAL*100)+'%';
+  const out=!mine&&!noLeader&&H.length>0&&H[0].n===0,prev=H.length&&H[0].n!==0?N[H[0].n]:null;
+  const msg=!live?'':noLeader?'Dê o primeiro lance para iniciar a disputa.':mine?(urg?'Falta pouco! Se ninguém superar, o prêmio é seu.':(prev?'Você superou o lance de '+prev+'. ':'Você deu um lance. ')+'Se ninguém superar, o prêmio é seu.'):urg?'Últimos segundos! Supere agora.':out?n+' superou seu lance. Dê um maior para voltar à frente.':prev?n+' superou o lance de '+prev+'. Dê um maior para ficar à frente.':'';
   const b=$('bid');if(msg)$('ntm').textContent=msg;
   b.dataset.tone=!msg?'':mine?'ok':(urg||out)?'al':'';
   b.toggleAttribute('data-urg',urg);b.classList.toggle('on',mine&&(live||ended));
   $('nb').toggleAttribute('data-o',!!msg);$('ntm').parentElement.inert=!msg;
-  $('simB').querySelectorAll('button').forEach(x=>x.disabled=!live);
   paintSheet();
 }
 function paintSheet(){
@@ -1829,23 +1834,21 @@ function paintSheet(){
   if(myBid<min)myBid=min;
   const cost=Server.bidCost(myBid),show=U.signedIn&&live&&!mine,low=show&&W.bal<cost;
   $('ctl').hidden=ended||isSoon;$('val').textContent=fmt(myBid);
-  if(isSoon){c.textContent=notify?'Aviso ativado':'Avisar quando começar';c.disabled=notify;g.hidden=true}
-  else if(ended){c.textContent=mine?(paid?'Pix solicitado':'Receber via Pix'):'Ver próxima disputa';c.disabled=mine&&paid;g.hidden=!mine}
+  if(isSoon){c.textContent='Aguardando início';c.disabled=true;g.hidden=true}
+  else if(ended){c.textContent=mine?(paid?'Solicitação registrada':'Solicitar resgate'):'Disputa encerrada';c.disabled=mine&&paid;g.hidden=true}
   else{c.textContent=!live?'Disputa pausada':mine?'Seu lance é o maior':low?'Adicionar créditos':'Superar com '+brl(myBid);c.disabled=!live||mine;g.hidden=true}
   const cn=$('cn');cn.hidden=!low;
   if(low)cn.textContent='Saldo insuficiente: você tem '+brl(W.bal)+' e este lance consome '+brl(cost)+'.';
   document.querySelectorAll('.sq,[data-add]').forEach(x=>{x.disabled=!live});
-  $('vok').textContent=paid?'Pix solicitado':'Receber via Pix';$('vok').disabled=paid;
+  $('vok').textContent=paid?'Solicitação registrada':'Solicitar resgate';$('vok').disabled=paid;
   $('app').style.paddingBottom=($('sheet').offsetHeight+24)+'px';
 }
 function render(){
   const s=S[idx(A.phase)],id=A.phase,isSoon=id==='soon';
   $('hd').innerHTML='Disputa <span class="s '+id+'">'+s.l+'</span>';
-  $('sb').textContent=s.s(N[A.leader]);
+  $('sb').textContent=s.s(A.leader<0?'':N[A.leader]);
   $('pz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
   fit();paintBonus();
-  $('simP').querySelectorAll('button').forEach((x,i)=>x.setAttribute('aria-pressed',i===A.p));
-  $('simS').querySelectorAll('button').forEach((x,i)=>x.setAttribute('aria-pressed',i===idx(A.phase)));
   $('nxt').hidden=$('how').hidden=!isSoon;$('bid').hidden=isSoon;
   $('rec').hidden=isSoon||!A.H.length;$('win').hidden=!(id==='ended'&&A.leader===0);
   paintSoon();paintBid();paintWin();paintHow();
@@ -1865,68 +1868,53 @@ function paintHow(){const v={step:brl(STEP),dur:dur(TOTAL)};hm.querySelectorAll(
 function hit(){const b=$('bid');b.removeAttribute('data-hit');void b.offsetWidth;b.dataset.hit=A.leader===0?'me':'other'}
 function bump(d){myBid=Math.max(Server.minBid(),r2(myBid+d));paintSheet()}
 const place=()=>Server.placeBid(myBid);
-/* ═══ 4. EVENTOS · disputa e painel de simulação ═══
-   Cliques, modais e reação aos eventos do servidor. */
-V.forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.textContent='R$ '+v.v.toLocaleString('pt-BR');b.onclick=()=>Server.sim.setPrize(i);$('simP').appendChild(b)});
-S.forEach(s=>{const b=document.createElement('button');b.type='button';b.textContent=s.c;b.onclick=()=>Server.sim.setPhase(s.id);$('simS').appendChild(b)});
-[['Novo lance',()=>Server.sim.rivalBid()],['Faltam 5 s',()=>Server.sim.hurry()]].forEach(([t,fn])=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=fn;$('simB').appendChild(b)});
-if(!Server.controlsEnabled)['simP','simS','simB','amsim'].forEach(id=>$(id).hidden=true);
+/* ═══ 4. EVENTOS · disputa compartilhada ═══ */
 $('minus').onclick=()=>bump(-STEP);$('plusb').onclick=()=>bump(STEP);
 document.querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>bump(Number(b.dataset.add))});
 $('cta').onclick=async()=>{const id=A.phase;
   if(!U.signedIn&&(id==='live'||(id==='ended'&&A.leader===0))){authOpen();return}
   if(id==='live'){if(await place()==='funds')openAm()}
-  else if(id==='soon')Server.notifyStart();
-  else if(id==='ended'){if(A.leader===0)openRedemption(Server.myBids().find(b=>b.status==='won')?.id);else Server.nextRound()}};
-$('cta2').onclick=()=>Server.nextRound();
+  else if(id==='ended'&&A.leader===0)openRedemption(Server.myBids().find(b=>b.status==='won')?.id)};
 const hm=$('hm'),vm=$('vm'),ac=$('ac'),ep=$('ep'),bm=$('bm'),rdm=$('rdm'),lo=$('lo');
 $('hwb').onclick=()=>hm.showModal();
 $('hmx').onclick=$('hmok').onclick=()=>hm.close();
 $('vmx').onclick=()=>vm.close();
 $('vok').onclick=()=>{vm.close();openRedemption(Server.myBids().find(b=>b.status==='won')?.id)};
-$('vnx').onclick=()=>{vm.close();Server.nextRound()};
+$('vnx').hidden=true;
 [hm,vm,ac,ep,bm].forEach(d=>d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}));
 /* ═══ 5. CRÉDITOS · ícones e utilitários de tela ═══
    SUG, DEF (valor inicial do modal), IC (ícones), num, clean, qr(). */
 const SUG=[20,50,100,200],DEF=30,dv=()=>DEF.toFixed(2).replace('.',','),am=$('am');$('amv').value=dv();
-const PS=[['pending','Aguardando'],['paid','Pago'],['expired','Expirado'],['failed','Falhou']];
+const PS=[['paid','Confirmar simulação'],['expired','Expirar simulação'],['failed','Falhar simulação']];
 const SV=d=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
 const IC={ok:SV('<path d="M20 6 9 17l-5-5"/>'),x:SV('<path d="M6 6l12 12M18 6 6 18"/>'),clock:SV('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')};
 const num=s=>{const n=parseFloat(String(s).replace(',','.'));return isNaN(n)?0:r2(n)};
 const clean=s=>{s=s.replace(/[.]/g,',').replace(/[^0-9,]/g,'');const i=s.indexOf(',');const a=(i<0?s:s.slice(0,i)).replace(/^0+(?=[0-9])/,'').slice(0,7);return i<0?a:a+','+s.slice(i+1).replace(/,/g,'').slice(0,2)};
-function qr(seed){
-  const n=25,m=[];let s=seed;const rnd=()=>(s=(s*1664525+1013904223)>>>0)/4294967296;
-  for(let y=0;y<n;y++){m[y]=[];for(let x=0;x<n;x++)m[y][x]=rnd()>.5}
-  [[0,0],[n-7,0],[0,n-7]].forEach(([ox,oy])=>{for(let y=-1;y<=7;y++)for(let x=-1;x<=7;x++){const X=ox+x,Y=oy+y;if(X<0||Y<0||X>=n||Y>=n)continue;m[Y][X]=x>=0&&y>=0&&x<=6&&y<=6&&(x==0||x==6||y==0||y==6||(x>1&&x<5&&y>1&&y<5))}});
-  let d='';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(m[y][x])d+='M'+x+' '+y+'h1v1h-1z';
-  return '<svg viewBox="-1 -1 '+(n+2)+' '+(n+2)+'" role="img" aria-label="QR code do Pix (exemplo)"><path d="'+d+'" fill="#0F1208"/></svg>';
-}
 /* ═══ 6. COMPONENTES · render de créditos ═══
    paintBal, paintAm, paintTimer, amView. */
 function paintBal(){$('bal').textContent=brl(W.bal);$('amb').textContent=brl(W.bal);$('balb').setAttribute('aria-label','Saldo '+brl(W.bal)+'. Adicionar créditos')}
 function paintAm(){
   const v=num($('amv').value),g=$('amg');
   $('sg').querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',v===SUG[i]));
-  g.disabled=!(v>0);g.textContent=v>0?'Gerar Pix de '+brl(v):'Informe um valor';
+  g.disabled=!(v>0);g.textContent=v>0?'Criar recarga simulada de '+brl(v):'Informe um valor';
 }
 function paintTimer(){$('apt').textContent='Expira em '+mmss(W.pay.left)}
 function amView(){
   const P=W.pay,s=P?P.state:'amount',res=s==='paid'||s==='expired'||s==='failed';
-  $('ama').hidden=s!=='amount';$('amp').hidden=s!=='pending';$('amc').hidden=!res;$('amsim').hidden=s==='amount';
+  $('ama').hidden=s!=='amount';$('amp').hidden=s!=='pending';$('amc').hidden=!res;$('amsim').hidden=s!=='pending';
   $('amsim').querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',PS[i][0]===s));
   $('amb').textContent=brl(W.bal);
-  if(s==='pending'){$('apv').textContent=brl(P.amt);$('apc').value=P.code;$('apq').innerHTML=qr(P.seed);paintTimer()}
+  if(s==='pending'){$('apv').textContent=brl(P.amt);paintTimer()}
   if(res){
     const ok=s==='paid',k=$('rk');
     k.className='ck'+(ok?'':' n');k.innerHTML=ok?IC.ok:s==='expired'?IC.clock:IC.x;
-    $('rt').textContent=ok?'Créditos adicionados':s==='expired'?'Pix expirado':'Pagamento não confirmado';
-    $('rd').textContent=ok?brl(P.amt)+' já estão no seu saldo.':s==='expired'?'O tempo para pagar acabou. Nenhum valor foi cobrado.':'Não conseguimos confirmar o pagamento deste Pix. Gere um novo para tentar de novo.';
-    $('rn').textContent=ok?'Novo saldo '+brl(W.bal):'';$('rn').hidden=!ok;
-    $('rc').textContent=ok?'Voltar à disputa':'Gerar novo Pix';$('rg2').hidden=ok;
+    $('rt').textContent=ok?'Recarga simulada confirmada':s==='expired'?'Recarga simulada expirada':'Recarga simulada não confirmada';
+    $('rd').textContent=ok?brl(P.amt)+' foram adicionados ao saldo simulado. Nenhum Pix foi cobrado.':s==='expired'?'O tempo da simulação acabou. Nenhum valor foi cobrado.':'A simulação terminou sem adicionar créditos.';
+    $('rn').textContent=ok?'Novo saldo simulado '+brl(W.bal):'';$('rn').hidden=!ok;
+    $('rc').textContent=ok?'Voltar à disputa':'Criar outra simulação';$('rg2').hidden=ok;
   }
 }
-/* ═══ 7. AÇÕES · créditos ═══
-   A cobrança Pix e o saldo vivem no Server.pix / Server.wallet. */
+/* ═══ 7. AÇÕES · recargas com confirmação explicitamente simulada ═══ */
 async function gen(){if(await Server.pix.create(num($('amv').value)))amView()}
 async function amBack(){await Server.pix.discard();amView();paintAm()}
 function openAm(){
@@ -1934,10 +1922,9 @@ function openAm(){
   if(!P||P.state!=='pending'){if(P&&P.state==='paid')$('amv').value=dv();Server.pix.discard()}
   amView();paintAm();am.showModal();
 }
-/* ═══ 8. EVENTOS · modal de créditos ═══
-   Sugestões, campo de valor, copiar código. O timer do Pix agora é do servidor. */
+/* ═══ 8. EVENTOS · modal de créditos ═══ */
 SUG.forEach(v=>{const b=document.createElement('button');b.type='button';b.textContent='R$ '+v;b.onclick=()=>{$('amv').value=v.toFixed(2).replace('.',',');paintAm()};$('sg').appendChild(b)});
-PS.forEach(([id,l])=>{const b=document.createElement('button');b.type='button';b.textContent=l;b.onclick=()=>Server.sim.setPayState(id);$('amsim').appendChild(b)});
+[['paid','Confirmar simulação'],['expired','Expirar simulação'],['failed','Falhar simulação']].forEach(([id,label])=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>Server.sim.setPayState(id);$('amsim').appendChild(b)});
 $('amv').addEventListener('input',e=>{const c=clean(e.target.value);if(c!==e.target.value)e.target.value=c;paintAm()});
 $('amv').addEventListener('change',e=>{const v=num(e.target.value);e.target.value=v>0?v.toFixed(2).replace('.',','):'';paintAm()});
 $('amv').addEventListener('keydown',e=>{if(e.key==='Enter')gen()});
@@ -1946,11 +1933,6 @@ $('amg').onclick=gen;$('apa').onclick=$('rg2').onclick=amBack;
 $('rc').onclick=async()=>{if(W.pay.state==='paid')am.close();else{await Server.pix.discard();await gen()}};
 $('amx').onclick=()=>am.close();$('balb').onclick=openAm;
 am.addEventListener('click',e=>{const r=am.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)am.close()});
-$('apy').onclick=async()=>{
-  const i=$('apc'),b=$('apy');let ok=false;
-  try{await navigator.clipboard.writeText(i.value);ok=true}catch(e){i.select();try{ok=document.execCommand('copy')}catch(e2){}}
-  b.textContent=ok?'Copiado':'Selecionado';setTimeout(()=>{b.textContent='Copiar'},2000);
-};
 /* ═══ 9. CONTA · avatar, modal de conta, meus lances e sessão ═══
    paintAvatar, paintAcct, paintBids (paintMine chama os três) e paintSession. Regras: Server.myBids, redeem, logout. */
 const ST={won:['w','Venceu'],leading:['l','Ganhando'],outbid:['','Superado']};
@@ -2000,7 +1982,11 @@ async function submitRedemption(event){
   if($('rdname').getAttribute('aria-invalid')==='true'||$('rdcpf').getAttribute('aria-invalid')==='true')return;
   const submit=$('rdsubmit');submit.disabled=true;
   $('rderror').textContent='';$('rderror').hidden=true;
-  const result=await Server.redeem(redemptionBidId);
+  const result=await Server.redeem(redemptionBidId,{
+    pixKey:$('rdpix').value.trim(),
+    holderName:name,
+    cpf:cpf.replace(/\D/g,''),
+  });
   if(result==='ok'){rdm.close();return}
   $('rderror').textContent='Não foi possível registrar o resgate. Confira se o prêmio ainda está disponível e tente novamente.';
   $('rderror').hidden=false;submit.disabled=false;
@@ -2038,7 +2024,7 @@ function toggleTheme(){
 }
 function paintAcct(){
   const L=Server.myBids(),n=Server.redeemable(),g=$('acg');
-  $('acv').textContent=ini();$('act').textContent=U.name;$('acm').textContent=U.email;
+  $('acv').textContent=ini();$('act').textContent=U.name;$('acm').textContent=U.testAccount?'Conta de teste do Google':U.email;
   $('acb').textContent=brl(W.bal);
   $('acs').textContent=L.length?plural(L.length,'lance','lances'):'Nenhum lance ainda';
   g.hidden=n<1;g.textContent=n+' para resgatar';
@@ -2050,7 +2036,7 @@ function bidHTML(b){
     +'<div class="tp"><div><b class="vl">'+brl(b.value)+'</b><span class="dt">'+fdt(b.at)+'</span></div><span class="tg '+c+'">'+(won?CKS:'')+l+'</span></div>'
     +'<div class="pr"><span>Prêmio da disputa</span><b>'+brl(b.prize)+'</b></div>'
     +(won&&b.bonus>0?'<div class="pr"><span>Bônus</span><b>+ '+brl(b.bonus)+'</b></div>':'')
-    +(won&&b.redeemed?'<div class="redeem-status" role="status"><b>Resgate solicitado</b><span>Status: solicitação recebida</span><small>Acompanhe as atualizações por aqui. Esta demonstração não realiza pagamentos.</small></div>':'')
+    +(won&&b.redeemed?'<div class="redeem-status" role="status"><b>Solicitação registrada</b><span>Status: aguardando processamento manual</span><small>A transferência Pix ainda não é automática.</small></div>':'')
     +(won&&!b.redeemed?'<button class="cta" type="button" data-redeem="'+b.id+'">Resgatar prêmio</button>':'')
     +'</div>';
 }
@@ -2073,7 +2059,7 @@ $('aca').onclick=()=>{ac.close();openAm()};
 $('acl').onclick=()=>{ac.close();paintBids();bm.showModal()};
 $('bmb').onclick=()=>{bm.close();paintAcct();ac.showModal()};
 $('bmx').onclick=()=>bm.close();
-$('bml').onclick=e=>{const b=e.target.closest('[data-redeem]');if(b)openRedemption(Number(b.dataset.redeem))};
+$('bml').onclick=e=>{const b=e.target.closest('[data-redeem]');if(b)openRedemption(b.dataset.redeem)};
 $('aco').onclick=()=>Server.logout();
 const profileForm=$('profile-form');
 const passwordFields=[
@@ -2104,7 +2090,7 @@ profileForm.addEventListener('submit',async event=>{
   $('profile-save').disabled=true;
   try{
     await Server.updateName(name);
-    $('profile-status').textContent='Nome atualizado nesta demonstração.';
+    $('profile-status').textContent='Nome atualizado.';
     $('profile-status').hidden=false;
   }catch{
     $('profile-error').textContent='Não foi possível atualizar o nome. Tente novamente.';
@@ -2118,22 +2104,29 @@ $('profile-name').addEventListener('input',()=>{
 passwordFields.forEach(([input,error])=>$(input).addEventListener('input',()=>{
   fieldError(input,error,'');$('password-status').hidden=true;
 }));
-$('password-save').addEventListener('click',()=>{
+$('password-save').addEventListener('click',async()=>{
   const current=$('current-password').value;
   const next=$('new-password').value;
   const confirm=$('confirm-password').value;
   const errors=[
-    current?'':'Informe a senha atual para concluir a simulação.',
+    current?'':'Informe a senha atual.',
     next.length>=8?'':'A nova senha deve ter pelo menos 8 caracteres.',
     confirm===next&&confirm?'':'As senhas não coincidem.',
   ];
   passwordFields.forEach(([input,error],index)=>fieldError(input,error,errors[index]));
   const firstInvalid=passwordFields.find(([input])=>$(input).getAttribute('aria-invalid')==='true');
   if(firstInvalid){$(firstInvalid[0]).focus();return}
-  $('password-status').textContent='Simulação concluída. Nenhuma senha foi enviada, salva ou alterada.';
-  $('password-status').hidden=false;
-  passwordFields.forEach(([input])=>{ $(input).value='' });
-  passwordFields.forEach(([input,error])=>fieldError(input,error,''));
+  $('password-save').disabled=true;
+  try{
+    await Server.changePassword(current,next);
+    $('password-status').textContent='Senha alterada. As outras sessões da conta foram encerradas.';
+    $('password-status').hidden=false;
+    passwordFields.forEach(([input])=>{ $(input).value='' });
+    passwordFields.forEach(([input,error])=>fieldError(input,error,''));
+  }catch{
+    fieldError('current-password','current-password-error','Não foi possível confirmar a senha atual.');
+    $('current-password').focus();
+  }finally{$('password-save').disabled=false}
 });
 /* ═══ 9b. AUTH · modal de entrada (#lo) ═══
    Modos: in (entrar), up (criar conta), reset (recuperar senha). AU.busy: '' | 'google' | 'form'.
@@ -2148,10 +2141,10 @@ function paintAuth(){
   lo.querySelectorAll('[data-m]').forEach(e=>e.hidden=!e.dataset.m.split(' ').includes(m));
   lo.querySelectorAll('input,.gb,.cta,.tb,.sh').forEach(e=>e.disabled=!!AU.busy);
   $('lot').textContent=d[0];
-  $('lov').textContent=m==='reset'?'Informe o e-mail da conta. Enviaremos um link para criar uma nova senha.':'Entre para dar lances e usar sua carteira.';
+  $('lov').textContent='Entre para dar lances e usar sua carteira.';
   $('lov').hidden=$('lew').hidden=AU.sent;$('lsn').hidden=!AU.sent;
   if(AU.sent)$('lsn').textContent='Se existir uma conta para '+$('lei').value.trim()+', enviamos um link para criar uma nova senha. Confira também o spam.';
-  $('lgt').textContent=g?'Conectando ao Google…':'Continuar com o Google';
+  $('lgt').textContent=g?'Criando conta…':'Criar conta de teste do Google';
   $('log').querySelector('svg').hidden=g;$('log').querySelector('.rot').hidden=!g;$('log').setAttribute('aria-busy',g);
   $('los').textContent=f?d[2]:AU.sent?'Voltar para entrar':d[1];
   $('lpi').autocomplete=m==='up'?'new-password':'current-password';
@@ -2164,7 +2157,7 @@ function authCheck(){
   const m=AU.mode,p=$('lpi').value,e=$('lei').value.trim(),n=$('lni').value.trim();
   const er={lni:m==='up'&&n.length<2?'Informe seu nome.':'',
     lei:!e?'Informe seu e-mail.':!EMAIL.test(e)?'Digite um e-mail válido, como nome@email.com.':'',
-    lpi:m==='reset'?'':!p?'Informe sua senha.':m==='up'&&p.length<8?'Use pelo menos 8 caracteres.':''};
+    lpi:!p?'Informe sua senha.':m==='up'&&p.length<8?'Use pelo menos 8 caracteres.':''};
   Object.entries(er).forEach(([k,v])=>fe(k,v));
   const bad=Object.keys(er).find(k=>er[k]);if(bad)$(bad).focus();
   return !bad;
@@ -2177,9 +2170,9 @@ async function authGo(ev){
   const m=AU.mode,n=$('lni').value.trim(),e=$('lei').value.trim();
   AU.busy='form';paintAuth();
   try{
-    if(m==='in')await Server.auth.signin(e);
-    else if(m==='up')await Server.auth.signup(n,e);
-    else{await Server.auth.reset(e);AU.sent=true}
+    if(m==='in')await Server.auth.signin(e,$('lpi').value);
+    else if(m==='up')await Server.auth.signup(n,e,$('lpi').value);
+    else throw 'invalid';
   }catch(x){
     AU.busy='';paintAuth();
     banner(x==='exists'?'Já existe uma conta com esse e-mail. Entre ou recupere a senha.':x==='creds'?'E-mail ou senha incorretos.':'Não foi possível continuar. Tente de novo.');
@@ -2190,15 +2183,14 @@ async function authGo(ev){
 async function authGoogle(){
   if(AU.busy)return;
   banner('');AU.busy='google';paintAuth();
-  try{await Server.auth.google()}catch(x){banner('Não foi possível entrar com o Google. Tente de novo.')}
+  try{await Server.auth.google()}catch(x){banner('Não foi possível criar a conta de teste. Tente de novo.')}
   AU.busy='';paintAuth();
 }
 $('lgb').onclick=authOpen;$('log').onclick=authGoogle;
 $('lof').addEventListener('submit',authGo);
 $('lox').onclick=()=>lo.close();
-$('lom').onclick=()=>authMode(MD[AU.mode][5]);$('lfg').onclick=()=>authMode('reset');
+$('lom').onclick=()=>authMode(MD[AU.mode][5]);$('lfg').onclick=()=>banner('A recuperação de senha por e-mail ainda não está disponível.');
 $('lsh').onclick=()=>{const i=$('lpi'),s=i.type==='password';i.type=s?'text':'password';$('lsh').textContent=s?'Ocultar':'Mostrar'};
-$('lfl').onclick=()=>{authMode('in');$('lei').value='marina.costa@email.com';$('lpi').value='lance1234'};
 /* Fecha ao tocar fora. e.detail=0 ignora o clique sintético do Enter no formulário. */
 lo.addEventListener('click',e=>{if(!e.detail||e.target!==lo)return;const r=lo.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)lo.close()});
 /* ═══ 10. SERVIDOR → TELA · eventos ═══
