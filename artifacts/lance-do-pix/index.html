@@ -1908,7 +1908,10 @@ $('minus').onclick=()=>bump(-STEP);$('plusb').onclick=()=>bump(STEP);
 document.querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>bump(Number(b.dataset.add))});
 $('cta').onclick=async()=>{if(bidSubmitting)return;const id=A.phase;
   if(!U.signedIn&&(id==='live'||(id==='ended'&&A.leader===0))){authOpen();return}
-  if(id==='live'){bidSubmitting=true;paintSheet();try{if(await place()==='funds')openAm()}finally{bidSubmitting=false;paintSheet()}}
+  if(id==='live'){
+    if(U.signedIn&&A.leader!==0&&W.bal<Server.bidCost(myBid)){openAm();return}
+    bidSubmitting=true;paintSheet();try{if(await place()==='funds')openAm()}finally{bidSubmitting=false;paintSheet()}
+  }
   else if(id==='ended'&&A.leader===0)openRedemption(Server.myBids().find(b=>b.status==='won')?.id)};
 const hm=$('hm'),vm=$('vm'),ac=$('ac'),ep=$('ep'),bm=$('bm'),rdm=$('rdm'),lo=$('lo');
 $('hwb').onclick=()=>hm.showModal();
