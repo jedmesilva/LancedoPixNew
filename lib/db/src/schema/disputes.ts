@@ -29,7 +29,7 @@ export const disputesTable = pgTable(
       mode: "bigint",
     })
       .notNull()
-      .default(0n),
+      .default(sql`0`),
     stepCents: bigint("step_cents", { mode: "bigint" }).notNull(),
     bidDurationS: integer("bid_duration_s").notNull(),
     status: text("status").notNull(),
@@ -45,10 +45,10 @@ export const disputesTable = pgTable(
     bidsCount: integer("bids_count").notNull().default(0),
     bidsTotalCents: bigint("bids_total_cents", { mode: "bigint" })
       .notNull()
-      .default(0n),
+      .default(sql`0`),
     bonusTotalCents: bigint("bonus_total_cents", { mode: "bigint" })
       .notNull()
-      .default(0n),
+      .default(sql`0`),
     winnerId: uuid("winner_id").references(() => usersTable.id),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

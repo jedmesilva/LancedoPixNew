@@ -18,7 +18,7 @@ export const walletsTable = pgTable(
       .references(() => usersTable.id),
     balanceCents: bigint("balance_cents", { mode: "bigint" })
       .notNull()
-      .default(0n),
+      .default(sql`0`),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()

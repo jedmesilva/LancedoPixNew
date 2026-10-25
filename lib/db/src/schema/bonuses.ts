@@ -33,7 +33,6 @@ export const bonusesTable = pgTable(
 );
 
 export const insertBonusSchema = createInsertSchema(bonusesTable).omit({
-  id: true,
   createdAt: true,
 });
 export type InsertBonus = z.infer<typeof insertBonusSchema>;

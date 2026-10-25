@@ -1,1 +1,2 @@
 - [Lance do Pix demo scope](lance-do-pix-demo-scope.md) — Keep account and Pix flows simulated; don't connect real authentication or payment processing without an explicit request.
+- [Drizzle schema push compatibility](drizzle-schema-push-compatibility.md) — PostgreSQL bytea and generated bigint identity columns need Drizzle-specific schema handling here.

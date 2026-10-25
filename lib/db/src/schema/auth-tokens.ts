@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import {
-  bytea,
   check,
+  customType,
   index,
   pgTable,
   text,
@@ -11,6 +11,10 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
 
 export const authTokensTable = pgTable(
   "auth_tokens",

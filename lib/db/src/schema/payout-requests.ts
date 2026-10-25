@@ -2,8 +2,8 @@ import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import {
   bigint,
-  bytea,
   check,
+  customType,
   index,
   pgTable,
   text,
@@ -14,6 +14,10 @@ import {
 import { z } from "zod/v4";
 import { bidsTable } from "./bids";
 import { usersTable } from "./users";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
 
 export const payoutRequestsTable = pgTable(
   "payout_requests",
@@ -28,7 +32,7 @@ export const payoutRequestsTable = pgTable(
     prizeCents: bigint("prize_cents", { mode: "bigint" }).notNull(),
     bonusCents: bigint("bonus_cents", { mode: "bigint" })
       .notNull()
-      .default(0n),
+      .default(sql`0`),
     amountCents: bigint("amount_cents", { mode: "bigint" }).notNull(),
     keyType: text("key_type").notNull(),
     pixKeyEncrypted: bytea("pix_key_encrypted").notNull(),

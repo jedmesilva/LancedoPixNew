@@ -39,6 +39,6 @@ export const payoutEventsTable = pgTable(
 
 export const insertPayoutEventSchema = createInsertSchema(
   payoutEventsTable,
-).omit({ id: true, createdAt: true });
+).omit({ createdAt: true });
 export type InsertPayoutEvent = z.infer<typeof insertPayoutEventSchema>;
 export type PayoutEvent = typeof payoutEventsTable.$inferSelect;

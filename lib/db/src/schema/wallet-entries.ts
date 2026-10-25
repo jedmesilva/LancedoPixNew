@@ -55,6 +55,6 @@ export const walletEntriesTable = pgTable(
 
 export const insertWalletEntrySchema = createInsertSchema(
   walletEntriesTable,
-).omit({ id: true, createdAt: true });
+).omit({ createdAt: true });
 export type InsertWalletEntry = z.infer<typeof insertWalletEntrySchema>;
 export type WalletEntry = typeof walletEntriesTable.$inferSelect;
