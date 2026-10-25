@@ -1791,7 +1791,8 @@ const S=[{id:'live',l:'ao vivo',c:'Ao vivo',s:()=>'Disputa rolando. Dê o maior 
 {id:'ended',l:'encerrada',c:'Encerrada',s:n=>'Há um vencedor. '+n+' venceu a disputa e ganhou o prêmio.'},
 {id:'soon',l:'começa em breve',c:'Em breve',s:()=>''}];
 const CK='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
-let myBid=0,seen=-1,winShown=false;
+let myBid=0,seen=-1,activeVictoryBidId=null;
+const shownVictoryBidIds=new Set();
 const idx=id=>S.findIndex(s=>s.id===id);
 /* ═══ 2. COMPONENTES · render da disputa ═══
    Cada paint*() é o único lugar que escreve no DOM do seu componente. */
@@ -1854,12 +1855,30 @@ function render(){
   paintSoon();paintBid();paintWin();paintHow();
 }
 function paintWin(){
-  const win=A.phase==='ended'&&A.leader===0;
-  if(!win){winShown=false;if(vm.open)vm.close();return}
-  $('vv').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
-  const bn=$('bn');$('vb').hidden=bn.hidden;$('vb').textContent=bn.textContent;
-  $('vl').textContent='Lance vencedor '+brl(A.value);
-  if(!winShown){winShown=true;if(hm.open)hm.close();vm.showModal()}
+  const bids=Server.myBids();
+  const active=vm.open&&activeVictoryBidId
+    ?bids.find(b=>b.id===activeVictoryBidId&&b.status==='won')
+    :null;
+  const current=A.phase==='ended'&&A.leader===0
+    ?bids.find(b=>b.round===A.round&&b.status==='won')
+    :null;
+  const next=current&&!shownVictoryBidIds.has(current.id)
+    ?current
+    :bids.find(b=>b.status==='won'&&!b.redeemed&&!shownVictoryBidIds.has(b.id));
+  const bid=active||next;
+  if(!bid){activeVictoryBidId=null;if(vm.open)vm.close();return}
+  activeVictoryBidId=bid.id;
+  $('vv').innerHTML='<small>R$</small>'+fmt(bid.prize);
+  $('vb').hidden=bid.bonus<=0;
+  $('vb').textContent=bid.bonus>0?'+ '+brl(bid.bonus)+' de bônus':'';
+  $('vl').textContent='Lance vencedor '+brl(bid.value);
+  $('vok').textContent=bid.redeemed?'Solicitação registrada':'Solicitar resgate';
+  $('vok').disabled=bid.redeemed;
+  if(!vm.open&&!shownVictoryBidIds.has(bid.id)){
+    shownVictoryBidIds.add(bid.id);
+    if(hm.open)hm.close();
+    vm.showModal();
+  }
 }
 /* Modal "Como funciona": cada <data data-how="step|dur"> recebe o lance mínimo ou o tempo da disputa (Server.cfg). */
 function paintHow(){const v={step:brl(STEP),dur:dur(TOTAL)};hm.querySelectorAll('[data-how]').forEach(e=>{e.textContent=v[e.dataset.how]||''})}
@@ -1879,7 +1898,7 @@ const hm=$('hm'),vm=$('vm'),ac=$('ac'),ep=$('ep'),bm=$('bm'),rdm=$('rdm'),lo=$('
 $('hwb').onclick=()=>hm.showModal();
 $('hmx').onclick=$('hmok').onclick=()=>hm.close();
 $('vmx').onclick=()=>vm.close();
-$('vok').onclick=()=>{vm.close();openRedemption(Server.myBids().find(b=>b.status==='won')?.id)};
+$('vok').onclick=()=>{const bidId=activeVictoryBidId;vm.close();if(bidId)openRedemption(bidId)};
 $('vnx').hidden=true;
 [hm,vm,ac,ep,bm].forEach(d=>d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}));
 /* ═══ 5. CRÉDITOS · ícones e utilitários de tela ═══
