@@ -2101,8 +2101,8 @@ function bidHTML(b){
     +'</div>';
 }
 function paintBids(){
-  const L=Server.myBids(),n=Server.redeemable();
-  $('bms').textContent=L.length?plural(L.length,'lance','lances')+(n?' · '+plural(n,'prêmio para resgatar','prêmios para resgatar'):''):'';
+  const L=Server.myBids();
+  $('bms').textContent=L.length?plural(L.length,'lance','lances'):'';
   $('bml').innerHTML=L.length?L.map(bidHTML).join(''):'<p class="nt">Você ainda não deu nenhum lance. Entre numa disputa e dê o primeiro.</p>';
 }
 function paintMine(){paintAvatar();paintAcct();paintBids()}
