@@ -18,3 +18,17 @@
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./lance-demo-sessions";
+export * from "./users";
+export * from "./auth-identities";
+export * from "./auth-tokens";
+export * from "./wallets";
+export * from "./wallet-entries";
+export * from "./credit-topups";
+export * from "./prize-tiers";
+export * from "./disputes";
+export * from "./bids";
+export * from "./bonuses";
+export * from "./payout-requests";
+export * from "./payout-events";
+export * from "./dispute-alerts";
+export * from "./pix-webhook-events";
