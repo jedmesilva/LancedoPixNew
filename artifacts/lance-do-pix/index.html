@@ -1818,7 +1818,7 @@ function paintBid(){
   $('bl').textContent=ended?'Lance vencedor':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(A.value);
   $('who').textContent=noLeader?'Aguardando o primeiro lance':n+(ended?' venceu':' está ganhando');
-  $('clk').innerHTML=ended?CK:noLeader?'—':mmss(A.left);
+  $('clk').innerHTML=ended?CK:noLeader?'':mmss(A.left);
   $('bar').hidden=ended||noLeader;$('fill').style.width=(A.left/TOTAL*100)+'%';
   const out=!mine&&!noLeader&&H.length>0&&H[0].n===0,prev=H.length&&H[0].n!==0?N[H[0].n]:null;
   const msg=!live?'':noLeader?'Dê o primeiro lance para iniciar a disputa.':mine?(urg?'Falta pouco! Se ninguém superar, o prêmio é seu.':(prev?'Você superou o lance de '+prev+'. ':'Você deu um lance. ')+'Se ninguém superar, o prêmio é seu.'):urg?'Últimos segundos! Supere agora.':out?n+' superou seu lance. Dê um maior para voltar à frente.':prev?n+' superou o lance de '+prev+'. Dê um maior para ficar à frente.':'';
