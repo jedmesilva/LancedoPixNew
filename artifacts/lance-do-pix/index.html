@@ -166,6 +166,15 @@ button {
   cursor: pointer;
 }
 
+button:not(:disabled) {
+  transition: transform .12s ease, opacity .12s ease;
+}
+
+button:not(:disabled):active {
+  transform: scale(.98);
+  opacity: .88;
+}
+
 [hidden] {
   display: none!important;
 }
@@ -1407,6 +1416,9 @@ html:has(dialog[open]) {
    ══════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion:reduce) {
+  button:not(:disabled) {
+    transition: none;
+  }
   .nb,
   .br i,
   .rf {
