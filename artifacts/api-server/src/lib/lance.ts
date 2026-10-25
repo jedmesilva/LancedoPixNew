@@ -36,9 +36,16 @@ import {
   walletsTable,
 } from "@workspace/db";
 import type { CurrentUser } from "./auth";
+import {
+  nextDisputeStartsAt,
+  nextVictoryDurationSeconds,
+  selectNextPrizeTier,
+} from "./dispute-progression";
+import { ensurePrizeObligation } from "./treasury";
 
 const TOTAL = 60;
 const START = 60;
+const DISPUTE_ENGINE_INTERVAL_MS = 5_000;
 const PAYMENT_EXPIRY_SECONDS = 600;
 const MAX_AMOUNT_CENTS = 100_000_000;
 const INITIAL_TIER_ID = 2;
@@ -100,7 +107,65 @@ async function ensureInitialDispute() {
         startedAt: now,
       })
       .returning();
+    await ensurePrizeObligation(transaction, dispute, true);
     return dispute;
+  });
+}
+
+async function ensureNextDispute() {
+  return db.transaction(async (transaction) => {
+    await transaction.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_ID})`);
+
+    const [active] = await transaction
+      .select({ id: disputesTable.id })
+      .from(disputesTable)
+      .where(inArray(disputesTable.status, [...ACTIVE_STATUSES]))
+      .orderBy(desc(disputesTable.number))
+      .limit(1)
+      .for("update");
+    if (active) return null;
+
+    const [latest] = await transaction
+      .select()
+      .from(disputesTable)
+      .orderBy(desc(disputesTable.number))
+      .limit(1)
+      .for("update");
+    if (!latest || latest.status !== "ended") return null;
+    if (!latest.endedAt) {
+      throw new Error(`Ended dispute ${latest.id} is missing endedAt.`);
+    }
+
+    const tiers = await transaction
+      .select()
+      .from(prizeTiersTable)
+      .where(eq(prizeTiersTable.active, true))
+      .orderBy(asc(prizeTiersTable.id));
+    const nextTier = selectNextPrizeTier(
+      tiers,
+      latest.tierId,
+      latest.prizeCents,
+    );
+    const startsAt = nextDisputeStartsAt(latest.endedAt);
+    const now = new Date();
+    const startsImmediately = startsAt <= now;
+    const [next] = await transaction
+      .insert(disputesTable)
+      .values({
+        number: latest.number + 1,
+        tierId: nextTier.id,
+        prizeCents: nextTier.prizeCents,
+        startingValueCents: latest.startingValueCents,
+        stepCents: latest.stepCents,
+        bidDurationS: nextVictoryDurationSeconds(latest.bidDurationS),
+        status: startsImmediately ? "live" : "scheduled",
+        startsAt,
+        startedAt: startsImmediately ? now : null,
+      })
+      .returning();
+
+    await ensurePrizeObligation(transaction, next, true);
+    return next;
   });
 }
 
@@ -152,6 +217,34 @@ async function advanceDispute() {
   });
 }
 
+let currentEngineTick: Promise<void> | null = null;
+
+export function runDisputeEngine(): Promise<void> {
+  if (currentEngineTick) return currentEngineTick;
+
+  const tick = (async () => {
+    await ensureInitialDispute();
+    await advanceDispute();
+    await ensureNextDispute();
+  })();
+  currentEngineTick = tick;
+
+  return tick.finally(() => {
+    if (currentEngineTick === tick) currentEngineTick = null;
+  });
+}
+
+export function startDisputeEngine(
+  onError: (error: unknown) => void,
+): ReturnType<typeof setInterval> {
+  const interval = setInterval(() => {
+    void runDisputeEngine().catch(onError);
+  }, DISPUTE_ENGINE_INTERVAL_MS);
+  interval.unref();
+  void runDisputeEngine().catch(onError);
+  return interval;
+}
+
 function encryptionKey() {
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) throw new Error("SESSION_SECRET is required.");
@@ -201,8 +294,7 @@ function inferPixKeyType(key: string) {
 }
 
 async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
-  await ensureInitialDispute();
-  await advanceDispute();
+  await runDisputeEngine();
   const now = Date.now();
 
   const [dispute] = await db

@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startDisputeEngine } from "./lib/lance";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  startDisputeEngine((err) => {
+    logger.error({ err }, "Dispute engine tick failed");
+  });
 });
