@@ -2,3 +2,4 @@
 - [Dispute cash accounting](dispute-cash-accounting.md) — Track bid revenue and bonus eligibility per dispute; don't pool one dispute's revenue into another's bonus.
 - [Drizzle schema push compatibility](drizzle-schema-push-compatibility.md) — PostgreSQL bytea and generated bigint identity columns need Drizzle-specific schema handling here.
 - [Victory notice after dispute transitions](victory-notice-after-transition.md) — Show new wins immediately, but never replay historical victory modals on reload.
+- [Realtime dispute synchronization](realtime-dispute-sync.md) — Keep the dispute, bids, statuses, and absolute timers shared; WebSockets signal updates while authenticated API reads carry private account data.

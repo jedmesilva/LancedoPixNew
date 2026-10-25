@@ -1638,23 +1638,57 @@ const Server = (() => {
   let state = null;
   let lastStableState = "";
   let pollTimer = null;
+  let reconnectTimer = null;
+  let socket = null;
+  let reconnectDelay = 1_000;
+  let serverClockOffset = 0;
+  let localClockTimer = null;
+  let refreshInFlight = false;
+  let refreshQueued = false;
+  let latestRevision = 0;
+  let realtimeStarted = false;
+  let paymentExpiryRefreshId = null;
 
   const r2 = n => Math.round(n * 100) / 100;
   const emit = event => subscribers.forEach(fn => fn(event));
-  const stableKey = value => JSON.stringify({
-    ...value,
-    auction: { ...value.auction, left: 0, soon: 0, bonusSecs: 0 },
-    wallet: {
-      ...value.wallet,
-      pay: value.wallet.pay ? { ...value.wallet.pay, left: 0 } : null,
-    },
-  });
-  const apply = value => {
+  const stableKey = value => {
+    const { serverTime, ...snapshot } = value;
+    return JSON.stringify({
+      ...snapshot,
+      auction: { ...snapshot.auction, left: 0, soon: 0, bonusSecs: 0 },
+      wallet: {
+        ...snapshot.wallet,
+        pay: snapshot.wallet.pay
+          ? { ...snapshot.wallet.pay, left: 0 }
+          : null,
+      },
+    });
+  };
+  const syncTimers = () => {
+    const now = Date.now() + serverClockOffset;
+    if (Number.isFinite(A.targetAt)) {
+      const remaining = Math.max(0, Math.ceil((A.targetAt - now) / 1000));
+      if (A.phase === "live") A.left = remaining;
+      else if (A.phase === "soon") A.soon = remaining;
+    }
+    if (W.pay?.state === "pending" && Number.isFinite(W.pay.expiresAt)) {
+      W.pay.left = Math.max(
+        0,
+        Math.ceil((W.pay.expiresAt - now) / 1000),
+      );
+    }
+  };
+  const apply = (value, requestedAt = Date.now(), receivedAt = Date.now()) => {
     state = value;
+    if (Number.isFinite(value.serverTime)) {
+      serverClockOffset =
+        value.serverTime - (requestedAt + receivedAt) / 2;
+    }
     Object.assign(cfg, value.cfg);
     Object.assign(A, value.auction);
     Object.assign(W, value.wallet);
     Object.assign(U, value.user);
+    syncTimers();
   };
   const reportError = error => {
     console.error("Lance do Pix API error", error);
@@ -1666,9 +1700,12 @@ const Server = (() => {
   };
 
   async function refresh(initial = false) {
+    const requestedAt = Date.now();
     const value = await getLanceState();
     const key = stableKey(value);
-    apply(value);
+    apply(value, requestedAt, Date.now());
+    const notice = document.getElementById("lae");
+    if (notice) notice.hidden = true;
     if (initial) {
       lastStableState = key;
       return;
@@ -1688,8 +1725,9 @@ const Server = (() => {
 
   async function send(action, values = {}, event = "render") {
     try {
+      const requestedAt = Date.now();
       const response = await postLanceAction({ action, ...values });
-      apply(response.state);
+      apply(response.state, requestedAt, Date.now());
       lastStableState = stableKey(response.state);
       if (event) emit(event);
       return response.result;
@@ -1711,10 +1749,121 @@ const Server = (() => {
     }
   };
   const startPolling = () => {
-    if (pollTimer) clearInterval(pollTimer);
+    if (pollTimer) return;
     pollTimer = setInterval(() => {
       refresh().catch(reportError);
-    }, 1000);
+    }, 5000);
+  };
+  const stopPolling = () => {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  };
+  const refreshFromRealtime = async () => {
+    if (refreshInFlight) {
+      refreshQueued = true;
+      return;
+    }
+    refreshInFlight = true;
+    try {
+      await refresh();
+    } catch (error) {
+      reportError(error);
+    } finally {
+      refreshInFlight = false;
+      if (refreshQueued) {
+        refreshQueued = false;
+        void refreshFromRealtime();
+      }
+    }
+  };
+  const scheduleReconnect = () => {
+    if (reconnectTimer) return;
+    const delay = reconnectDelay;
+    reconnectDelay = Math.min(reconnectDelay * 2, 15_000);
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectWebSocket();
+    }, delay);
+  };
+  function connectWebSocket() {
+    if (
+      socket &&
+      (socket.readyState === WebSocket.CONNECTING ||
+        socket.readyState === WebSocket.OPEN)
+    ) return;
+
+    const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+    let connection;
+    try {
+      connection = new WebSocket(`${scheme}//${location.host}/api/lance/ws`);
+    } catch {
+      startPolling();
+      scheduleReconnect();
+      return;
+    }
+    socket = connection;
+
+    connection.addEventListener("open", () => {
+      if (socket !== connection) return;
+      reconnectDelay = 1_000;
+      stopPolling();
+      void refreshFromRealtime();
+    });
+    connection.addEventListener("message", event => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (message.type === "connected" && Number.isInteger(message.revision)) {
+        latestRevision = message.revision;
+        return;
+      }
+      if (
+        message.type === "state_changed" &&
+        Number.isInteger(message.revision) &&
+        message.revision > latestRevision
+      ) {
+        latestRevision = message.revision;
+        void refreshFromRealtime();
+      }
+    });
+    connection.addEventListener("close", () => {
+      if (socket === connection) socket = null;
+      startPolling();
+      scheduleReconnect();
+    });
+    connection.addEventListener("error", () => connection.close());
+  }
+  const startRealtime = () => {
+    if (realtimeStarted) return;
+    realtimeStarted = true;
+    localClockTimer = setInterval(() => {
+      const previousLeft = A.left;
+      const previousSoon = A.soon;
+      const previousPaymentLeft = W.pay?.left;
+      syncTimers();
+      if (A.phase === "live" && A.left !== previousLeft) emit("tick");
+      else if (A.phase === "soon" && A.soon !== previousSoon) emit("soon");
+      if (
+        W.pay?.state === "pending" &&
+        W.pay.left !== previousPaymentLeft
+      ) emit("payTick");
+      if (
+        W.pay?.state === "pending" &&
+        W.pay.left === 0 &&
+        W.pay.id !== paymentExpiryRefreshId
+      ) {
+        paymentExpiryRefreshId = W.pay.id;
+        void refreshFromRealtime();
+      }
+    }, 250);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) void refreshFromRealtime();
+    });
+    connectWebSocket();
   };
 
   return {
@@ -1781,7 +1930,7 @@ const Server = (() => {
         throw error;
       }
     },
-    startPolling,
+    startRealtime,
   };
 })();
 
@@ -2271,7 +2420,7 @@ Server.subscribe(ev=>{
 paintBal();paintMine();paintSession();
 addEventListener('resize',()=>{fit();paintSheet()});
 paintHist();render();
-Server.startPolling();
+Server.startRealtime();
 </script>
 
 </body></html>

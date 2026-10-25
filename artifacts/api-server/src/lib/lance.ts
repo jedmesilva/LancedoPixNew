@@ -42,10 +42,11 @@ import {
   selectNextPrizeTier,
 } from "./dispute-progression";
 import { ensurePrizeObligation } from "./treasury";
+import { notifyLanceStateChanged } from "./realtime";
 
 const TOTAL = 60;
 const START = 60;
-const DISPUTE_ENGINE_INTERVAL_MS = 5_000;
+const DISPUTE_ENGINE_INTERVAL_MS = 1_000;
 const PAYMENT_EXPIRY_SECONDS = 600;
 const MAX_AMOUNT_CENTS = 100_000_000;
 const INITIAL_TIER_ID = 2;
@@ -112,7 +113,7 @@ async function ensureInitialDispute() {
   });
 }
 
-async function ensureNextDispute() {
+async function ensureNextDispute(): Promise<boolean> {
   return db.transaction(async (transaction) => {
     await transaction.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_ID})`);
 
@@ -123,7 +124,7 @@ async function ensureNextDispute() {
       .orderBy(desc(disputesTable.number))
       .limit(1)
       .for("update");
-    if (active) return null;
+    if (active) return false;
 
     const [latest] = await transaction
       .select()
@@ -131,7 +132,7 @@ async function ensureNextDispute() {
       .orderBy(desc(disputesTable.number))
       .limit(1)
       .for("update");
-    if (!latest || latest.status !== "ended") return null;
+    if (!latest || latest.status !== "ended") return false;
     if (!latest.endedAt) {
       throw new Error(`Ended dispute ${latest.id} is missing endedAt.`);
     }
@@ -165,13 +166,13 @@ async function ensureNextDispute() {
       .returning();
 
     await ensurePrizeObligation(transaction, next, true);
-    return next;
+    return true;
   });
 }
 
-async function advanceDispute() {
+async function advanceDispute(): Promise<boolean> {
   const now = new Date();
-  await db.transaction(async (transaction) => {
+  return db.transaction(async (transaction) => {
     const [dispute] = await transaction
       .select()
       .from(disputesTable)
@@ -179,24 +180,24 @@ async function advanceDispute() {
       .orderBy(desc(disputesTable.number))
       .limit(1)
       .for("update");
-    if (!dispute) return;
+    if (!dispute) return false;
 
     if (dispute.status === "scheduled" && dispute.startsAt <= now) {
       await transaction
         .update(disputesTable)
         .set({ status: "live", startedAt: now })
         .where(eq(disputesTable.id, dispute.id));
-      return;
+      return true;
     }
 
-    if (dispute.status !== "live" || !dispute.leaderBidId) return;
+    if (dispute.status !== "live" || !dispute.leaderBidId) return false;
 
     const [leader] = await transaction
       .select()
       .from(bidsTable)
       .where(eq(bidsTable.id, dispute.leaderBidId))
       .limit(1);
-    if (!leader || leader.expiresAt > now) return;
+    if (!leader || leader.expiresAt > now) return false;
 
     await transaction
       .update(bidsTable)
@@ -214,6 +215,7 @@ async function advanceDispute() {
         winnerId: leader.userId,
       })
       .where(eq(disputesTable.id, dispute.id));
+    return true;
   });
 }
 
@@ -224,8 +226,9 @@ export function runDisputeEngine(): Promise<void> {
 
   const tick = (async () => {
     await ensureInitialDispute();
-    await advanceDispute();
-    await ensureNextDispute();
+    const advanced = await advanceDispute();
+    const createdNext = await ensureNextDispute();
+    if (advanced || createdNext) notifyLanceStateChanged();
   })();
   currentEngineTick = tick;
 
@@ -371,13 +374,20 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
         : latest.status === "ended"
           ? "ended"
           : "live";
+  const targetAt =
+    phase === "soon"
+      ? latest.startsAt.getTime()
+      : phase === "live" && leader
+        ? leader.createdAt.getTime() + latest.bidDurationS * 1000
+        : null;
   const left =
-    phase === "live" && leader
-      ? millisecondsLeft(leader.createdAt && latest.bidDurationS
-          ? new Date(leader.createdAt.getTime() + latest.bidDurationS * 1000)
-          : new Date(now), now)
+    phase === "live" && targetAt !== null
+      ? millisecondsLeft(new Date(targetAt), now)
       : 0;
-  const soon = phase === "soon" ? millisecondsLeft(latest.startsAt, now) : START;
+  const soon =
+    phase === "soon" && targetAt !== null
+      ? millisecondsLeft(new Date(targetAt), now)
+      : START;
   const valueCents = leader?.valueCents ?? latest.startingValueCents;
   const tierIndex = Math.max(
     0,
@@ -416,6 +426,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
           topup.status === "pending"
             ? millisecondsLeft(topup.expiresAt, now)
             : 0,
+        expiresAt: topup.expiresAt.getTime(),
         credited: topup.status === "paid",
         seed: 0,
         code: "SIMULADO",
@@ -513,6 +524,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       leader: leader ? nameIndex(leader.userId, leader.publicName) : -1,
       left,
       soon,
+      targetAt,
       bonusSecs: 0,
       notify: false,
       H: history,
@@ -520,6 +532,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       minimumBid: centsToMoney(valueCents + latest.stepCents),
       bonus: bonusCents > 0n ? centsToMoney(bonusCents) : null,
     },
+    serverTime: Date.now(),
     wallet: { bal: centsToMoney(balanceCents), pay: payment },
     user: {
       id: user?.id ?? null,
@@ -891,5 +904,6 @@ export async function applyLanceAction(
 ) {
   const result = await applyAction(user, action);
   const state = await getState(user);
+  if (result === "ok") notifyLanceStateChanged();
   return { result, state };
 }

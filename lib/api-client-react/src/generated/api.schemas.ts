@@ -52,6 +52,7 @@ export interface Payment {
   amt: number;
   state: PaymentState;
   left: number;
+  expiresAt: number;
   credited: boolean;
   seed: number;
   code: string;
@@ -80,6 +81,8 @@ export interface Auction {
   leader: number;
   left: number;
   soon: number;
+  /** @nullable */
+  targetAt: number | null;
   bonusSecs: number;
   notify: boolean;
   H: HistoryEntry[];
@@ -131,6 +134,7 @@ export type LanceStateCfg = {
 };
 
 export interface LanceState {
+  serverTime: number;
   cfg: LanceStateCfg;
   auction: Auction;
   wallet: Wallet;

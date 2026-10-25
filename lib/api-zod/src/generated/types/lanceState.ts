@@ -12,6 +12,7 @@ import type { User } from './user';
 import type { Wallet } from './wallet';
 
 export interface LanceState {
+  serverTime: number;
   cfg: LanceStateCfg;
   auction: Auction;
   wallet: Wallet;

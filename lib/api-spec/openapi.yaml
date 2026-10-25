@@ -268,10 +268,11 @@ components:
         amt: { type: number }
         state: { type: string, enum: [pending, paid, expired, failed] }
         left: { type: integer }
+        expiresAt: { type: integer }
         credited: { type: boolean }
         seed: { type: integer }
         code: { type: string }
-      required: [id, amt, state, left, credited, seed, code]
+      required: [id, amt, state, left, expiresAt, credited, seed, code]
     Wallet:
       type: object
       properties:
@@ -291,6 +292,7 @@ components:
         leader: { type: integer }
         left: { type: integer }
         soon: { type: integer }
+        targetAt: { type: [integer, "null"] }
         bonusSecs: { type: integer }
         notify: { type: boolean }
         H:
@@ -299,7 +301,7 @@ components:
         paid: { type: boolean }
         minimumBid: { type: number }
         bonus: { type: [number, "null"] }
-      required: [round, p, phase, value, leader, left, soon, bonusSecs, notify, H, paid, minimumBid, bonus]
+      required: [round, p, phase, value, leader, left, soon, targetAt, bonusSecs, notify, H, paid, minimumBid, bonus]
     Bid:
       type: object
       properties:
@@ -316,6 +318,7 @@ components:
     LanceState:
       type: object
       properties:
+        serverTime: { type: integer }
         cfg:
           type: object
           properties:
@@ -337,7 +340,7 @@ components:
           items: { $ref: "#/components/schemas/Bid" }
         redeemable: { type: integer }
         controlsEnabled: { type: boolean }
-      required: [cfg, auction, wallet, user, bids, redeemable, controlsEnabled]
+      required: [serverTime, cfg, auction, wallet, user, bids, redeemable, controlsEnabled]
     LanceAction:
       type: object
       properties:

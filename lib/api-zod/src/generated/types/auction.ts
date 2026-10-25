@@ -16,6 +16,8 @@ export interface Auction {
   leader: number;
   left: number;
   soon: number;
+  /** @nullable */
+  targetAt: number | null;
   bonusSecs: number;
   notify: boolean;
   H: HistoryEntry[];

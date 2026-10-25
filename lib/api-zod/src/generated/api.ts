@@ -160,6 +160,7 @@ export const ChangePasswordResponse = zod.object({
  * @summary Consultar disputa, carteira e lances persistidos
  */
 export const GetLanceStateResponse = zod.object({
+  "serverTime": zod.number().int(),
   "cfg": zod.object({
   "V": zod.array(zod.object({
   "v": zod.number(),
@@ -178,6 +179,7 @@ export const GetLanceStateResponse = zod.object({
   "leader": zod.number().int(),
   "left": zod.number().int(),
   "soon": zod.number().int(),
+  "targetAt": zod.number().int().nullable(),
   "bonusSecs": zod.number().int(),
   "notify": zod.boolean(),
   "H": zod.array(zod.object({
@@ -196,6 +198,7 @@ export const GetLanceStateResponse = zod.object({
   "amt": zod.number(),
   "state": zod.enum(['pending', 'paid', 'expired', 'failed']),
   "left": zod.number().int(),
+  "expiresAt": zod.number().int(),
   "credited": zod.boolean(),
   "seed": zod.number().int(),
   "code": zod.string()
@@ -255,6 +258,7 @@ export const PostLanceActionBody = zod.object({
 export const PostLanceActionResponse = zod.object({
   "result": zod.enum(['ok', 'funds', 'invalid', 'exists', 'creds', 'not-found']),
   "state": zod.object({
+  "serverTime": zod.number().int(),
   "cfg": zod.object({
   "V": zod.array(zod.object({
   "v": zod.number(),
@@ -273,6 +277,7 @@ export const PostLanceActionResponse = zod.object({
   "leader": zod.number().int(),
   "left": zod.number().int(),
   "soon": zod.number().int(),
+  "targetAt": zod.number().int().nullable(),
   "bonusSecs": zod.number().int(),
   "notify": zod.boolean(),
   "H": zod.array(zod.object({
@@ -291,6 +296,7 @@ export const PostLanceActionResponse = zod.object({
   "amt": zod.number(),
   "state": zod.enum(['pending', 'paid', 'expired', 'failed']),
   "left": zod.number().int(),
+  "expiresAt": zod.number().int(),
   "credited": zod.boolean(),
   "seed": zod.number().int(),
   "code": zod.string()

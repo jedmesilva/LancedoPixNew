@@ -12,6 +12,7 @@ export interface Payment {
   amt: number;
   state: PaymentState;
   left: number;
+  expiresAt: number;
   credited: boolean;
   seed: number;
   code: string;
