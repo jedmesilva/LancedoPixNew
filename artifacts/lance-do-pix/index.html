@@ -1325,6 +1325,8 @@ html:has(dialog[open]) {
 /* Layout de duas colunas para desktop; telas menores mantêm o painel inferior. */
 @media (min-width:960px) {
   body {
+    --desktop-header-height: 72px;
+    --desktop-sticky-gap: 20px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
     column-gap: clamp(32px, 4vw, 56px);
@@ -1346,6 +1348,7 @@ html:has(dialog[open]) {
   header {
     grid-column: 1 / -1;
     grid-row: 1;
+    height: var(--desktop-header-height);
     width: 100%;
     max-width: none;
     padding-inline: 0;
@@ -1364,13 +1367,13 @@ html:has(dialog[open]) {
     position: sticky;
     grid-column: 2;
     grid-row: 2;
-    top: calc(var(--safe-top) + 20px);
+    top: calc(var(--safe-top) + var(--desktop-header-height) + var(--desktop-sticky-gap));
     bottom: auto;
     left: auto;
     align-self: start;
     width: 100%;
     max-width: none;
-    margin: 20px 0 0;
+    margin: var(--desktop-sticky-gap) 0 0;
     transform: none;
     border: 1px solid var(--ln);
     border-radius: var(--r-card);
