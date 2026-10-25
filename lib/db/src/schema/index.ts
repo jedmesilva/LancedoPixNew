@@ -33,3 +33,5 @@ export * from "./payout-requests";
 export * from "./payout-events";
 export * from "./dispute-alerts";
 export * from "./pix-webhook-events";
+export * from "./treasury-ledger-entries";
+export * from "./dispute-cash-reservations";
