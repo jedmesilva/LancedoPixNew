@@ -16,6 +16,10 @@ export interface LanceDemoAction {
   prizeIndex?: number;
   phase?: LanceDemoActionPhase;
   paymentState?: LanceDemoActionPaymentState;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
   name?: string;
   email?: string;
 }

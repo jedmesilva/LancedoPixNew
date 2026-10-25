@@ -255,6 +255,7 @@ components:
             - demoSignUp
             - demoGoogle
             - demoReset
+            - updateName
         amount:
           type: number
         bidId:
@@ -269,6 +270,8 @@ components:
           enum: [pending, paid, expired, failed]
         name:
           type: string
+          minLength: 2
+          maxLength: 80
         email:
           type: string
       required: [action]

@@ -470,6 +470,14 @@ function runAction(
     case "logout":
       state.user.signedIn = false;
       return "ok";
+    case "updateName": {
+      const name = action.name?.trim();
+      if (!state.user.signedIn || !name || name.length < 2 || name.length > 80) {
+        return "invalid";
+      }
+      state.user.name = name;
+      return "ok";
+    }
     case "createPix":
       return action.amount !== undefined && createDemoPix(state, action.amount, now)
         ? "ok"

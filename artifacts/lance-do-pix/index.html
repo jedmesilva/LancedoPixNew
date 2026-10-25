@@ -6,7 +6,7 @@ LANCE DO PIX — arquivo único organizado como design system.
 
 ORDEM DO ARQUIVO
   style : 1 Tokens > 2 Base > 3 a 19 Componentes e telas > 20 Acessibilidade
-  body  : header > main (disputa) > modais #hm #vm #am #ac #bm #lo > sheet de lance
+  body  : header > main (disputa) > modais #hm #vm #am #ac #ep #bm #lo > sheet de lance
   script: Server (regras, estado, relógio) > cliente: 1 Config > 2 Componentes (paint*) > 3 Ações > 4 Eventos > 5 a 8 Créditos > 9 Conta > 10 Servidor→tela > 11 Init
 
 REGRAS DE REUSO
@@ -1224,6 +1224,40 @@ html:has(dialog[open]) {
   font-size: 22px;
 }
 
+#ac .theme-row {
+  margin-top: 10px;
+}
+
+.theme-track {
+  position: relative;
+  flex: none;
+  width: 50px;
+  height: 30px;
+  border-radius: var(--r-pill);
+  background: var(--ln);
+  transition: background .2s ease;
+}
+
+.theme-knob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sf);
+  box-shadow: 0 1px 4px var(--sd);
+  transition: transform .2s ease;
+}
+
+.theme-row[aria-checked="true"] .theme-track {
+  background: var(--gr);
+}
+
+.theme-row[aria-checked="true"] .theme-knob {
+  transform: translateX(20px);
+}
+
 #ac .cd {
   margin-top: 18px;
 }
@@ -1285,6 +1319,34 @@ html:has(dialog[open]) {
 }
 #lo .cta {
   margin-top: 20px;
+}
+
+#ep .profile-note {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--r-xs);
+  background: var(--bg);
+  color: var(--mu);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#ep .cta {
+  margin-top: 16px;
+}
+
+#ep .profile-security {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ln);
+}
+
+#ep .profile-security .ey {
+  margin-bottom: 4px;
+}
+
+#ep .profile-security .nt {
+  padding-top: 2px;
 }
 
 /* Botão Google: segue as diretrizes de marca (logo G original, cores e texto Roboto Medium, claro e escuro). */
@@ -1406,6 +1468,14 @@ html:has(dialog[open]) {
   }
 }
 </style>
+<script>
+try {
+  const savedTheme = localStorage.getItem('lance-do-pix-theme');
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    document.documentElement.dataset.theme = savedTheme;
+  }
+} catch {}
+</script>
 <header>
 <div class="lg"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 22.5 12 12 22.5 1.5 12z" fill="#D4FF4F" stroke="#0F1208" stroke-width="1.6" stroke-linejoin="round"/></svg>Lance do Pix</div>
 <div class="rt"><button class="bl" id="balb" type="button" aria-label="Saldo R$ 390,00. Adicionar créditos"><span id="bal">R$ 390,00</span><span class="pl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B0C10" stroke-width="3.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></span></button><button class="av" id="avb" type="button" aria-haspopup="dialog" aria-label="Minha conta"><span id="avl">M</span><i id="avd" aria-hidden="true"></i></button><button class="cta" id="lgb" type="button" hidden>Entrar</button></div>
@@ -1459,9 +1529,28 @@ html:has(dialog[open]) {
 <button class="cta" id="rc" type="button"></button><button class="cta g" id="rg2" type="button">Alterar valor</button></div>
 <div class="sim" id="amsim" hidden style="margin-top:22px;padding-top:16px;border-top:1px dashed var(--ln)"><em>Simular pagamento</em></div></dialog>
 <dialog id="ac" aria-labelledby="act"><div class="mh"><div class="id"><span class="av" id="acv" aria-hidden="true"></span><div><h2 id="act"></h2><p class="nt" id="acm"></p></div></div><button class="mx" id="acx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<button class="lk" id="acedit" type="button" aria-haspopup="dialog" aria-controls="ep" data-testid="button-edit-profile"><span><b>Editar perfil</b><small>Nome e senha</small></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+<button class="lk theme-row" id="theme-toggle" type="button" role="switch" aria-checked="false" aria-label="Ativar modo escuro" data-testid="switch-theme"><span><b>Aparência</b><small id="theme-value">Modo claro</small></span><span class="theme-track" aria-hidden="true"><span class="theme-knob"></span></span></button>
 <section class="cd"><div class="ey">Carteira</div><div class="bv" id="acb"></div><p class="nt">Créditos para dar lances</p><button class="cta" id="aca" type="button">Adicionar créditos</button></section>
 <button class="lk" id="acl" type="button" aria-haspopup="dialog"><span><b>Meus lances</b><small id="acs"></small></span><span class="tg w" id="acg" hidden></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
 <button class="cta g" id="aco" type="button">Sair da conta</button></dialog>
+<dialog id="ep" aria-labelledby="ept"><div class="mh"><div class="id"><button class="mx bk" id="epb" type="button" aria-label="Voltar para a conta"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><h2 id="ept">Editar perfil</h2></div><button class="mx" id="epx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<form id="profile-form" novalidate>
+<div class="tf"><label for="profile-name">Nome</label><input id="profile-name" type="text" autocomplete="name" maxlength="80" aria-describedby="profile-name-error" data-testid="input-profile-name"><p class="fe" id="profile-name-error" role="alert" hidden></p></div>
+<p class="ok" id="profile-status" role="status" hidden></p><p class="er" id="profile-error" role="alert" hidden></p>
+<button class="cta" id="profile-save" type="submit" data-testid="button-save-profile">Salvar nome</button>
+</form>
+<section class="profile-security" aria-labelledby="password-title">
+<div class="ey" id="password-title">Senha</div>
+<div id="password-form" role="group" aria-label="Simulação de alteração de senha">
+<div class="tf"><label for="current-password">Senha atual</label><input id="current-password" type="password" autocomplete="off" aria-describedby="current-password-error" data-testid="input-current-password"><p class="fe" id="current-password-error" role="alert" hidden></p></div>
+<div class="tf"><label for="new-password">Nova senha</label><input id="new-password" type="password" autocomplete="off" minlength="8" aria-describedby="new-password-error password-hint" data-testid="input-new-password"><p class="fe" id="new-password-error" role="alert" hidden></p><p class="nt" id="password-hint">Use pelo menos 8 caracteres.</p></div>
+<div class="tf"><label for="confirm-password">Confirmar nova senha</label><input id="confirm-password" type="password" autocomplete="off" aria-describedby="confirm-password-error" data-testid="input-confirm-password"><p class="fe" id="confirm-password-error" role="alert" hidden></p></div>
+<p class="profile-note" role="note">Protótipo: não use uma senha real. Estes campos não são enviados nem armazenados; a autenticação real ainda não está conectada.</p>
+<p class="ok" id="password-status" role="status" hidden></p>
+<button class="cta g" id="password-save" type="button" data-testid="button-simulate-password-change">Simular troca de senha</button>
+</div>
+</section></dialog>
 <dialog id="bm" aria-labelledby="bmt"><div class="mh"><div class="id"><button class="mx bk" id="bmb" type="button" aria-label="Voltar para a conta"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><h2 id="bmt">Meus lances</h2></div><button class="mx" id="bmx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 <p class="nt" id="bms"></p>
 <div id="bml" role="list"></div></dialog>
@@ -1632,6 +1721,7 @@ const Server = (() => {
       return result;
     },
     logout: () => send("logout", {}, "session"),
+    updateName: name => authAction("updateName", { name }),
     auth: {
       google: () => authAction("demoGoogle"),
       signin: email => authAction("demoSignIn", { email }),
@@ -1789,13 +1879,13 @@ $('cta').onclick=async()=>{const id=A.phase;
   else if(id==='soon')Server.notifyStart();
   else if(id==='ended'){if(A.leader===0)openRedemption(Server.myBids().find(b=>b.status==='won')?.id);else Server.nextRound()}};
 $('cta2').onclick=()=>Server.nextRound();
-const hm=$('hm'),vm=$('vm'),ac=$('ac'),bm=$('bm'),rdm=$('rdm'),lo=$('lo');
+const hm=$('hm'),vm=$('vm'),ac=$('ac'),ep=$('ep'),bm=$('bm'),rdm=$('rdm'),lo=$('lo');
 $('hwb').onclick=()=>hm.showModal();
 $('hmx').onclick=$('hmok').onclick=()=>hm.close();
 $('vmx').onclick=()=>vm.close();
 $('vok').onclick=()=>{vm.close();openRedemption(Server.myBids().find(b=>b.status==='won')?.id)};
 $('vnx').onclick=()=>{vm.close();Server.nextRound()};
-[hm,vm,ac,bm].forEach(d=>d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}));
+[hm,vm,ac,ep,bm].forEach(d=>d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}));
 /* ═══ 5. CRÉDITOS · ícones e utilitários de tela ═══
    SUG, DEF (valor inicial do modal), IC (ícones), num, clean, qr(). */
 const SUG=[20,50,100,200],DEF=30,dv=()=>DEF.toFixed(2).replace('.',','),am=$('am');$('amv').value=dv();
@@ -1929,12 +2019,30 @@ function paintAvatar(){
   $('avl').textContent=ini();$('avd').hidden=n<1;
   $('avb').setAttribute('aria-label','Minha conta'+(n?', '+plural(n,'prêmio para resgatar','prêmios para resgatar'):''));
 }
+const THEME_KEY='lance-do-pix-theme';
+function currentTheme(){
+  return document.documentElement.dataset.theme
+    || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+}
+function paintThemeSetting(){
+  const dark=currentTheme()==='dark',toggle=$('theme-toggle');
+  toggle.setAttribute('aria-checked',String(dark));
+  toggle.setAttribute('aria-label',dark?'Ativar modo claro':'Ativar modo escuro');
+  $('theme-value').textContent=dark?'Modo escuro':'Modo claro';
+}
+function toggleTheme(){
+  const next=currentTheme()==='dark'?'light':'dark';
+  document.documentElement.dataset.theme=next;
+  try{localStorage.setItem(THEME_KEY,next)}catch{}
+  paintThemeSetting();
+}
 function paintAcct(){
   const L=Server.myBids(),n=Server.redeemable(),g=$('acg');
   $('acv').textContent=ini();$('act').textContent=U.name;$('acm').textContent=U.email;
   $('acb').textContent=brl(W.bal);
   $('acs').textContent=L.length?plural(L.length,'lance','lances'):'Nenhum lance ainda';
   g.hidden=n<1;g.textContent=n+' para resgatar';
+  paintThemeSetting();
 }
 function bidHTML(b){
   const [c,l]=ST[b.status],won=b.status==='won';
@@ -1956,7 +2064,7 @@ function paintSession(){
   const on=U.signedIn;
   $('balb').hidden=$('avb').hidden=!on;$('lgb').hidden=on;
   if(on){if(lo.open)lo.close();return}
-  [hm,vm,ac,bm,rdm,am].forEach(d=>{if(d.open)d.close()});
+  [hm,vm,ac,ep,bm,rdm,am].forEach(d=>{if(d.open)d.close()});
   /* Deslogado: o cabeçalho mostra o botão Entrar. O #lo (entrar) abre pelo botão ou ao tentar dar lance. */
 }
 $('avb').onclick=()=>{paintAcct();ac.showModal()};
@@ -1967,6 +2075,66 @@ $('bmb').onclick=()=>{bm.close();paintAcct();ac.showModal()};
 $('bmx').onclick=()=>bm.close();
 $('bml').onclick=e=>{const b=e.target.closest('[data-redeem]');if(b)openRedemption(Number(b.dataset.redeem))};
 $('aco').onclick=()=>Server.logout();
+const profileForm=$('profile-form');
+const passwordFields=[
+  ['current-password','current-password-error'],
+  ['new-password','new-password-error'],
+  ['confirm-password','confirm-password-error'],
+];
+function resetProfileEditor(){
+  profileForm.reset();
+  $('profile-name').value=U.name;
+  fieldError('profile-name','profile-name-error','');
+  $('profile-status').textContent='';$('profile-status').hidden=true;
+  $('profile-error').textContent='';$('profile-error').hidden=true;
+  passwordFields.forEach(([input,error])=>{$(input).value='';fieldError(input,error,'')});
+  $('password-status').textContent='';$('password-status').hidden=true;
+  $('profile-save').disabled=$('password-save').disabled=false;
+}
+$('acedit').onclick=()=>{resetProfileEditor();ep.showModal();$('profile-name').focus()};
+$('epb').onclick=$('epx').onclick=()=>ep.close();
+$('theme-toggle').onclick=toggleTheme;
+profileForm.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const name=$('profile-name').value.trim();
+  const message=name.length<2?'Informe um nome com pelo menos 2 caracteres.':name.length>80?'Use no máximo 80 caracteres.':'';
+  fieldError('profile-name','profile-name-error',message);
+  if(message){$('profile-name').focus();return}
+  $('profile-status').hidden=true;$('profile-error').hidden=true;
+  $('profile-save').disabled=true;
+  try{
+    await Server.updateName(name);
+    $('profile-status').textContent='Nome atualizado nesta demonstração.';
+    $('profile-status').hidden=false;
+  }catch{
+    $('profile-error').textContent='Não foi possível atualizar o nome. Tente novamente.';
+    $('profile-error').hidden=false;
+  }finally{$('profile-save').disabled=false}
+});
+$('profile-name').addEventListener('input',()=>{
+  fieldError('profile-name','profile-name-error','');
+  $('profile-status').hidden=true;$('profile-error').hidden=true;
+});
+passwordFields.forEach(([input,error])=>$(input).addEventListener('input',()=>{
+  fieldError(input,error,'');$('password-status').hidden=true;
+}));
+$('password-save').addEventListener('click',()=>{
+  const current=$('current-password').value;
+  const next=$('new-password').value;
+  const confirm=$('confirm-password').value;
+  const errors=[
+    current?'':'Informe a senha atual para concluir a simulação.',
+    next.length>=8?'':'A nova senha deve ter pelo menos 8 caracteres.',
+    confirm===next&&confirm?'':'As senhas não coincidem.',
+  ];
+  passwordFields.forEach(([input,error],index)=>fieldError(input,error,errors[index]));
+  const firstInvalid=passwordFields.find(([input])=>$(input).getAttribute('aria-invalid')==='true');
+  if(firstInvalid){$(firstInvalid[0]).focus();return}
+  $('password-status').textContent='Simulação concluída. Nenhuma senha foi enviada, salva ou alterada.';
+  $('password-status').hidden=false;
+  passwordFields.forEach(([input])=>{ $(input).value='' });
+  passwordFields.forEach(([input,error])=>fieldError(input,error,''));
+});
 /* ═══ 9b. AUTH · modal de entrada (#lo) ═══
    Modos: in (entrar), up (criar conta), reset (recuperar senha). AU.busy: '' | 'google' | 'form'.
    MD[modo] = [título, botão, botão ocupado, texto do rodapé, link do rodapé, modo do link]. */

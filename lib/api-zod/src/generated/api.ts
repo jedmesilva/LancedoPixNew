@@ -85,14 +85,19 @@ export const GetLanceDemoStateResponse = zod.object({
 /**
  * @summary Apply a validated demo action
  */
+export const postLanceDemoActionBodyNameMin = 2;
+export const postLanceDemoActionBodyNameMax = 80;
+
+
+
 export const PostLanceDemoActionBody = zod.object({
-  "action": zod.enum(['bid', 'nextRound', 'notifyStart', 'requestPayout', 'redeem', 'logout', 'createPix', 'discardPix', 'setPixState', 'setPrize', 'setPhase', 'rivalBid', 'hurry', 'demoSignIn', 'demoSignUp', 'demoGoogle', 'demoReset']),
+  "action": zod.enum(['bid', 'nextRound', 'notifyStart', 'requestPayout', 'redeem', 'logout', 'createPix', 'discardPix', 'setPixState', 'setPrize', 'setPhase', 'rivalBid', 'hurry', 'demoSignIn', 'demoSignUp', 'demoGoogle', 'demoReset', 'updateName']),
   "amount": zod.number().optional(),
   "bidId": zod.number().int().optional(),
   "prizeIndex": zod.number().int().optional(),
   "phase": zod.enum(['live', 'paused', 'ended', 'soon']).optional(),
   "paymentState": zod.enum(['pending', 'paid', 'expired', 'failed']).optional(),
-  "name": zod.string().optional(),
+  "name": zod.string().min(postLanceDemoActionBodyNameMin).max(postLanceDemoActionBodyNameMax).optional(),
   "email": zod.string().optional()
 })
 

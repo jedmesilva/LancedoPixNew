@@ -153,6 +153,7 @@ export const LanceDemoActionAction = {
   demoSignUp: 'demoSignUp',
   demoGoogle: 'demoGoogle',
   demoReset: 'demoReset',
+  updateName: 'updateName',
 } as const;
 
 export type LanceDemoActionPhase = typeof LanceDemoActionPhase[keyof typeof LanceDemoActionPhase];
@@ -182,6 +183,10 @@ export interface LanceDemoAction {
   prizeIndex?: number;
   phase?: LanceDemoActionPhase;
   paymentState?: LanceDemoActionPaymentState;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
   name?: string;
   email?: string;
 }

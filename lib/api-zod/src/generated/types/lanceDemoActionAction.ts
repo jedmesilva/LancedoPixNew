@@ -27,4 +27,5 @@ export const LanceDemoActionAction = {
   demoSignUp: 'demoSignUp',
   demoGoogle: 'demoGoogle',
   demoReset: 'demoReset',
+  updateName: 'updateName',
 } as const;
