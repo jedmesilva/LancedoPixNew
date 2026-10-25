@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: lance-demo
+    description: Estado e ações do protótipo demonstrativo Lance do Pix
 paths:
   /healthz:
     get:
@@ -24,6 +26,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /lance-demo/state:
+    get:
+      operationId: getLanceDemoState
+      tags: [lance-demo]
+      summary: Get the current demo session state
+      responses:
+        "200":
+          description: Current auction, wallet, account, and bid data for this demo session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanceDemoState"
+  /lance-demo/actions:
+    post:
+      operationId: postLanceDemoAction
+      tags: [lance-demo]
+      summary: Apply a validated demo action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LanceDemoAction"
+      responses:
+        "200":
+          description: Action result and authoritative state after processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanceDemoActionResponse"
+        "400":
+          description: Invalid action or input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Demo controls are disabled in this environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +77,208 @@ components:
           type: string
       required:
         - status
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    DemoPrize:
+      type: object
+      properties:
+        v:
+          type: number
+        b:
+          type: number
+      required: [v, b]
+    DemoHistoryEntry:
+      type: object
+      properties:
+        n:
+          type: integer
+        v:
+          type: number
+        t:
+          type: integer
+      required: [n, v, t]
+    DemoBid:
+      type: object
+      properties:
+        id:
+          type: integer
+        round:
+          type: integer
+        value:
+          type: number
+        at:
+          type: integer
+        prize:
+          type: number
+        bonus:
+          type: number
+        res:
+          type: [string, "null"]
+          enum: [won, lost, null]
+        redeemed:
+          type: boolean
+        status:
+          type: string
+          enum: [won, leading, outbid]
+      required: [id, round, value, at, prize, bonus, res, redeemed, status]
+    DemoPayment:
+      type: object
+      properties:
+        amt:
+          type: number
+        state:
+          type: string
+          enum: [pending, paid, expired, failed]
+        left:
+          type: integer
+        credited:
+          type: boolean
+        seed:
+          type: integer
+        code:
+          type: string
+      required: [amt, state, left, credited, seed, code]
+    DemoUser:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        signedIn:
+          type: boolean
+      required: [name, email, signedIn]
+    DemoWallet:
+      type: object
+      properties:
+        bal:
+          type: number
+        pay:
+          anyOf:
+            - $ref: "#/components/schemas/DemoPayment"
+            - type: "null"
+      required: [bal, pay]
+    DemoAuction:
+      type: object
+      properties:
+        round:
+          type: integer
+        p:
+          type: integer
+        phase:
+          type: string
+          enum: [live, paused, ended, soon]
+        value:
+          type: number
+        leader:
+          type: integer
+        left:
+          type: integer
+        soon:
+          type: integer
+        bonusSecs:
+          type: integer
+        notify:
+          type: boolean
+        H:
+          type: array
+          items:
+            $ref: "#/components/schemas/DemoHistoryEntry"
+        paid:
+          type: boolean
+        minimumBid:
+          type: number
+        bonus:
+          type: [number, "null"]
+      required:
+        [round, p, phase, value, leader, left, soon, bonusSecs, notify, H, paid, minimumBid, bonus]
+    LanceDemoState:
+      type: object
+      properties:
+        cfg:
+          type: object
+          properties:
+            V:
+              type: array
+              items:
+                $ref: "#/components/schemas/DemoPrize"
+            N:
+              type: array
+              items:
+                type: string
+            TOTAL:
+              type: integer
+            START:
+              type: integer
+            STEP:
+              type: number
+          required: [V, N, TOTAL, START, STEP]
+        auction:
+          $ref: "#/components/schemas/DemoAuction"
+        wallet:
+          $ref: "#/components/schemas/DemoWallet"
+        user:
+          $ref: "#/components/schemas/DemoUser"
+        bids:
+          type: array
+          items:
+            $ref: "#/components/schemas/DemoBid"
+        redeemable:
+          type: integer
+        controlsEnabled:
+          type: boolean
+      required: [cfg, auction, wallet, user, bids, redeemable, controlsEnabled]
+    LanceDemoAction:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - bid
+            - nextRound
+            - notifyStart
+            - requestPayout
+            - redeem
+            - logout
+            - createPix
+            - discardPix
+            - setPixState
+            - setPrize
+            - setPhase
+            - rivalBid
+            - hurry
+            - demoSignIn
+            - demoSignUp
+            - demoGoogle
+            - demoReset
+        amount:
+          type: number
+        bidId:
+          type: integer
+        prizeIndex:
+          type: integer
+        phase:
+          type: string
+          enum: [live, paused, ended, soon]
+        paymentState:
+          type: string
+          enum: [pending, paid, expired, failed]
+        name:
+          type: string
+        email:
+          type: string
+      required: [action]
+    LanceDemoActionResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok, funds, invalid, exists, creds, not-found]
+        state:
+          $ref: "#/components/schemas/LanceDemoState"
+      required: [result, state]
 

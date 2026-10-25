@@ -1464,156 +1464,175 @@ html:has(dialog[open]) {
 <button class="cta" id="cta" type="button"></button>
 <button class="cta g" id="cta2" type="button" hidden>Ver próxima disputa</button>
 </div>
-<script>
+<script type="module">
 /* ═══════════════════════════════════════════════════════════════
    SERVIDOR (simulado) · regras, estado e relógio
    Não usa document nem $. Em produção, este bloco vira o backend:
    o cliente já só conversa por Server.* e pelos eventos de subscribe().
    ═══════════════════════════════════════════════════════════════ */
-const Server=(()=>{
-  /* ── 1. CONFIG ── */
-  const V=[{v:500,b:18},{v:1000,b:36},{v:2500,b:90},{v:10000,b:360},{v:50000,b:1800},{v:100000,b:3600},{v:1000000,b:36000}];
-  const N=['Você','Carlos M.','Ana P.','João R.'];
-  const TOTAL=60,START=60,STEP=.1,BE=20,BS=[10,12,15,20,25,30,36],EXP=600;
-  const r2=n=>Math.round(n*100)/100;
-  /* ── 2. ESTADO (fonte da verdade) ── */
-  const now=Date.now(),MIN=6e4,HR=36e5;
-  const U={name:'Marina Costa',email:'marina.costa@email.com',signedIn:true};
-  const A={round:7,p:1,phase:'live',value:12.4,leader:1,left:42,soon:START,bonusSecs:0,notify:false,
-    H:[{n:0,v:12.3,t:36},{n:3,v:12.2,t:52},{n:2,v:12.1,t:21},{n:1,v:12,t:44},{n:0,v:11.9,t:58}],
-    get paid(){const w=currentWin();return !!(w&&w.redeemed)}};   /* prêmio da disputa atual já foi resgatado? */
-  const W={bal:390,pay:null};
-  /* Lances do usuário, mais novo primeiro. res ('won'|'lost') só existe depois que a disputa fecha. */
-  const MY=[
-    {id:7,round:7,value:12.3,at:now-4*MIN,prize:1000,bonus:0,res:null,redeemed:false},
-    {id:6,round:7,value:11.9,at:now-7*MIN,prize:1000,bonus:0,res:null,redeemed:false},
-    {id:5,round:6,value:38.4,at:now-2*HR-20*MIN,prize:1000,bonus:15,res:'won',redeemed:false},
-    {id:4,round:6,value:37.6,at:now-2*HR-26*MIN,prize:1000,bonus:0,res:'lost',redeemed:false},
-    {id:3,round:5,value:22.1,at:now-26*HR,prize:500,bonus:0,res:'lost',redeemed:false},
-    {id:2,round:4,value:17.8,at:now-50*HR,prize:2500,bonus:30,res:'won',redeemed:true},
-    {id:1,round:3,value:9.9,at:now-5*24*HR,prize:500,bonus:0,res:'lost',redeemed:false}
-  ];
-  let seq=7;
-  const subs=[],emit=ev=>subs.forEach(f=>f(ev));
-  /* ── 3. REGRAS · disputa ── */
-  const minBid=()=>r2(A.value+STEP);
-  /* Custo do lance: consome da carteira o próprio valor do lance (sem estorno se for superado). */
-  const bidCost=amount=>r2(amount);
-  const pushHist=()=>{A.H.unshift({n:A.leader,v:A.value,t:A.left});A.H.length=Math.min(A.H.length,5)};
-  const resetRound=()=>{A.left=TOTAL;A.soon=START;A.bonusSecs=0;A.notify=false};
-  function bonus(){
-    const k=Math.min(BS.length,Math.floor(A.bonusSecs/BE));
-    return k<1?null:Math.round(V[A.p].b*BS[k-1]*100/36)/100;
-  }
-  /* Retorna 'ok', 'funds' (saldo insuficiente) ou 'invalid' (fora das regras). Só debita quando o lance entra. */
-  function placeBid(amount){
-    const v=r2(amount),cost=bidCost(v);
-    if(!U.signedIn||A.phase!=='live'||A.leader===0||v<minBid())return 'invalid';
-    if(W.bal<cost)return 'funds';
-    W.bal=r2(W.bal-cost);
-    pushHist();A.value=v;A.leader=0;A.left=TOTAL;recordMine();
-    emit('wallet');emit('bid');return 'ok';
-  }
-  function nextRound(){if(A.phase!=='soon')closeRound();A.phase='soon';resetRound();emit('render')}
-  function notifyStart(){A.notify=true;emit('sheet')}
-  /* ── 4. REGRAS · lances do usuário e prêmios ── */
-  const recordMine=()=>{MY.unshift({id:++seq,round:A.round,value:A.value,at:Date.now(),prize:V[A.p].v,bonus:0,res:null,redeemed:false})};
-  /* Se o usuário já lidera ao entrar numa fase da disputa, garante que o lance dele exista no histórico. */
-  const carry=()=>{if(A.leader===0&&A.phase!=='soon'&&!MY.some(b=>b.round===A.round))recordMine()};
-  /* A disputa acabou: congela o resultado de cada lance e abre a próxima. */
-  function closeRound(){
-    const last=MY.find(b=>b.round===A.round),won=A.phase==='ended'&&A.leader===0;
-    MY.forEach(b=>{
-      if(b.round!==A.round)return;
-      const w=won&&b===last;
-      b.res=w?'won':'lost';b.prize=V[A.p].v;b.bonus=w?(bonus()||0):0;
-    });
-    A.round++;
-  }
-  /* status: 'leading' (ganhando agora), 'won' (venceu) ou 'outbid' (superado). Só o último lance da disputa atual pode liderar. */
-  function myBids(){
-    const last=MY.find(b=>b.round===A.round);
-    return MY.map(b=>{
-      if(b.round!==A.round)return {...b,status:b.res==='won'?'won':'outbid'};
-      const lead=b===last&&A.leader===0,status=!lead?'outbid':A.phase==='ended'?'won':'leading';
-      return {...b,prize:V[A.p].v,bonus:status==='won'?(bonus()||0):0,status};
-    });
-  }
-  const currentWin=()=>myBids().find(b=>b.round===A.round&&b.status==='won');
-  const redeemable=()=>myBids().filter(b=>b.status==='won'&&!b.redeemed).length;
-  function redeem(id){
-    const b=U.signedIn&&myBids().find(x=>x.id===id);
-    if(!b||b.status!=='won'||b.redeemed)return false;
-    MY.find(x=>x.id===id).redeemed=true;
-    emit('bids');if(b.round===A.round)emit('sheet');
-    return true;
-  }
-  function requestPayout(){const w=currentWin();return w?redeem(w.id):false}
-  /* ── 5. REGRAS · sessão ── */
-  const ACC=[{name:'Marina Costa',email:'marina.costa@email.com',pw:'lance1234'}];
-  const later=(ms,f)=>new Promise((ok,no)=>setTimeout(()=>{try{ok(f())}catch(e){no(e)}},ms));
-  const enter=a=>{U.name=a.name;U.email=a.email;U.signedIn=true;emit('session')};
-  /* Em produção: Google = OAuth (Google Identity Services); e-mail = API de contas. Aqui só simulam latência e resposta. */
-  const auth={
-    google:()=>later(1400,()=>enter({name:'Marina Costa',email:'marina.costa@gmail.com'})),
-    signin:(email,pw)=>later(900,()=>{const a=ACC.find(x=>x.email===email.toLowerCase());if(!a||a.pw!==pw)throw 'creds';enter(a)}),
-    signup:(name,email,pw)=>later(1000,()=>{email=email.toLowerCase();if(ACC.some(x=>x.email===email))throw 'exists';const a={name,email,pw};ACC.push(a);enter(a)}),
-    reset:()=>later(900,()=>{})   /* mesma resposta exista ou não a conta, para não revelar cadastros */
-  };
-  const logout=()=>{U.signedIn=false;emit('session')};
-  /* ── 6. REGRAS · créditos (Pix) ── */
-  function setPayState(ns){
-    const P=W.pay;if(!P)return;
-    if(P.credited&&ns!=='paid'){W.bal=r2(W.bal-P.amt);P.credited=false}
-    if(ns==='paid'&&!P.credited){W.bal=r2(W.bal+P.amt);P.credited=true}
-    if(ns==='pending')P.left=EXP;
-    P.state=ns;emit('wallet');
-  }
-  function createPix(amt){
-    if(!U.signedIn||!(amt>0))return false;
-    const id=Array.from({length:16},()=>'0123456789ABCDEF'[Math.random()*16|0]).join('');
-    W.pay={amt,state:'pending',left:EXP,credited:false,seed:parseInt(id.slice(0,8),16),code:'00020126580014BR.GOV.BCB.PIX0136'+id+'5204000053039865802BR5913LANCE DO PIX6009SAO PAULO6304'+id.slice(0,4)};
-    return true;
-  }
-  /* ── 7. RELÓGIO · o servidor é o único que passa o tempo ── */
-  function start(){
-    setInterval(()=>{
-      if(A.phase==='soon'){if(--A.soon<=0){A.left=TOTAL;A.bonusSecs=0;A.phase='live';carry();emit('render')}else emit('soon');return}
-      if(A.phase!=='live'||A.left<=0)return;
-      A.left--;A.bonusSecs++;
-      if(A.left===0){A.phase='ended';emit('render')}else emit('tick');
-    },1000);
-    setInterval(()=>{
-      if(W.pay&&W.pay.state==='pending'){if(--W.pay.left<=0)setPayState('expired');else emit('payTick')}
-    },1000);
-  }
-  /* ── 8. SIMULAÇÃO · só para o painel de testes (não existe em produção) ── */
-  const sim={
-    setPrize(i){A.p=i;emit('render')},
-    setPhase(id){
-      if(id==='soon'&&A.phase!=='soon')closeRound();
-      A.phase=id;
-      if(id==='ended')A.left=0;
-      else if(id==='soon')resetRound();
-      else if(id==='live'&&A.left===0)A.left=TOTAL;
-      carry();emit('render');
+import {
+  getLanceDemoState,
+  postLanceDemoAction,
+} from "@workspace/api-client-react";
+
+const Server = (() => {
+  const cfg = { V: [], N: [], TOTAL: 0, START: 0, STEP: 0 };
+  const A = { H: [] };
+  const W = { bal: 0, pay: null };
+  const U = { name: "", email: "", signedIn: false };
+  const subscribers = [];
+  let state = null;
+  let lastStableState = "";
+  let pollTimer = null;
+
+  const r2 = n => Math.round(n * 100) / 100;
+  const emit = event => subscribers.forEach(fn => fn(event));
+  const stableKey = value => JSON.stringify({
+    ...value,
+    auction: { ...value.auction, left: 0, soon: 0, bonusSecs: 0 },
+    wallet: {
+      ...value.wallet,
+      pay: value.wallet.pay ? { ...value.wallet.pay, left: 0 } : null,
     },
-    rivalBid(){pushHist();A.value=r2(A.value+.1);A.leader=A.leader%(N.length-1)+1;A.left=TOTAL;emit('bid')},   /* só rivais (1 a N-1): o lance do usuário passa por placeBid, que debita */
-    hurry(){A.left=Math.min(A.left,5);emit('tick-bid')},
-    setPayState
+  });
+  const apply = value => {
+    state = value;
+    Object.assign(cfg, value.cfg);
+    Object.assign(A, value.auction);
+    Object.assign(W, value.wallet);
+    Object.assign(U, value.user);
   };
-  /* ── 9. API PÚBLICA ── */
+  const reportError = error => {
+    console.error("Lance do Pix API error", error);
+    const notice = document.getElementById("lae");
+    if (notice) {
+      notice.textContent = "Não foi possível atualizar os dados. Verifique sua conexão e tente novamente.";
+      notice.hidden = false;
+    }
+  };
+
+  async function refresh(initial = false) {
+    const value = await getLanceDemoState();
+    const key = stableKey(value);
+    apply(value);
+    if (initial) {
+      lastStableState = key;
+      return;
+    }
+    if (key !== lastStableState) {
+      lastStableState = key;
+      emit("render");
+      emit("wallet");
+      emit("session");
+      emit("bids");
+      return;
+    }
+    if (A.phase === "soon") emit("soon");
+    else if (A.phase === "live") emit("tick");
+    if (W.pay?.state === "pending") emit("payTick");
+  }
+
+  async function send(action, values = {}, event = "render") {
+    try {
+      const response = await postLanceDemoAction({ action, ...values });
+      apply(response.state);
+      lastStableState = stableKey(response.state);
+      if (event) emit(event);
+      return response.result;
+    } catch (error) {
+      reportError(error);
+      return "invalid";
+    }
+  }
+
+  const authAction = async (action, values = {}) => {
+    const result = await send(action, values, "session");
+    if (result !== "ok") throw result;
+  };
+  const startPolling = () => {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => {
+      refresh().catch(reportError);
+    }, 1000);
+  };
+
   return {
-    cfg:{V,N,TOTAL,START,STEP},r2,
-    auction:A,wallet:W,user:U,              /* estado: o cliente só LÊ */
-    minBid,bidCost,bonus,placeBid,nextRound,notifyStart,requestPayout,
-    myBids,redeemable,redeem,logout,auth,
-    pix:{create:createPix,discard(){W.pay=null}},
-    subscribe:f=>subs.push(f),start,sim
+    cfg,
+    r2,
+    auction: A,
+    wallet: W,
+    user: U,
+    get controlsEnabled() {
+      return state?.controlsEnabled ?? false;
+    },
+    minBid: () => A.minimumBid,
+    bidCost: amount => r2(amount),
+    bonus: () => A.bonus,
+    placeBid: async amount => {
+      const result = await send("bid", { amount }, null);
+      if (result === "ok") {
+        emit("wallet");
+        emit("bid");
+      } else if (result !== "funds") {
+        reportError(new Error("O lance não foi aceito pelo servidor."));
+      }
+      return result;
+    },
+    nextRound: () => send("nextRound", {}, "render"),
+    notifyStart: () => send("notifyStart", {}, "sheet"),
+    requestPayout: () => send("requestPayout", {}, "render"),
+    myBids: () => state?.bids ?? [],
+    redeemable: () => state?.redeemable ?? 0,
+    redeem: async id => {
+      const result = await send("redeem", { bidId: id }, null);
+      if (result === "ok") {
+        emit("bids");
+        emit("sheet");
+      }
+      return result;
+    },
+    logout: () => send("logout", {}, "session"),
+    auth: {
+      google: () => authAction("demoGoogle"),
+      signin: email => authAction("demoSignIn", { email }),
+      signup: (name, email) => authAction("demoSignUp", { name, email }),
+      reset: email => authAction("demoReset", { email }),
+    },
+    pix: {
+      create: async amount => (await send("createPix", { amount }, "wallet")) === "ok",
+      discard: () => send("discardPix", {}, "wallet"),
+    },
+    sim: {
+      setPrize: prizeIndex => send("setPrize", { prizeIndex }, "render"),
+      setPhase: phase => send("setPhase", { phase }, "render"),
+      rivalBid: () => send("rivalBid", {}, "bid"),
+      hurry: () => send("hurry", {}, "tick-bid"),
+      setPayState: paymentState =>
+        send("setPixState", { paymentState }, "wallet"),
+    },
+    subscribe: fn => subscribers.push(fn),
+    start: async () => {
+      try {
+        await refresh(true);
+      } catch (error) {
+        reportError(error);
+        throw error;
+      }
+    },
+    startPolling,
   };
 })();
-</script>
-<script>
+
+try {
+  await Server.start();
+} catch {
+  const error = document.createElement("p");
+  error.setAttribute("role", "alert");
+  error.style.cssText = "margin:32px auto;max-width:720px;padding:20px;font:16px system-ui;color:#9b1c1c;background:#fff1f1;border-radius:12px";
+  error.textContent = "Não foi possível carregar o Lance do Pix. O servidor da demonstração precisa estar disponível.";
+  document.body.prepend(error);
+  throw new Error("Lance do Pix API is unavailable");
+}
 /* ═══════════════════════════════════════════════════════════════
    CLIENTE · interface
    Só LÊ Server.auction / Server.wallet e age chamando métodos do Server.
@@ -1721,11 +1740,12 @@ const place=()=>Server.placeBid(myBid);
 V.forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.textContent='R$ '+v.v.toLocaleString('pt-BR');b.onclick=()=>Server.sim.setPrize(i);$('simP').appendChild(b)});
 S.forEach(s=>{const b=document.createElement('button');b.type='button';b.textContent=s.c;b.onclick=()=>Server.sim.setPhase(s.id);$('simS').appendChild(b)});
 [['Novo lance',()=>Server.sim.rivalBid()],['Faltam 5 s',()=>Server.sim.hurry()]].forEach(([t,fn])=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=fn;$('simB').appendChild(b)});
+if(!Server.controlsEnabled)['simP','simS','simB','amsim'].forEach(id=>$(id).hidden=true);
 $('minus').onclick=()=>bump(-STEP);$('plusb').onclick=()=>bump(STEP);
 document.querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>bump(Number(b.dataset.add))});
-$('cta').onclick=()=>{const id=A.phase;
+$('cta').onclick=async()=>{const id=A.phase;
   if(!U.signedIn&&(id==='live'||(id==='ended'&&A.leader===0))){authOpen();return}
-  if(id==='live'){if(place()==='funds')openAm()}
+  if(id==='live'){if(await place()==='funds')openAm()}
   else if(id==='soon')Server.notifyStart();
   else if(id==='ended'){if(A.leader===0)Server.requestPayout();else Server.nextRound()}};
 $('cta2').onclick=()=>Server.nextRound();
@@ -1777,8 +1797,8 @@ function amView(){
 }
 /* ═══ 7. AÇÕES · créditos ═══
    A cobrança Pix e o saldo vivem no Server.pix / Server.wallet. */
-function gen(){if(Server.pix.create(num($('amv').value)))amView()}
-function amBack(){Server.pix.discard();amView();paintAm()}
+async function gen(){if(await Server.pix.create(num($('amv').value)))amView()}
+async function amBack(){await Server.pix.discard();amView();paintAm()}
 function openAm(){
   const P=W.pay;
   if(!P||P.state!=='pending'){if(P&&P.state==='paid')$('amv').value=dv();Server.pix.discard()}
@@ -1793,7 +1813,7 @@ $('amv').addEventListener('change',e=>{const v=num(e.target.value);e.target.valu
 $('amv').addEventListener('keydown',e=>{if(e.key==='Enter')gen()});
 $('amv').addEventListener('focus',e=>{const i=e.target;setTimeout(()=>i.select(),0)});
 $('amg').onclick=gen;$('apa').onclick=$('rg2').onclick=amBack;
-$('rc').onclick=()=>{if(W.pay.state==='paid')am.close();else{Server.pix.discard();gen()}};
+$('rc').onclick=async()=>{if(W.pay.state==='paid')am.close();else{await Server.pix.discard();await gen()}};
 $('amx').onclick=()=>am.close();$('balb').onclick=openAm;
 am.addEventListener('click',e=>{const r=am.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)am.close()});
 $('apy').onclick=async()=>{
@@ -1887,11 +1907,11 @@ async function authGo(ev){
   if(AU.busy)return;
   if(AU.sent)return authMode('in');
   banner('');if(!authCheck())return;
-  const m=AU.mode,n=$('lni').value.trim(),e=$('lei').value.trim(),p=$('lpi').value;
+  const m=AU.mode,n=$('lni').value.trim(),e=$('lei').value.trim();
   AU.busy='form';paintAuth();
   try{
-    if(m==='in')await Server.auth.signin(e,p);
-    else if(m==='up')await Server.auth.signup(n,e,p);
+    if(m==='in')await Server.auth.signin(e);
+    else if(m==='up')await Server.auth.signup(n,e);
     else{await Server.auth.reset(e);AU.sent=true}
   }catch(x){
     AU.busy='';paintAuth();
@@ -1932,7 +1952,7 @@ Server.subscribe(ev=>{
 paintBal();paintMine();paintSession();
 addEventListener('resize',()=>{fit();paintSheet()});
 paintHist();render();
-Server.start();
+Server.startPolling();
 </script>
 
 </body></html>
