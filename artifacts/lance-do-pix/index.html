@@ -2164,7 +2164,7 @@ function paintBid(){
   $('sbl').textContent=urg?'Últimos segundos da disputa':id==='soon'?'A disputa começa em breve':'Disputa '+S[idx(id)].l;
   $('bl').textContent=ended?'Lance vencedor':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(A.value);
-  $('whoTrophy').hidden=!(ended&&mine&&!noLeader);
+  $('whoTrophy').toggleAttribute('hidden',!(ended&&mine&&!noLeader));
   $('whoText').textContent=noLeader?'Aguardando o primeiro lance':n+(ended?' venceu':' está ganhando');
   $('who').dataset.me=mine?'true':'false';
   $('clk').innerHTML=ended?CK:noLeader?'':mmss(A.left);
