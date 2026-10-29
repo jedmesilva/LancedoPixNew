@@ -325,6 +325,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       userId: bidsTable.userId,
       valueCents: bidsTable.valueCents,
       createdAt: bidsTable.createdAt,
+      expiresAt: bidsTable.expiresAt,
       publicName: usersTable.publicName,
     })
     .from(bidsTable)
@@ -378,7 +379,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
     phase === "soon"
       ? latest.startsAt.getTime()
       : phase === "live" && leader
-        ? leader.createdAt.getTime() + latest.bidDurationS * 1000
+        ? leader.expiresAt.getTime()
         : null;
   const left =
     phase === "live" && targetAt !== null
