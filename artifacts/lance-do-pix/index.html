@@ -2157,7 +2157,7 @@ function paintBonus(){
 }
 function paintSoon(){
   if(A.phase!=='soon')return;
-  $('nxs').textContent=A.soon;$('nxa').textContent='Começa em '+A.soon+' s';
+  $('nxs').textContent=A.soon;$('nxa').textContent='Próxima disputa';
   $('nxt').style.setProperty('--rp',(1-A.soon/START)*100);
 }
 function paintHist(){
