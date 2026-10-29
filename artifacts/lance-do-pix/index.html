@@ -358,7 +358,12 @@ header .cta {
   color: var(--gt);
 }
 
+.sbar[data-urg] {
+  color: var(--al);
+}
+
 .sbar[data-urg] .tm {
+  background: color-mix(in srgb, var(--al) 16%, var(--sf));
   color: var(--al);
 }
 
@@ -563,10 +568,6 @@ header .cta {
   border-radius: var(--r-pill);
   background: var(--gr);
   transition: width 1s linear;
-}
-
-#hd[data-urg] .tm {
-  color: var(--al);
 }
 
 .nb {
@@ -2160,6 +2161,7 @@ function paintHist(){
 }
 function paintBid(){
   const H=A.H,id=A.phase,ended=id==='ended',live=id==='live',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':N[A.leader],urg=live&&!noLeader&&A.left<=10;
+  $('sbl').textContent=urg?'Últimos segundos da disputa':id==='soon'?'A disputa começa em breve':'Disputa '+S[idx(id)].l;
   $('bl').textContent=ended?'Lance vencedor':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(A.value);
   $('whoTrophy').hidden=!(ended&&mine&&!noLeader);
