@@ -281,33 +281,133 @@ header .cta {
 }
 
 /* ══════════════════════════════════════════════════════════
-   5. COMPONENTE · Título da disputa
-   h1, status colorido (.s.live, .soon, .ended) e subtítulo (.sub).
+   5. COMPONENTE · Título e barra de status
    ══════════════════════════════════════════════════════════ */
 
-h1 {
+.ttl {
   margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -.015em;
-  line-height: 1.2;
+  font: 800 30px/1.05 var(--font-display);
+  letter-spacing: -.035em;
+  text-wrap: balance;
 }
 
-.s.live {
+.sbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 12px;
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--ln);
+  border-bottom: 1px solid var(--ln);
+  color: var(--mu);
+  font: 700 13px/1.2 var(--font-body);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.sbar .si {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-round);
+  background: currentColor;
+}
+
+.sbar .si svg {
+  display: none;
+}
+
+.sbar[data-s=paused] .si,
+.sbar[data-s=soon] .si,
+.sbar[data-s=ended] .si {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background: none;
+}
+
+.sbar[data-s=paused] .si svg,
+.sbar[data-s=soon] .si svg,
+.sbar[data-s=ended] .si svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.sbar #sbl {
+  min-width: 0;
+}
+
+.sbar .tm {
+  justify-self: end;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: var(--bn);
+  color: var(--gt);
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.sbar[data-s=live] {
   color: var(--gt);
 }
-.s.soon,
-.s.ended {
-  color: var(--mu);
+
+.sbar[data-urg] .tm {
+  color: var(--al);
 }
 
-.sub {
-  margin: 6px 0 0;
-  color: var(--mu);
-  text-wrap: pretty;
+.sbar .pb {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 0;
+  background: var(--ln);
+  overflow: hidden;
 }
-.sub:empty {
+
+.sbar .pb i {
+  display: block;
+  height: 100%;
+  border-radius: 0;
+  background: var(--gr);
+  transition: width 1s linear, background-color .3s;
+}
+
+.sbar[data-s=paused] .pb i {
+  background: var(--mu);
+}
+
+.sbar[data-s=soon] .pb,
+.sbar[data-s=ended] .pb {
   display: none;
+}
+
+.sbar[data-urg] .pb i {
+  background: var(--al);
+}
+
+.sbar .wv {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lv 1.6s ease-out infinite;
+}
+
+@keyframes lv {
+  from { transform: scale(.4); opacity: .9; }
+  to { transform: scale(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sbar .pb i,
+  .sbar .wv {
+    transition: none;
+    animation: none;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -410,11 +510,33 @@ h1 {
   border-color: var(--gr);
 }
 
+#bid {
+  padding: 16px 20px 18px;
+  border: 1px solid var(--ln);
+  border-radius: 0;
+  transition: border-color .2s;
+}
+
+#bid.on {
+  border-color: var(--gr);
+}
+
 .bv {
   margin-top: 8px;
   font: 800 40px/1 var(--font-display);
   letter-spacing: -.03em;
   font-variant-numeric: tabular-nums;
+}
+
+.wh {
+  margin: 6px 0 0;
+  color: var(--mu);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wh[data-me=true] {
+  color: var(--gt);
 }
 
 .ld {
@@ -449,11 +571,8 @@ h1 {
   transition: width 1s linear;
 }
 
-.cd[data-urg] .tm {
+#hd[data-urg] .tm {
   color: var(--al);
-}
-.cd[data-urg] .br i {
-  background: var(--al);
 }
 
 .nb {
@@ -1507,12 +1626,13 @@ try {
 <div class="rt"><button class="bl" id="balb" type="button" aria-label="Saldo R$ 0,00. Adicionar créditos"><span id="bal">R$ 0,00</span><span class="pl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B0C10" stroke-width="3.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></span></button><button class="av" id="avb" type="button" aria-haspopup="dialog" aria-label="Minha conta"><span id="avl">M</span><i id="avd" aria-hidden="true"></i></button><button class="cta" id="lgb" type="button" hidden>Entrar</button></div>
 </header>
 <main class="app" id="app">
-<div><h1 id="hd" aria-live="polite"></h1><p class="sub" id="sb"></p></div>
+<h1 class="ttl">Dispute um prêmio</h1>
+<div class="sbar" id="hd" data-s="live"><span class="si" id="sbi" aria-hidden="true"></span><span id="sbl" aria-live="polite"></span><span class="tm" id="clk" role="timer"></span><div class="pb" id="bar" aria-hidden="true"><i id="fill"></i></div></div>
+<section class="rg" id="nxt" hidden><div class="ring"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="rb" cx="20" cy="20" r="17" pathLength="100"/><circle class="rf" cx="20" cy="20" r="17" pathLength="100"/></svg><b id="nxs" role="timer"></b></div><div><div class="t2" id="nxa"></div><p class="nt">Lances liberados ao começar</p></div></section>
 <section class="win" id="win" hidden><span class="ck"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Você venceu!</b>Parabéns, o prêmio é seu.</div></section>
-<section><div class="ey">Valor em disputa</div><div class="pz" id="pz"></div><div class="bn" id="bn" hidden></div></section>
-<section class="cd rg" id="nxt" hidden><div class="ring"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="rb" cx="20" cy="20" r="17" pathLength="100"/><circle class="rf" cx="20" cy="20" r="17" pathLength="100"/></svg><b id="nxs" role="timer"></b></div><div><div class="t2" id="nxa"></div><p class="nt">Lances liberados ao começar</p></div></section>
-<section class="cd" id="how" hidden><div class="ey">Como funciona</div><div class="sp"><span>1</span>Dê um lance maior que o atual</div><div class="sp"><span>2</span>Mantenha a posição de maior lance por <data data-how="dur"></data></div><div class="sp"><span>3</span>Ganhe o prêmio</div></section>
-<section class="cd" id="bid"><div class="ey" id="bl"></div><div class="bv" id="bv"></div><div class="ld"><span id="who"></span><span class="tm" id="clk" role="timer"></span></div><div class="br" id="bar"><i id="fill"></i></div><div class="nb" id="nb"><div><p class="nt" id="ntm" aria-live="polite"></p></div></div></section>
+<section id="prz"><div class="ey">Valor em disputa</div><div class="pz" id="pz"></div><div class="bn" id="bn" hidden></div></section>
+<section id="how" hidden><div class="ey">Como funciona</div><div class="sp"><span>1</span>Dê um lance maior que o atual</div><div class="sp"><span>2</span>Mantenha a posição de maior lance por <data data-how="dur"></data></div><div class="sp"><span>3</span>Ganhe o prêmio</div></section>
+<section id="bid"><div class="ey" id="bl"></div><div class="bv" id="bv"></div><p class="wh" id="who" aria-live="polite"></p><div class="nb" id="nb"><div><p class="nt" id="ntm" aria-live="polite"></p></div></div></section>
 <section id="rec"><div class="ey" style="margin-bottom:6px">Lances recentes</div><div id="hist" role="list"></div></section>
 <dialog id="hm" aria-labelledby="hmt"><div class="mh"><h2 id="hmt">Como funciona</h2><button class="mx" id="hmx" type="button" aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
 <div class="sp"><span>1</span><div><b>Dê um lance maior que o atual</b><p>O mínimo é <data data-how="step"></data> a mais que o lance atual.</p></div></div>
@@ -1966,6 +2086,13 @@ const S=[{id:'live',l:'ao vivo',c:'Ao vivo',s:()=>'Disputa rolando. Dê o maior 
 {id:'ended',l:'encerrada',c:'Encerrada',s:n=>'Há um vencedor. '+n+' venceu a disputa e ganhou o prêmio.'},
 {id:'soon',l:'começa em breve',c:'Em breve',s:()=>''}];
 const CK='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+const SIC=d=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
+const SI={
+  live:SIC('<circle class="wv" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>'),
+  paused:SIC('<rect x="6" y="5" width="4" height="14" rx="1.2" fill="currentColor" stroke="none"/><rect x="14" y="5" width="4" height="14" rx="1.2" fill="currentColor" stroke="none"/>'),
+  ended:SIC('<path d="M20 6 9 17l-5-5"/>'),
+  soon:SIC('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
+};
 let myBid=0,seen=-1,activeVictoryBidId=null,bidSubmitting=false;
 const shownVictoryBidIds=new Set();
 let victoryOwner=null;
@@ -1995,13 +2122,16 @@ function paintBid(){
   $('bl').textContent=ended?'Lance vencedor':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(A.value);
   $('who').textContent=noLeader?'Aguardando o primeiro lance':n+(ended?' venceu':' está ganhando');
+  $('who').dataset.me=mine?'true':'false';
   $('clk').innerHTML=ended?CK:noLeader?'':mmss(A.left);
-  $('bar').hidden=ended||noLeader;$('fill').style.width=(A.left/TOTAL*100)+'%';
+  $('clk').hidden=ended||id==='soon'||noLeader;
+  $('bar').hidden=ended||id==='soon'||noLeader;$('fill').style.width=(A.left/TOTAL*100)+'%';
   const out=!mine&&!noLeader&&H.length>0&&H[0].n===0,prev=H.length&&H[0].n!==0?N[H[0].n]:null;
   const msg=!live?'':noLeader?'Dê o primeiro lance para iniciar a disputa.':mine?(urg?'Falta pouco! Se ninguém superar, o prêmio é seu.':(prev?'Você superou o lance de '+prev+'. ':'Você deu um lance. ')+'Se ninguém superar, o prêmio é seu.'):urg?'Últimos segundos! Supere agora.':out?n+' superou seu lance. Dê um maior para voltar à frente.':prev?n+' superou o lance de '+prev+'. Dê um maior para ficar à frente.':'';
   const b=$('bid');if(msg)$('ntm').textContent=msg;
   b.dataset.tone=!msg?'':mine?'ok':(urg||out)?'al':'';
-  b.toggleAttribute('data-urg',urg);b.classList.toggle('on',mine&&(live||ended));
+  b.classList.toggle('on',mine&&(live||ended));
+  $('hd').toggleAttribute('data-urg',urg);
   $('nb').toggleAttribute('data-o',!!msg);$('ntm').parentElement.inert=!msg;
   paintSheet();
 }
@@ -2024,8 +2154,9 @@ function paintSheet(){
 }
 function render(){
   const s=S[idx(A.phase)],id=A.phase,isSoon=id==='soon';
-  $('hd').innerHTML='Disputa <span class="s '+id+'">'+s.l+'</span>';
-  $('sb').textContent=s.s(A.leader<0?'':N[A.leader]);
+  $('hd').dataset.s=id;
+  $('sbi').innerHTML=SI[id]||'';
+  $('sbl').textContent=isSoon?'A disputa começa em breve':'Disputa '+s.l;
   $('pz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
   fit();paintBonus();
   $('nxt').hidden=$('how').hidden=!isSoon;$('bid').hidden=isSoon;
