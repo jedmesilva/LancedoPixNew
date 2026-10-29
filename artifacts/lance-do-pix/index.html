@@ -1835,7 +1835,7 @@ const Server = (() => {
     if (Number.isFinite(A.targetAt)) {
       const remaining = Math.max(0, Math.ceil((A.targetAt - now) / 1000));
       if (A.phase === "live") A.left = remaining;
-      else if (A.phase === "soon") A.soon = remaining;
+      else if (A.phase === "soon" || A.phase === "ended") A.soon = remaining;
     }
     if (W.pay?.state === "pending" && Number.isFinite(W.pay.expiresAt)) {
       W.pay.left = Math.max(
@@ -1884,7 +1884,7 @@ const Server = (() => {
       emit("bids");
       return;
     }
-    if (A.phase === "soon") emit("soon");
+    if (A.phase === "soon" || A.phase === "ended") emit("soon");
     else if (A.phase === "live") emit("tick");
     if (W.pay?.state === "pending") emit("payTick");
   }
@@ -2012,7 +2012,13 @@ const Server = (() => {
       const previousPaymentLeft = W.pay?.left;
       syncTimers();
       if (A.phase === "live" && A.left !== previousLeft) emit("tick");
-      else if (A.phase === "soon" && A.soon !== previousSoon) emit("soon");
+      else if (
+        (A.phase === "soon" || A.phase === "ended") &&
+        A.soon !== previousSoon
+      ) {
+        emit("soon");
+        if (A.soon === 0) void refreshFromRealtime();
+      }
       if (
         W.pay?.state === "pending" &&
         W.pay.left !== previousPaymentLeft
@@ -2156,7 +2162,7 @@ function paintBonus(){
   if(!first){b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}
 }
 function paintSoon(){
-  if(A.phase!=='soon')return;
+  if(A.phase!=='soon'&&A.phase!=='ended')return;
   $('nxs').textContent=A.soon;$('nxa').textContent='Próxima disputa';
   $('nxt').style.setProperty('--rp',(1-A.soon/START)*100);
 }
@@ -2200,12 +2206,13 @@ function paintSheet(){
 }
 function render(){
   const s=S[idx(A.phase)],id=A.phase,isSoon=id==='soon';
+  const showNext=isSoon||id==='ended';
   $('hd').dataset.s=id;
   $('sbi').innerHTML=SI[id]||'';
   $('sbl').textContent=isSoon?'A disputa começa em breve':'Disputa '+s.l;
   $('pz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
   fit();paintBonus();
-  $('nxt').hidden=$('how').hidden=!isSoon;$('prz').hidden=isSoon;$('bid').hidden=isSoon;
+  $('nxt').hidden=!showNext;$('how').hidden=!isSoon;$('prz').hidden=isSoon;$('bid').hidden=isSoon;
   $('rec').hidden=isSoon||!A.H.length;$('win').hidden=!(id==='ended'&&A.leader===0);
   paintSoon();paintBid();paintWin();paintHow();
 }

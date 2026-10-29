@@ -37,6 +37,7 @@ import {
 } from "@workspace/db";
 import type { CurrentUser } from "./auth";
 import {
+  getDisputeDisplayState,
   nextDisputeStartsAt,
   nextVictoryDurationSeconds,
   selectNextPrizeTier,
@@ -313,6 +314,19 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
         .from(disputesTable)
         .orderBy(desc(disputesTable.number))
         .limit(1);
+  const [previousDispute] =
+    latest.status === "scheduled"
+      ? await db
+          .select()
+          .from(disputesTable)
+          .where(eq(disputesTable.number, latest.number - 1))
+          .limit(1)
+      : [];
+  const displayState = getDisputeDisplayState(
+    latest,
+    previousDispute ?? null,
+  );
+  const currentDispute = displayState.dispute;
 
   const tiers = await db
     .select()
@@ -330,7 +344,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
     })
     .from(bidsTable)
     .innerJoin(usersTable, eq(bidsTable.userId, usersTable.id))
-    .where(eq(bidsTable.disputeId, latest.id))
+    .where(eq(bidsTable.disputeId, currentDispute.id))
     .orderBy(desc(bidsTable.valueCents), desc(bidsTable.createdAt))
     .limit(30);
 
@@ -367,17 +381,10 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   });
   if (leader) nameIndex(leader.userId, leader.publicName);
 
-  const phase =
-    latest.status === "scheduled"
-      ? "soon"
-      : latest.status === "paused"
-        ? "paused"
-        : latest.status === "ended"
-          ? "ended"
-          : "live";
+  const phase = displayState.phase;
   const targetAt =
-    phase === "soon"
-      ? latest.startsAt.getTime()
+    (phase === "soon" || phase === "ended")
+      ? (displayState.nextStartsAt?.getTime() ?? null)
       : phase === "live" && leader
         ? leader.expiresAt.getTime()
         : null;
@@ -386,13 +393,13 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       ? millisecondsLeft(new Date(targetAt), now)
       : 0;
   const soon =
-    phase === "soon" && targetAt !== null
+    (phase === "soon" || phase === "ended") && targetAt !== null
       ? millisecondsLeft(new Date(targetAt), now)
       : START;
-  const valueCents = leader?.valueCents ?? latest.startingValueCents;
+  const valueCents = leader?.valueCents ?? currentDispute.startingValueCents;
   const tierIndex = Math.max(
     0,
-    tiers.findIndex((tier) => tier.id === latest.tierId),
+    tiers.findIndex((tier) => tier.id === currentDispute.tierId),
   );
 
   let balanceCents = 0n;
@@ -464,7 +471,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   const redeemedIds = new Set(payoutBidIds.map((row) => row.bidId));
   const bids = ownRows.map((bid) => {
     const isLeader =
-      bid.disputeId === latest.id && bid.leaderBidId === bid.id;
+      bid.disputeId === currentDispute.id && bid.leaderBidId === bid.id;
     const result =
       bid.result === "won" ? "won" : bid.result === "lost" ? "lost" : null;
     const status =
@@ -506,19 +513,19 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   const bonusRows = await db
     .select({ amountCents: bonusesTable.amountCents })
     .from(bonusesTable)
-    .where(eq(bonusesTable.disputeId, latest.id));
+    .where(eq(bonusesTable.disputeId, currentDispute.id));
   const bonusCents = bonusRows.reduce((sum, row) => sum + row.amountCents, 0n);
 
   return GetLanceStateResponse.parse({
     cfg: {
       V: tiers.map((tier) => ({ v: centsToMoney(tier.prizeCents), b: 0 })),
       N: names,
-      TOTAL: latest.bidDurationS,
+      TOTAL: currentDispute.bidDurationS,
       START,
-      STEP: centsToMoney(latest.stepCents),
+      STEP: centsToMoney(currentDispute.stepCents),
     },
     auction: {
-      round: latest.number,
+      round: currentDispute.number,
       p: tierIndex,
       phase,
       value: centsToMoney(valueCents),
@@ -530,7 +537,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       notify: false,
       H: history,
       paid: payoutForLeader.length > 0,
-      minimumBid: centsToMoney(valueCents + latest.stepCents),
+      minimumBid: centsToMoney(valueCents + currentDispute.stepCents),
       bonus: bonusCents > 0n ? centsToMoney(bonusCents) : null,
     },
     serverTime: Date.now(),
