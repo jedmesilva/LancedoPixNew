@@ -2159,7 +2159,7 @@ function render(){
   $('sbl').textContent=isSoon?'A disputa começa em breve':'Disputa '+s.l;
   $('pz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
   fit();paintBonus();
-  $('nxt').hidden=$('how').hidden=!isSoon;$('bid').hidden=isSoon;
+  $('nxt').hidden=$('how').hidden=!isSoon;$('prz').hidden=isSoon;$('bid').hidden=isSoon;
   $('rec').hidden=isSoon||!A.H.length;$('win').hidden=!(id==='ended'&&A.leader===0);
   paintSoon();paintBid();paintWin();paintHow();
 }
