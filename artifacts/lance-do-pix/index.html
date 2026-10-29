@@ -741,8 +741,9 @@ header .cta {
 
 .sk {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 8px;
 }
 
 .sk h3 {
@@ -753,11 +754,37 @@ header .cta {
 }
 
 .hw {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
   height: 44px;
   padding: 0;
+  border: 0;
+  border-radius: var(--r-round);
+  background: transparent;
   color: var(--gt);
-  font-weight: 700;
-  font-size: 13px;
+}
+
+.hw span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-round);
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.hw:hover span {
+  background: var(--bn);
+}
+
+.hw:focus-visible {
+  outline: 2px solid var(--gt);
+  outline-offset: 1px;
 }
 
 .st {
@@ -1727,7 +1754,7 @@ try {
 <p class="nt" data-m="in up" style="text-align:center">O Google ainda não está integrado; esta opção cria uma conta persistente de teste.</p></dialog>
 </main>
 <div class="sheet" id="sheet" role="region" aria-label="Dar lance">
-<div id="ctl"><div class="sk"><h3>DÊ SEU LANCE</h3><button class="hw" id="hwb" type="button" aria-haspopup="dialog">Como funciona</button></div>
+<div id="ctl"><div class="sk"><h3>DÊ SEU LANCE</h3><button class="hw" id="hwb" type="button" aria-label="Como funciona" title="Como funciona" aria-haspopup="dialog"><span aria-hidden="true">?</span></button></div>
 <div class="st"><button class="sq" id="minus" type="button" aria-label="Diminuir lance">−</button><div class="fd"><span>R$</span><output id="val"></output></div><button class="sq" id="plusb" type="button" aria-label="Aumentar lance">+</button></div>
 <div class="cp"><button type="button" data-add="0.5">+0,50</button><button type="button" data-add="1">+1,00</button><button type="button" data-add="2">+2,00</button></div>
 <p class="nt" id="cn" hidden></p></div>
