@@ -361,22 +361,22 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   };
 
   const leader = currentBids[0] ?? null;
-  const previousBids = currentBids.slice(1, 6);
+  const previousBids = currentBids.slice(1, 5);
   const history = previousBids.map((bid, index) => {
-    const newerBid = currentBids[index];
-    const elapsed =
-      newerBid && bid.createdAt
+    const overtakingBid = currentBids[index];
+    const elapsedSinceOvertaken =
+      overtakingBid?.createdAt
         ? Math.max(
             0,
             Math.floor(
-              (newerBid.createdAt.getTime() - bid.createdAt.getTime()) / 1000,
+              (now - overtakingBid.createdAt.getTime()) / 1000,
             ),
           )
         : 0;
     return {
       n: nameIndex(bid.userId, bid.publicName),
       v: centsToMoney(bid.valueCents),
-      t: elapsed,
+      t: elapsedSinceOvertaken,
     };
   });
   if (leader) nameIndex(leader.userId, leader.publicName);

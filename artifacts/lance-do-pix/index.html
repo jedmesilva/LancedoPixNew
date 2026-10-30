@@ -746,21 +746,133 @@ header .cta {
   color: var(--gt);
 }
 
-.rw {
-  display: flex;
-  justify-content: space-between;
+.recent-bid {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
-  padding: 10px 0;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px;
   border-top: 1px solid var(--ln);
-  font-size: 14px;
-  color: var(--mu);
   font-variant-numeric: tabular-nums;
 }
 
-.rw b {
-  display: block;
-  font-size: 16px;
+.recent-bid[data-rank="1"] {
+  min-height: 72px;
+  margin: 2px -8px 0;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--bn);
+}
+
+.recent-rank {
+  color: var(--mu);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.recent-bid[data-rank="1"] .recent-rank {
+  color: var(--gt);
+  font-size: 17px;
+}
+
+.recent-person {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 7px;
+}
+
+.recent-name {
+  overflow: hidden;
   color: var(--tx);
+  font-size: 16px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-time {
+  color: var(--mu);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.recent-value {
+  color: var(--tx);
+  font: 700 16px/1.1 var(--font-display);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.recent-bid[data-rank="1"] .recent-name {
+  font-size: 18px;
+}
+
+.recent-bid[data-rank="1"] .recent-time {
+  color: var(--gt);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.recent-bid[data-rank="1"] .recent-value {
+  font-size: 22px;
+}
+
+.recent-bid[data-rank="3"] .recent-name,
+.recent-bid[data-rank="3"] .recent-value {
+  font-size: 15px;
+}
+
+.recent-bid[data-rank="4"] .recent-name,
+.recent-bid[data-rank="4"] .recent-value,
+.recent-bid[data-rank="5"] .recent-name,
+.recent-bid[data-rank="5"] .recent-value {
+  font-size: 14px;
+}
+
+.recent-bid[data-rank="4"] .recent-time,
+.recent-bid[data-rank="5"] .recent-time {
+  font-size: 11px;
+}
+
+.recent-crown {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  margin-left: 2px;
+  color: var(--gt);
+  vertical-align: -3px;
+}
+
+@media (max-width: 480px) {
+  .recent-bid {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 7px;
+    min-height: 54px;
+    padding-inline: 6px;
+  }
+
+  .recent-bid[data-rank="1"] {
+    min-height: 68px;
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+
+  .recent-bid[data-rank="1"] .recent-name {
+    font-size: 16px;
+  }
+
+  .recent-bid[data-rank="1"] .recent-value {
+    font-size: 19px;
+  }
+
+  .recent-value {
+    font-size: 14px;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1941,7 +2053,13 @@ const Server = (() => {
     const { serverTime, ...snapshot } = value;
     return JSON.stringify({
       ...snapshot,
-      auction: { ...snapshot.auction, left: 0, soon: 0, bonusSecs: 0 },
+      auction: {
+        ...snapshot.auction,
+        left: 0,
+        soon: 0,
+        bonusSecs: 0,
+        H: snapshot.auction.H.map(entry => ({ ...entry, t: 0 })),
+      },
       wallet: {
         ...snapshot.wallet,
         pay: snapshot.wallet.pay
@@ -1972,6 +2090,7 @@ const Server = (() => {
     }
     Object.assign(cfg, value.cfg);
     Object.assign(A, value.auction);
+    A.historyUpdatedAt = receivedAt;
     Object.assign(W, value.wallet);
     Object.assign(U, value.user);
     syncTimers();
@@ -2285,8 +2404,40 @@ function paintSoon(){
   $('nxs').textContent=A.soon;$('nxa').textContent='Próxima disputa';
   $('nxt').style.setProperty('--rp',(1-A.soon/START)*100);
 }
+function agoLabel(seconds){
+  const value=Math.max(0,Math.floor(seconds));
+  if(value<5)return 'há poucos segundos';
+  if(value<60)return 'há '+value+' s';
+  const minutes=Math.floor(value/60);
+  if(minutes<60)return 'há '+minutes+' min';
+  return 'há '+Math.floor(minutes/60)+' h';
+}
+function escapeHistoryText(value){
+  return String(value).replace(/[&<>"']/g,character=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[character]);
+}
 function paintHist(){
-  $('hist').innerHTML=A.H.map(h=>'<div class="rw" role="listitem"><div><span>'+N[h.n]+'</span><b>'+brl(h.v)+'</b></div><span>Superado aos '+h.t+'s</span></div>').join('');
+  const rows=[];
+  if(A.leader>=0){
+    const currentAge=Math.max(0,TOTAL-A.left);
+    const label=A.phase==='ended'?'Vencedor':A.phase==='live'?'Líder '+agoLabel(currentAge):'Líder atual';
+    rows.push({n:A.leader,v:A.value,label,current:true});
+  }
+  const elapsedSinceSnapshot=Number.isFinite(A.historyUpdatedAt)
+    ?Math.max(0,Math.floor((Date.now()-A.historyUpdatedAt)/1000)):0;
+  A.H.slice(0,4).forEach(h=>{
+    rows.push({n:h.n,v:h.v,label:'Superado '+agoLabel(h.t+elapsedSinceSnapshot),current:false});
+  });
+  $('hist').innerHTML=rows.slice(0,5).map((row,index)=>{
+    const rank=index+1,name=escapeHistoryText(N[row.n]??'Participante');
+    const value=escapeHistoryText(brl(row.v)),label=escapeHistoryText(row.label);
+    const crown=row.current?'<svg class="recent-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 8 5.5 5 4.5-10 4.5 10L22 8v11H2V8Z"/><path d="M2 19h20"/></svg>':'';
+    return '<div class="recent-bid" data-rank="'+rank+'" role="listitem" aria-label="'+rank+'º lance, '+name+', '+label+', '+value+'">'
+      +'<span class="recent-rank" aria-hidden="true">'+rank+'º</span>'
+      +'<span class="recent-person"><span class="recent-name">'+name+'</span>'+crown+'<span class="recent-time">'+label+'</span></span>'
+      +'<b class="recent-value">'+value+'</b></div>';
+  }).join('');
 }
 function paintBid(){
   const H=A.H,id=A.phase,ended=id==='ended',live=id==='live',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':N[A.leader],urg=live&&!noLeader&&A.left<=10;
@@ -2334,8 +2485,8 @@ function render(){
   $('pz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
   fit();paintBonus();
   $('nxt').hidden=!showNext;$('prz').hidden=isSoon;$('bid').hidden=isSoon;
-  $('rec').hidden=isSoon||!A.H.length;
-  paintSoon();paintBid();paintWin();paintHow();
+  $('rec').hidden=isSoon||A.leader<0;
+  paintSoon();paintHist();paintBid();paintWin();paintHow();
 }
 function paintWin(){
   const bids=Server.myBids();
@@ -2714,7 +2865,7 @@ lo.addEventListener('click',e=>{if(!e.detail||e.target!==lo)return;const r=lo.ge
    Cada evento chama exatamente os paint*() que o antigo código chamava. */
 Server.subscribe(ev=>{
   if(ev==='render'){render();paintMine()}
-  else if(ev==='tick'){paintBid();paintBonus()}
+  else if(ev==='tick'){paintBid();paintHist();paintBonus()}
   else if(ev==='tick-bid')paintBid();
   else if(ev==='soon')paintSoon();
   else if(ev==='bid'){paintHist();paintBid();hit();paintMine()}

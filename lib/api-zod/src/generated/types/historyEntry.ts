@@ -7,7 +7,10 @@
  */
 
 export interface HistoryEntry {
+  /** Index of the bidder in cfg.N. */
   n: number;
+  /** Bid amount in currency units. */
   v: number;
+  /** Seconds since this bid was overtaken by the next higher bid. */
   t: number;
 }

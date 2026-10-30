@@ -240,9 +240,9 @@ components:
     HistoryEntry:
       type: object
       properties:
-        n: { type: integer }
-        v: { type: number }
-        t: { type: integer }
+        n: { type: integer, description: Index of the bidder in cfg.N. }
+        v: { type: number, description: Bid amount in currency units. }
+        t: { type: integer, description: Seconds since this bid was overtaken by the next higher bid. }
       required: [n, v, t]
     User:
       type: object
