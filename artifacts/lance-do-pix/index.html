@@ -774,20 +774,15 @@ header .cta {
   color: var(--mu);
 }
 
-.hw span {
-  display: grid;
-  place-items: center;
+.hw svg {
+  display: block;
   width: 16px;
   height: 16px;
-  border: 1px solid currentColor;
-  border-radius: var(--r-round);
-  font-size: 11px;
-  line-height: 1;
-  font-weight: 800;
 }
 
-.hw:hover span {
+.hw:hover svg {
   background: var(--bn);
+  border-radius: var(--r-round);
 }
 
 .hw:focus-visible {
@@ -802,6 +797,8 @@ header .cta {
 }
 
 .sq {
+  display: grid;
+  place-items: center;
   width: 52px;
   height: 52px;
   border-radius: var(--r-sm);
@@ -1562,7 +1559,7 @@ html:has(dialog[open]) {
 .ok { margin: 14px 0 0; padding: 14px; border-radius: var(--r-xs); background: var(--bn); font-weight: 600; }
 .tb { color: var(--gt); font-weight: 800; text-decoration: underline; }
 #lfg { display: block; margin: 0 0 0 auto; padding: 12px 0 0; font-size: 14px; }
-.rot { width: 20px; height: 20px; border: 3px solid currentColor; border-right-color: transparent; border-radius: var(--r-round); animation: spn .7s linear infinite; }
+.rot { display: block; width: 20px; height: 20px; animation: spn .7s linear infinite; }
 @keyframes spn { to { transform: rotate(360deg); } }
 
 /* ══════════════════════════════════════════════════════════
@@ -1784,6 +1781,99 @@ import {
   signUp,
   updateProfile,
 } from "@workspace/api-client-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  Clock,
+  createIcons,
+  LoaderCircle,
+  Minus,
+  Pause,
+  Plus,
+  Trophy,
+  X,
+} from "lucide";
+
+/* Interface icons use Lucide; the brand marks and timer ring remain unchanged. */
+const LUCIDE_ICONS = {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  Clock,
+  LoaderCircle,
+  Minus,
+  Pause,
+  Plus,
+  Trophy,
+  X,
+};
+
+function lucideElement(name, size = 24, className = "") {
+  const host = document.createElement("span");
+  const placeholder = document.createElement("i");
+  placeholder.setAttribute("data-lucide", name);
+  placeholder.setAttribute("aria-hidden", "true");
+  if (className) placeholder.className = className;
+  host.append(placeholder);
+
+  createIcons({
+    icons: LUCIDE_ICONS,
+    root: host,
+    attrs: { "stroke-width": 2.4, "aria-hidden": "true" },
+  });
+
+  const svg = host.firstElementChild;
+  if (!svg || svg.tagName.toLowerCase() !== "svg") {
+    throw new Error(`Lucide failed to render the "${name}" icon.`);
+  }
+  svg.setAttribute("width", String(size));
+  svg.setAttribute("height", String(size));
+  svg.setAttribute("stroke-width", "2.4");
+  svg.setAttribute("aria-hidden", "true");
+  if (className) svg.classList.add(...className.split(/\s+/).filter(Boolean));
+  return svg;
+}
+
+function lucideMarkup(name, size = 24, className = "") {
+  return lucideElement(name, size, className)?.outerHTML ?? "";
+}
+
+function replaceWithLucide(selector, name) {
+  document.querySelectorAll(selector).forEach((original) => {
+    const size =
+      Number(original.getAttribute("width")) ||
+      Number(original.getAttribute("height")) ||
+      24;
+    const icon = lucideElement(
+      name,
+      size,
+      original.getAttribute("class") ?? "",
+    );
+    if (!icon) return;
+    for (const attribute of ["id", "hidden", "aria-hidden"]) {
+      if (original.hasAttribute(attribute)) {
+        icon.setAttribute(attribute, original.getAttribute(attribute) ?? "");
+      }
+    }
+    original.replaceWith(icon);
+  });
+}
+
+replaceWithLucide(".pl > svg", "plus");
+replaceWithLucide("#whoTrophy", "trophy");
+replaceWithLucide("button.mx:not(.bk) > svg", "x");
+replaceWithLucide("button.mx.bk > svg", "chevron-left");
+replaceWithLucide("button.lk > svg", "chevron-right");
+replaceWithLucide(".ck > svg", "check");
+document.querySelector(".hw > span")?.replaceWith(
+  lucideElement("circle-help", 16),
+);
+document.querySelector("#minus")?.replaceChildren(lucideElement("minus", 20));
+document.querySelector("#plusb")?.replaceChildren(lucideElement("plus", 20));
+replaceWithLucide(".rot", "loader-circle");
 
 const Server = (() => {
   const cfg = { V: [], N: [], TOTAL: 0, START: 0, STEP: 0 };
@@ -2127,13 +2217,12 @@ const S=[{id:'live',l:'ao vivo',c:'Ao vivo',s:()=>'Disputa rolando. Dê o maior 
 {id:'paused',l:'pausada',c:'Pausada',s:()=>'O tempo está parado. A disputa continua de onde parou assim que for retomada.'},
 {id:'ended',l:'encerrada',c:'Encerrada',s:n=>'Há um vencedor. '+n+' venceu a disputa e ganhou o prêmio.'},
 {id:'soon',l:'começa em breve',c:'Em breve',s:()=>''}];
-const CK='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
-const SIC=d=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
+const CK=lucideMarkup('check',22);
 const SI={
-  live:SIC('<circle class="wv" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>'),
-  paused:SIC('<rect x="6" y="5" width="4" height="14" rx="1.2" fill="currentColor" stroke="none"/><rect x="14" y="5" width="4" height="14" rx="1.2" fill="currentColor" stroke="none"/>'),
-  ended:SIC('<path d="M20 6 9 17l-5-5"/>'),
-  soon:SIC('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
+  live:'',
+  paused:lucideMarkup('pause',16),
+  ended:lucideMarkup('check',16),
+  soon:lucideMarkup('clock',16)
 };
 let myBid=0,seen=-1,activeVictoryBidId=null,bidSubmitting=false;
 const shownVictoryBidIds=new Set();
@@ -2161,7 +2250,7 @@ function paintHist(){
 }
 function paintBid(){
   const H=A.H,id=A.phase,ended=id==='ended',live=id==='live',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':N[A.leader],urg=live&&!noLeader&&A.left<=10;
-  $('sbl').textContent=urg?'Últimos segundos da disputa':id==='soon'?'A disputa começa em breve':'Disputa '+S[idx(id)].l;
+  $('sbl').textContent=urg?'Últimos segundos':id==='soon'?'A disputa começa em breve':'Disputa '+S[idx(id)].l;
   $('bl').textContent=ended?'Lance vencedor':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(A.value);
   $('whoTrophy').toggleAttribute('hidden',!(ended&&mine&&!noLeader));
@@ -2267,8 +2356,11 @@ $('vnx').hidden=true;
    SUG, DEF (valor inicial do modal), IC (ícones), num, clean, qr(). */
 const SUG=[20,50,100,200],DEF=30,dv=()=>DEF.toFixed(2).replace('.',','),am=$('am');$('amv').value=dv();
 const PS=[['paid','Confirmar simulação'],['expired','Expirar simulação'],['failed','Falhar simulação']];
-const SV=d=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
-const IC={ok:SV('<path d="M20 6 9 17l-5-5"/>'),x:SV('<path d="M6 6l12 12M18 6 6 18"/>'),clock:SV('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')};
+const IC={
+  ok:lucideMarkup('check'),
+  x:lucideMarkup('x'),
+  clock:lucideMarkup('clock')
+};
 const num=s=>{const n=parseFloat(String(s).replace(',','.'));return isNaN(n)?0:r2(n)};
 const clean=s=>{s=s.replace(/[.]/g,',').replace(/[^0-9,]/g,'');const i=s.indexOf(',');const a=(i<0?s:s.slice(0,i)).replace(/^0+(?=[0-9])/,'').slice(0,7);return i<0?a:a+','+s.slice(i+1).replace(/,/g,'').slice(0,2)};
 /* ═══ 6. COMPONENTES · render de créditos ═══
@@ -2321,7 +2413,7 @@ am.addEventListener('click',e=>{const r=am.getBoundingClientRect();if(e.clientX<
 /* ═══ 9. CONTA · avatar, modal de conta, meus lances e sessão ═══
    paintAvatar, paintAcct, paintBids (paintMine chama os três) e paintSession. Regras: Server.myBids, redeem, logout. */
 const ST={won:['w','Venceu'],leading:['l','Ganhando'],outbid:['','Superado']};
-const CKS='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+const CKS=lucideMarkup('check',14);
 const ini=()=>U.name.trim().charAt(0).toUpperCase();
 let redemptionBidId=null;
 function setRedemptionStep(step){

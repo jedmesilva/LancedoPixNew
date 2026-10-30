@@ -232,6 +232,10 @@ importers:
         version: 3.1.0
 
   artifacts/lance-do-pix:
+    dependencies:
+      lucide:
+        specifier: ^1.63.0
+        version: 1.63.0
     devDependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
@@ -2397,6 +2401,9 @@ packages:
     resolution: {integrity: sha512-7r1/yUuflQDSt4f1bpn5ZAocyIxcTyVyBBChSVtBKn5M+392cPmI5YJMWOJKk/HUWGm5wg83chlAZtCcGbEZtw==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  lucide@1.63.0:
+    resolution: {integrity: sha512-6CtfgyrMomXF6VY6ZpDo+VubrJMeLEI+bi1by/dTKES/eszfXAaivvfxs0SYgQhpeelgQEIkKMt1YbRIf6iR5Q==}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -4817,6 +4824,8 @@ snapshots:
   lucide-react@0.545.0(react@19.1.0):
     dependencies:
       react: 19.1.0
+
+  lucide@1.63.0: {}
 
   magic-string@0.30.21:
     dependencies:
