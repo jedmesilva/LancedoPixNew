@@ -850,12 +850,13 @@ header .cta {
 }
 
 .recent-crown {
-  display: inline-block;
+  display: block;
+  flex: 0 0 auto;
+  align-self: center;
   width: 17px;
   height: 17px;
   margin-left: 2px;
   color: var(--gt);
-  vertical-align: -3px;
 }
 
 .recent-bid[data-rank="1"] .recent-crown {
@@ -1956,6 +1957,7 @@ import {
   ChevronRight,
   CircleHelp,
   Clock,
+  Crown,
   createIcons,
   Lightbulb,
   LoaderCircle,
@@ -1973,6 +1975,7 @@ const LUCIDE_ICONS = {
   ChevronRight,
   CircleHelp,
   Clock,
+  Crown,
   Lightbulb,
   LoaderCircle,
   Minus,
@@ -2452,7 +2455,7 @@ function paintHist(){
   $('hist').innerHTML=rows.slice(0,5).map((row,index)=>{
     const rank=index+1,name=escapeHistoryText(N[row.n]??'Participante');
     const value=escapeHistoryText(brl(row.v)),label=escapeHistoryText(row.label);
-    const crown=row.current?'<svg class="recent-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 8 5.5 5 4.5-10 4.5 10L22 8v11H2V8Z"/><path d="M2 19h20"/></svg>':'';
+    const crown=row.current?lucideMarkup('crown',22,'recent-crown'):'';
     return '<div class="recent-bid" data-rank="'+rank+'" role="listitem" aria-label="'+rank+'º lance, '+name+', '+label+', '+value+'">'
       +'<span class="recent-rank" aria-hidden="true">'+rank+'º</span>'
       +'<span class="recent-person"><span class="recent-name">'+name+'</span>'+crown+'<span class="recent-time">'+label+'</span></span>'
