@@ -2182,6 +2182,11 @@ const Server = (() => {
       refresh().catch(reportError);
     }, 5000);
   };
+  const stopPolling = () => {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  };
   const refreshFromRealtime = async () => {
     if (refreshInFlight) {
       refreshQueued = true;
@@ -2230,6 +2235,7 @@ const Server = (() => {
     connection.addEventListener("open", () => {
       if (socket !== connection) return;
       reconnectDelay = 1_000;
+      stopPolling();
       void refreshFromRealtime();
     });
     connection.addEventListener("message", event => {
@@ -2291,7 +2297,6 @@ const Server = (() => {
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) void refreshFromRealtime();
     });
-    startPolling();
     connectWebSocket();
   };
 
@@ -2459,6 +2464,10 @@ function paintHist(){
       +'<b class="recent-value">'+value+'</b></div>';
   }).join('');
 }
+function paintHistorySection(){
+  $('rec').hidden=A.phase==='soon'||A.leader<0;
+  paintHist();
+}
 function paintBid(){
   const H=A.H,id=A.phase,ended=id==='ended',live=id==='live',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':N[A.leader],urg=live&&!noLeader&&A.left<=10;
   $('sbl').textContent=urg?'Últimos segundos':id==='soon'?'A disputa começa em breve':'Disputa '+S[idx(id)].l;
@@ -2505,8 +2514,8 @@ function render(){
   $('pz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
   fit();paintBonus();
   $('nxt').hidden=!showNext;$('prz').hidden=isSoon;$('bid').hidden=isSoon;
-  $('rec').hidden=isSoon||A.leader<0;
-  paintSoon();paintHist();paintBid();paintWin();paintHow();
+  paintHistorySection();
+  paintSoon();paintBid();paintWin();paintHow();
 }
 function paintWin(){
   const bids=Server.myBids();
@@ -2888,7 +2897,7 @@ Server.subscribe(ev=>{
   else if(ev==='tick'){paintBid();paintHist();paintBonus()}
   else if(ev==='tick-bid')paintBid();
   else if(ev==='soon')paintSoon();
-  else if(ev==='bid'){paintHist();paintBid();hit();paintMine()}
+  else if(ev==='bid'){paintHistorySection();paintBid();hit();paintMine()}
   else if(ev==='bids')paintMine();
   else if(ev==='session'){paintSession();paintMine()}
   else if(ev==='sheet')paintSheet();
