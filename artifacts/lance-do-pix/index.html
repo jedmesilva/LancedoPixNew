@@ -1826,6 +1826,7 @@ import {
   CircleHelp,
   Clock,
   createIcons,
+  Lightbulb,
   LoaderCircle,
   Minus,
   Pause,
@@ -1841,6 +1842,7 @@ const LUCIDE_ICONS = {
   ChevronRight,
   CircleHelp,
   Clock,
+  Lightbulb,
   LoaderCircle,
   Minus,
   Pause,
@@ -1901,6 +1903,7 @@ function replaceWithLucide(selector, name) {
 }
 
 replaceWithLucide(".pl > svg", "plus");
+replaceWithLucide("#tip .tip-heading > svg", "lightbulb");
 replaceWithLucide("#whoTrophy", "trophy");
 replaceWithLucide("button.mx:not(.bk) > svg", "x");
 replaceWithLucide("button.mx.bk > svg", "chevron-left");
