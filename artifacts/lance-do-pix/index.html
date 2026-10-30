@@ -849,7 +849,7 @@ header .cta {
   font-weight: 500;
 }
 
-.recent-crown {
+.recent-standing-icon {
   display: block;
   flex: 0 0 auto;
   align-self: center;
@@ -859,7 +859,7 @@ header .cta {
   color: var(--gt);
 }
 
-.recent-bid[data-rank="1"] .recent-crown {
+.recent-bid[data-rank="1"] .recent-standing-icon {
   width: 22px;
   height: 22px;
 }
@@ -890,7 +890,7 @@ header .cta {
     font-size: 14px;
   }
 
-  .recent-bid[data-rank="1"] .recent-crown {
+  .recent-bid[data-rank="1"] .recent-standing-icon {
     width: 20px;
     height: 20px;
   }
@@ -2444,7 +2444,7 @@ function paintHist(){
   const rows=[];
   if(A.leader>=0){
     const currentAge=Math.max(0,TOTAL-A.left);
-    const label=A.phase==='ended'?'Vencedor':A.phase==='live'?'Líder '+agoLabel(currentAge):'Líder atual';
+    const label=A.phase==='ended'?'Ganhou o prêmio':A.phase==='live'?'Líder '+agoLabel(currentAge):'Líder atual';
     rows.push({n:A.leader,v:A.value,label,current:true});
   }
   const elapsedSinceSnapshot=Number.isFinite(A.historyUpdatedAt)
@@ -2455,10 +2455,12 @@ function paintHist(){
   $('hist').innerHTML=rows.slice(0,5).map((row,index)=>{
     const rank=index+1,name=escapeHistoryText(N[row.n]??'Participante');
     const value=escapeHistoryText(brl(row.v)),label=escapeHistoryText(row.label);
-    const crown=row.current?lucideMarkup('crown',22,'recent-crown'):'';
+    const standingIcon=row.current
+      ?lucideMarkup(A.phase==='ended'?'trophy':'crown',22,'recent-standing-icon')
+      :'';
     return '<div class="recent-bid" data-rank="'+rank+'" role="listitem" aria-label="'+rank+'º lance, '+name+', '+label+', '+value+'">'
       +'<span class="recent-rank" aria-hidden="true">'+rank+'º</span>'
-      +'<span class="recent-person"><span class="recent-name">'+name+'</span>'+crown+'<span class="recent-time">'+label+'</span></span>'
+      +'<span class="recent-person"><span class="recent-name">'+name+'</span>'+standingIcon+'<span class="recent-time">'+label+'</span></span>'
       +'<b class="recent-value">'+value+'</b></div>';
   }).join('');
 }
