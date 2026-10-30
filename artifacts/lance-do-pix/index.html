@@ -2129,7 +2129,7 @@ const Server = (() => {
 
   async function refresh(initial = false) {
     const requestedAt = Date.now();
-    const value = await getLanceState();
+    const value = await getLanceState({ cache: "no-store" });
     const key = stableKey(value);
     apply(value, requestedAt, Date.now());
     const notice = document.getElementById("lae");
@@ -2182,11 +2182,6 @@ const Server = (() => {
       refresh().catch(reportError);
     }, 5000);
   };
-  const stopPolling = () => {
-    if (!pollTimer) return;
-    clearInterval(pollTimer);
-    pollTimer = null;
-  };
   const refreshFromRealtime = async () => {
     if (refreshInFlight) {
       refreshQueued = true;
@@ -2235,7 +2230,6 @@ const Server = (() => {
     connection.addEventListener("open", () => {
       if (socket !== connection) return;
       reconnectDelay = 1_000;
-      stopPolling();
       void refreshFromRealtime();
     });
     connection.addEventListener("message", event => {
@@ -2297,6 +2291,7 @@ const Server = (() => {
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) void refreshFromRealtime();
     });
+    startPolling();
     connectWebSocket();
   };
 
