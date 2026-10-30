@@ -2489,14 +2489,15 @@ function paintBid(){
   paintSheet();
 }
 function paintSheet(){
-  const id=A.phase,live=id==='live',ended=id==='ended',isSoon=id==='soon',mine=A.leader===0,min=Server.minBid(),c=$('cta'),g=$('cta2'),notify=A.notify,paid=A.paid;
+  const id=A.phase,live=id==='live',mine=A.leader===0,min=Server.minBid(),c=$('cta'),paid=A.paid;
   if(A.value!==seen){seen=A.value;myBid=min}
   if(myBid<min)myBid=min;
   const cost=Server.bidCost(myBid),show=U.signedIn&&live&&!mine,low=show&&W.bal<cost;
-  $('ctl').hidden=ended||isSoon;$('val').textContent=fmt(myBid);
-  if(isSoon){c.textContent='Aguardando início';c.disabled=true;g.hidden=true}
-  else if(ended){c.textContent=mine?(paid?'Solicitação registrada':'Solicitar resgate'):'Disputa encerrada';c.disabled=mine&&paid;g.hidden=true}
-  else{c.textContent=!live?'Disputa pausada':mine?'Seu lance é o maior':low?'Adicionar créditos':A.leader<0?'Dar o primeiro lance de '+brl(myBid):'Superar com '+brl(myBid);c.disabled=!live||mine;g.hidden=true}
+  $('ctl').hidden=false;$('val').textContent=fmt(myBid);
+  c.textContent=live
+    ?mine?'Seu lance é o maior':low?'Adicionar créditos':A.leader<0?'Dar o primeiro lance de '+brl(myBid):'Superar com '+brl(myBid)
+    :'Dar lance de '+brl(myBid);
+  c.disabled=!live||mine;
   if(bidSubmitting){c.textContent='Enviando lance…';c.disabled=true;c.dataset.loading='';c.setAttribute('aria-busy','true')}
   else{delete c.dataset.loading;c.removeAttribute('aria-busy')}
   const cn=$('cn');cn.hidden=!low;
