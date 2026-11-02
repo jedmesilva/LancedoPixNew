@@ -3050,9 +3050,41 @@ const SI={
 let myBid=0,seen=-1,activeVictoryBidId=null,bidSubmitting=false;
 const shownVictoryBidIds=new Set();
 let victoryOwner=null;
+let lastRenderedPhase=null;
+const reducedMotionPreference=window.matchMedia('(prefers-reduced-motion: reduce)');
+const visibilityTransitions=new WeakMap();
 const idx=id=>S.findIndex(s=>s.id===id);
 /* ═══ 2. COMPONENTES · render da disputa ═══
    Cada paint*() é o único lugar que escreve no DOM do seu componente. */
+function transitionVisibility(element,visible,{animate=true,duration=320,delay=0}={}){
+  const active=visibilityTransitions.get(element);
+  if(active?.visible===visible)return;
+  if(active){active.animation.cancel();visibilityTransitions.delete(element)}
+  element.inert=!visible;
+  if((!element.hidden)===visible)return;
+  if(!animate||reducedMotionPreference.matches||typeof element.animate!=='function'){
+    element.hidden=!visible;
+    return;
+  }
+  if(visible)element.hidden=false;
+  const animation=element.animate(
+    visible
+      ?[{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}]
+      :[{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-7px)'}],
+    {duration,delay,easing:'cubic-bezier(.2,0,0,1)',fill:'both'}
+  );
+  const transition={animation,visible};
+  visibilityTransitions.set(element,transition);
+  animation.onfinish=()=>{
+    if(visibilityTransitions.get(element)!==transition)return;
+    if(!visible)element.hidden=true;
+    visibilityTransitions.delete(element);
+    animation.cancel();
+  };
+  animation.oncancel=()=>{
+    if(visibilityTransitions.get(element)===transition)visibilityTransitions.delete(element);
+  };
+}
 function fit(){
   for(const id of ['pz','rpz']){
     const e=$(id);if(!e)continue;
@@ -3088,22 +3120,46 @@ function escapeHistoryText(value){
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   })[character]);
 }
-function paintHist(){
-  $('hist').innerHTML=A.H.slice(0,4).map((h,index)=>{
+function paintHist(animateLatest=false){
+  const history=$('hist');
+  const previousPositions=animateLatest&&!reducedMotionPreference.matches
+    ?new Map([...history.children].map(row=>[row.dataset.historyKey,row.getBoundingClientRect().top]))
+    :null;
+  history.innerHTML=A.H.slice(0,4).map((h,index)=>{
     const rank=index+1,name=escapeHistoryText(Server.cfg.N[h.n]??'Participante');
     const value=escapeHistoryText(brl(h.v));
     const label=escapeHistoryText(agoLabel((Server.now()-h.at)/1000));
     const remainingSeconds=Math.max(0,Math.floor(h.t));
     const remainingLabel=plural(remainingSeconds,'segundo restante','segundos restantes');
     const scale=(.86-index*.08).toFixed(2),opacity=(1-index*.09).toFixed(2);
-    return '<div class="wn hr" data-rank="'+rank+'" style="--s:'+scale+';--o:'+opacity+'" role="listitem" aria-label="'+rank+'º lance, '+name+', '+value+', '+label+', superado com '+remainingLabel+'">'
+    const key=String(h.at)+'-'+String(h.n)+'-'+String(h.v);
+    return '<div class="wn hr" data-history-key="'+key+'" data-rank="'+rank+'" style="--s:'+scale+';--o:'+opacity+'" role="listitem" aria-label="'+rank+'º lance, '+name+', '+value+', '+label+', superado com '+remainingLabel+'">'
       +'<div class="wn-lb"><span class="wn-k">'+label+'</span><strong class="wn-vl">'+value+'</strong><b>'+name+'</b></div>'
       +'<span class="wn-tm" aria-hidden="true">'+remainingSeconds+'s<small>'+(remainingSeconds===1?'restante':'restantes')+'</small></span></div>';
   }).join('');
+  if(!animateLatest||!previousPositions)return;
+  for(const row of history.children){
+    const previousTop=previousPositions.get(row.dataset.historyKey);
+    if(previousTop===undefined){
+      row.animate(
+        [{opacity:0,transform:'translateY(-12px) scale(.985)'},{opacity:1,transform:'translateY(0) scale(1)'}],
+        {duration:420,easing:'cubic-bezier(.2,0,0,1)'}
+      );
+      continue;
+    }
+    const offset=previousTop-row.getBoundingClientRect().top;
+    if(Math.abs(offset)>1){
+      row.animate(
+        [{transform:'translateY('+offset+'px)'},{transform:'translateY(0)'}],
+        {duration:420,easing:'cubic-bezier(.2,0,0,1)'}
+      );
+    }
+  }
 }
-function paintHistorySection(){
-  $('rec').hidden=A.phase==='soon'||A.phase==='ended'||A.H.length===0;
-  paintHist();
+function paintHistorySection({animateLatest=false,animateVisibility=true}={}){
+  const visible=A.phase!=='soon'&&A.phase!=='ended'&&A.H.length>0;
+  transitionVisibility($('rec'),visible,{animate:animateVisibility,duration:260});
+  paintHist(animateLatest);
 }
 function paintBid(){
   const H=A.H,id=A.phase,live=id==='live',paused=id==='paused',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':(Server.cfg.N[A.leader]??'Participante'),urg=live&&!noLeader&&A.left<=10;
@@ -3153,18 +3209,36 @@ function paintSheet(){
   $('vok').textContent=paid?'Solicitação registrada':'Solicitar resgate';$('vok').disabled=paid;
   $('app').style.paddingBottom=($('sheet').offsetHeight+24)+'px';
 }
-function render(){
+function render(animateTransitions=true){
   const id=A.phase,isSoon=id==='soon',ended=id==='ended';
   const showNext=isSoon||ended;
-  $('nxt').hidden=!showNext;
-  $('prz').hidden=isSoon||ended;
-  $('res').hidden=!ended;
+  const phaseChanged=lastRenderedPhase!==null&&lastRenderedPhase!==id;
+  transitionVisibility($('nxt'),showNext,{
+    animate:animateTransitions,
+    duration:340,
+    delay:ended?80:0
+  });
+  transitionVisibility($('res'),ended,{
+    animate:animateTransitions,
+    duration:380
+  });
+  transitionVisibility($('prz'),!isSoon&&!ended,{
+    animate:animateTransitions,
+    duration:300
+  });
   $('pz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
   paintBonus();
   if(ended)paintResult();
   fit();
-  paintHistorySection();
+  paintHistorySection({animateVisibility:animateTransitions});
   paintSoon();paintBid();paintWin();paintHow();
+  if(animateTransitions&&phaseChanged&&(id==='live'||id==='paused')&&!reducedMotionPreference.matches){
+    $('lvg').animate(
+      [{opacity:.55,transform:'translateY(3px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:260,easing:'cubic-bezier(.2,0,0,1)'}
+    );
+  }
+  lastRenderedPhase=id;
 }
 function paintWin(){
   const bids=Server.myBids();
@@ -3547,7 +3621,7 @@ Server.subscribe(ev=>{
   else if(ev==='historyTick')paintHist();
   else if(ev==='tick-bid')paintBid();
   else if(ev==='soon')paintSoon();
-  else if(ev==='bid'){paintHistorySection();paintBid();hit();paintMine()}
+  else if(ev==='bid'){paintHistorySection({animateLatest:true});paintBid();hit();paintMine()}
   else if(ev==='bids')paintMine();
   else if(ev==='session'){paintSession();paintMine()}
   else if(ev==='sheet')paintSheet();
@@ -3557,7 +3631,7 @@ Server.subscribe(ev=>{
 /* ═══ 11. INIT ═══ */
 paintBal();paintMine();paintSession();
 addEventListener('resize',()=>{fit();paintSheet()});
-paintHist();render();
+paintHist();render(false);
 $('loading-screen').hidden=true;
 document.querySelectorAll('[data-loading-inert]').forEach(element=>{
   element.inert=false;
