@@ -1,12 +1,12 @@
 ---
-name: Lance do Pix real activity
-description: User requirement to keep displayed participants, balances, and bids grounded in real database activity.
+name: Lance do Pix database source of truth
+description: Product requirement that test and real domain data live in the database and the client only renders persisted state.
 ---
 
-Do not auto-create sample accounts, test-bot participants, artificial wallet credits, automated bids, or numeric transaction examples in user-facing flows. Participants, balances, and bids shown must come from persistent database records. If the database lacks valid records, show an empty state or require explicit provisioning rather than inventing data. Do not delete existing database records without the user's explicit approval.
+All domain data must be persisted in the database regardless of whether it is for testing or real activity. The client must only consume and render database-backed API state; it must not invent users, balances, bids, disputes, or sample transaction activity. Server-side engines may create dispute rows, and a test bot may place bids, provided those records and wallet movements are persisted. The bot should reuse one existing database user and wallet rather than creating users repeatedly. Avoid static numeric transaction examples presented as activity. Do not delete existing database records without the user's explicit approval.
 
-Keep real authentication-provider and payment-provider integrations out of scope until explicitly requested. A database record created by a simulated payment is still not real payment-backed credit.
+Do not assume test-mode data is forbidden or that real authentication/payment-provider integrations are requested. Distinguish records persisted in the database from externally settled money, and describe simulated payment credit accurately.
 
-**Why:** On 2026-11-02, the user said this app must not load example data or content and that users, credits, and bids must be real database data.
+**Why:** On 2026-11-02, the user clarified that test and real activity are both acceptable, but users, credits, bids, and disputes must be database records, with dispute generation performed by the server-side engine.
 
-**How to apply:** Remove runtime test-account/bot generation and fake balance/bid paths from the live product flow. Use verified payment settlement or an explicitly authorized real ledger process for credits; ask before choosing a payment provider or deleting historical test data.
+**How to apply:** Keep domain behavior in the server and persist state changes before broadcasting them. Reuse a stable database-backed bot identity, have the client fetch live state, remove client-side sample activity, and ask before deleting historical test data.

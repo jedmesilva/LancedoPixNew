@@ -1,4 +1,4 @@
-- [Lance do Pix real activity](lance-do-pix-demo-scope.md) — No sample accounts, balances, bot bids, or transaction examples; don't delete existing database records without approval.
+- [Lance do Pix database source of truth](lance-do-pix-demo-scope.md) — Persist all domain data, including test activity; clients only consume database-backed API state.
 - [Dispute cash accounting](dispute-cash-accounting.md) — Track bid revenue and bonus eligibility per dispute; don't pool one dispute's revenue into another's bonus.
 - [Drizzle schema push compatibility](drizzle-schema-push-compatibility.md) — PostgreSQL bytea and generated bigint identity columns need Drizzle-specific schema handling here.
 - [Victory notice after dispute transitions](victory-notice-after-transition.md) — Show new wins immediately, but never replay historical victory modals on reload.
