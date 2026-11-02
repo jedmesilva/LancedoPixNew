@@ -4,6 +4,6 @@
 - [Victory notice after dispute transitions](victory-notice-after-transition.md) — Show new wins immediately, but never replay historical victory modals on reload.
 - [Realtime dispute synchronization](realtime-dispute-sync.md) — Keep the dispute, bids, statuses, and absolute timers shared; WebSockets signal updates while authenticated API reads carry private account data.
 - [Direct UI implementation](direct-ui-implementation.md) — For requested app changes, edit and verify the app directly; use canvas only when the user asks for it.
-- [Recent-bid hierarchy](recent-bid-visual-hierarchy.md) — Emphasize the current leader with typography and a crown, not a colored row background.
+- [Recent-bid hierarchy](recent-bid-visual-hierarchy.md) — Keep the current leader in the hero; show only superseded bids in the unfilled, descending-scale history list.
 - [Inactive bid panel](bid-panel-inactive-state.md) — Keep bidding controls visible but disabled outside a live dispute; don't replace them with redemption or notification actions.
 - [Exact recent-bid age](exact-recent-bid-age.md) — Show exact seconds for recent bids; avoid estimates such as “há poucos segundos.”
