@@ -6,10 +6,17 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type UpdateProfileBody = {
+export interface SignUpInput {
   /**
      * @minLength 2
      * @maxLength 80
      */
   name: string;
-};
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+}

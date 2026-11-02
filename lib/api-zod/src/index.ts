@@ -32,3 +32,4 @@ export type {
   User,
   Wallet,
 } from "./generated/types";
+export * from './generated/types';

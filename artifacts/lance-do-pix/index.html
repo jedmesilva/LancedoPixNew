@@ -1164,12 +1164,20 @@ header .cta {
 }
 
 .wn.hr .wn-tm {
-  display: block;
-  max-width: 130px;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
   color: var(--mu);
-  font: 700 max(12px,calc(14px * var(--s,1)))/1.2 var(--font-body);
+  font: 700 max(13px,calc(16px * var(--s,1)))/1.2 var(--font-display);
+  font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
+}
+
+.wn.hr .wn-tm small {
+  color: var(--mu);
+  font: 600 max(10px,calc(11px * var(--s,1)))/1.2 var(--font-body);
 }
 
 @media (max-width: 480px) {
@@ -1179,9 +1187,7 @@ header .cta {
   }
 
   .wn.hr .wn-tm {
-    max-width: 112px;
-    font-size: 12px;
-    white-space: normal;
+    font-size: 13px;
   }
 }
 
@@ -2370,7 +2376,6 @@ const Server = (() => {
         left: 0,
         soon: 0,
         bonusSecs: 0,
-        H: snapshot.auction.H.map(entry => ({ ...entry, t: 0 })),
       },
       wallet: {
         ...snapshot.wallet,
@@ -2402,7 +2407,6 @@ const Server = (() => {
     }
     Object.assign(cfg, value.cfg);
     Object.assign(A, value.auction);
-    A.historyUpdatedAt = receivedAt;
     Object.assign(W, value.wallet);
     Object.assign(U, value.user);
     syncTimers();
@@ -2557,11 +2561,19 @@ const Server = (() => {
   const startRealtime = () => {
     if (realtimeStarted) return;
     realtimeStarted = true;
+    let previousHistorySecond = -1;
     localClockTimer = setInterval(() => {
       const previousLeft = A.left;
       const previousSoon = A.soon;
       const previousPaymentLeft = W.pay?.left;
       syncTimers();
+      const historySecond = Math.floor(
+        (Date.now() + serverClockOffset) / 1000,
+      );
+      if (historySecond !== previousHistorySecond) {
+        previousHistorySecond = historySecond;
+        if (A.phase === "paused" && A.H.length) emit("historyTick");
+      }
       if (A.phase === "live" && A.left !== previousLeft) emit("tick");
       else if (
         (A.phase === "soon" || A.phase === "ended") &&
@@ -2592,6 +2604,7 @@ const Server = (() => {
   return {
     cfg,
     r2,
+    now: () => Date.now() + serverClockOffset,
     auction: A,
     wallet: W,
     user: U,
@@ -2726,10 +2739,10 @@ function paintSoon(){
 function agoLabel(seconds){
   const value=Math.max(0,Math.floor(seconds));
   if(value===0)return 'agora';
-  if(value<60)return 'há '+plural(value,'segundo','segundos');
+  if(value<60)return 'Há '+plural(value,'segundo','segundos');
   const minutes=Math.floor(value/60);
-  if(minutes<60)return 'há '+minutes+' min';
-  return 'há '+Math.floor(minutes/60)+' h';
+  if(minutes<60)return 'Há '+plural(minutes,'minuto','minutos');
+  return 'Há '+plural(Math.floor(minutes/60),'hora','horas');
 }
 function escapeHistoryText(value){
   return String(value).replace(/[&<>"']/g,character=>({
@@ -2737,16 +2750,16 @@ function escapeHistoryText(value){
   })[character]);
 }
 function paintHist(){
-  const elapsedSinceSnapshot=Number.isFinite(A.historyUpdatedAt)
-    ?Math.max(0,Math.floor((Date.now()-A.historyUpdatedAt)/1000)):0;
   $('hist').innerHTML=A.H.slice(0,4).map((h,index)=>{
     const rank=index+1,name=escapeHistoryText(N[h.n]??'Participante');
     const value=escapeHistoryText(brl(h.v));
-    const label=escapeHistoryText(agoLabel(h.t+elapsedSinceSnapshot));
+    const label=escapeHistoryText(agoLabel((Server.now()-h.at)/1000));
+    const remainingSeconds=Math.max(0,Math.floor(h.t));
+    const remainingLabel=plural(remainingSeconds,'segundo restante','segundos restantes');
     const scale=(.86-index*.08).toFixed(2),opacity=(1-index*.09).toFixed(2);
-    return '<div class="wn hr" data-rank="'+rank+'" style="--s:'+scale+';--o:'+opacity+'" role="listitem" aria-label="'+rank+'º lance, '+name+', superado '+label+', '+value+'">'
-      +'<div class="wn-lb"><span class="wn-k">Lance superado</span><strong class="wn-vl">'+value+'</strong><b>'+name+'</b></div>'
-      +'<span class="wn-tm">'+label+'</span></div>';
+    return '<div class="wn hr" data-rank="'+rank+'" style="--s:'+scale+';--o:'+opacity+'" role="listitem" aria-label="'+rank+'º lance, '+name+', '+value+', '+label+', superado com '+remainingLabel+'">'
+      +'<div class="wn-lb"><span class="wn-k">'+label+'</span><strong class="wn-vl">'+value+'</strong><b>'+name+'</b></div>'
+      +'<span class="wn-tm" aria-hidden="true">'+remainingSeconds+'s<small>'+(remainingSeconds===1?'restante':'restantes')+'</small></span></div>';
   }).join('');
 }
 function paintHistorySection(){
@@ -3192,6 +3205,7 @@ lo.addEventListener('click',e=>{if(!e.detail||e.target!==lo)return;const r=lo.ge
 Server.subscribe(ev=>{
   if(ev==='render'){render();paintMine()}
   else if(ev==='tick'){paintBid();paintHist();paintBonus()}
+  else if(ev==='historyTick')paintHist();
   else if(ev==='tick-bid')paintBid();
   else if(ev==='soon')paintSoon();
   else if(ev==='bid'){paintHistorySection();paintBid();hit();paintMine()}

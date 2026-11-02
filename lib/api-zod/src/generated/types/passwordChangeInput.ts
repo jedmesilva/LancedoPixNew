@@ -6,17 +6,15 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type SignUpBody = {
+export interface PasswordChangeInput {
   /**
-     * @minLength 2
-     * @maxLength 80
+     * @minLength 1
+     * @maxLength 128
      */
-  name: string;
-  /** @maxLength 254 */
-  email: string;
+  currentPassword: string;
   /**
      * @minLength 8
      * @maxLength 128
      */
-  password: string;
-};
+  newPassword: string;
+}

@@ -6,7 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type SignInBody = {
+export interface SignInInput {
   /** @maxLength 254 */
   email: string;
   /**
@@ -14,4 +14,4 @@ export type SignInBody = {
      * @maxLength 128
      */
   password: string;
-};
+}

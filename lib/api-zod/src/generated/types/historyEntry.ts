@@ -11,6 +11,8 @@ export interface HistoryEntry {
   n: number;
   /** Bid amount in currency units. */
   v: number;
-  /** Seconds since this bid was overtaken by the next higher bid. */
+  /** Unix timestamp in milliseconds when this bid was placed. */
+  at: number;
+  /** Seconds remaining on this bid when it was overtaken. */
   t: number;
 }

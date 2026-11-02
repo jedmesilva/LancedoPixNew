@@ -185,7 +185,8 @@ export const GetLanceStateResponse = zod.object({
   "H": zod.array(zod.object({
   "n": zod.number().int().describe('Index of the bidder in cfg.N.'),
   "v": zod.number().describe('Bid amount in currency units.'),
-  "t": zod.number().int().describe('Seconds since this bid was overtaken by the next higher bid.')
+  "at": zod.number().int().describe('Unix timestamp in milliseconds when this bid was placed.'),
+  "t": zod.number().int().describe('Seconds remaining on this bid when it was overtaken.')
 })),
   "paid": zod.boolean(),
   "minimumBid": zod.number(),
@@ -283,7 +284,8 @@ export const PostLanceActionResponse = zod.object({
   "H": zod.array(zod.object({
   "n": zod.number().int().describe('Index of the bidder in cfg.N.'),
   "v": zod.number().describe('Bid amount in currency units.'),
-  "t": zod.number().int().describe('Seconds since this bid was overtaken by the next higher bid.')
+  "at": zod.number().int().describe('Unix timestamp in milliseconds when this bid was placed.'),
+  "t": zod.number().int().describe('Seconds remaining on this bid when it was overtaken.')
 })),
   "paid": zod.boolean(),
   "minimumBid": zod.number(),

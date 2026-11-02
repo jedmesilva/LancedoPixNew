@@ -9,6 +9,52 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface SignUpInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  name: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface SignInInput {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface ProfileUpdateInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  name: string;
+}
+
+export interface PasswordChangeInput {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  currentPassword: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  newPassword: string;
+}
+
 export interface ApiError {
   error: string;
 }
@@ -23,7 +69,9 @@ export interface HistoryEntry {
   n: number;
   /** Bid amount in currency units. */
   v: number;
-  /** Seconds since this bid was overtaken by the next higher bid. */
+  /** Unix timestamp in milliseconds when this bid was placed. */
+  at: number;
+  /** Seconds remaining on this bid when it was overtaken. */
   t: number;
 }
 
@@ -224,53 +272,7 @@ export interface LanceActionResponse {
   state: LanceState;
 }
 
-export type SignUpBody = {
-  /**
-     * @minLength 2
-     * @maxLength 80
-     */
-  name: string;
-  /** @maxLength 254 */
-  email: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  password: string;
-};
-
-export type SignInBody = {
-  /** @maxLength 254 */
-  email: string;
-  /**
-     * @minLength 1
-     * @maxLength 128
-     */
-  password: string;
-};
-
 export type SignOut200 = {
   ok: boolean;
-};
-
-export type UpdateProfileBody = {
-  /**
-     * @minLength 2
-     * @maxLength 80
-     */
-  name: string;
-};
-
-export type ChangePasswordBody = {
-  /**
-     * @minLength 1
-     * @maxLength 128
-     */
-  currentPassword: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  newPassword: string;
 };
 

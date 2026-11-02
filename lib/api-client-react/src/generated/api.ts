@@ -22,15 +22,15 @@ import type {
 import type {
   ApiError,
   AuthSession,
-  ChangePasswordBody,
   HealthStatus,
   LanceAction,
   LanceActionResponse,
   LanceState,
-  SignInBody,
+  PasswordChangeInput,
+  ProfileUpdateInput,
+  SignInInput,
   SignOut200,
-  SignUpBody,
-  UpdateProfileBody
+  SignUpInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -225,7 +225,7 @@ export const getSignUpUrl = () => {
 /**
  * @summary Criar conta com e-mail e senha
  */
-export const signUp = async (signUpBody: SignUpBody, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
+export const signUp = async (signUpInput: SignUpInput, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -246,7 +246,7 @@ return customFetch<AuthSession>(getSignUpUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(signUpBody)
+    body: JSON.stringify(signUpInput)
   }
 );}
 
@@ -284,9 +284,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SignUpMutationResult = NonNullable<Awaited<ReturnType<typeof signUp>>>
-    export type SignUpMutationBody = BodyType<SignUpBody>
+    export type SignUpMutationBody = BodyType<SignUpInput>
     export type SignUpMutationError = ErrorType<ApiError>
-    export type SignUpMutationVariables = {data: BodyType<SignUpBody>}
+    export type SignUpMutationVariables = {data: BodyType<SignUpInput>}
 
     /**
  * @summary Criar conta com e-mail e senha
@@ -313,7 +313,7 @@ export const getSignInUrl = () => {
 /**
  * @summary Entrar com e-mail e senha
  */
-export const signIn = async (signInBody: SignInBody, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
+export const signIn = async (signInInput: SignInInput, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -334,7 +334,7 @@ return customFetch<AuthSession>(getSignInUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(signInBody)
+    body: JSON.stringify(signInInput)
   }
 );}
 
@@ -372,9 +372,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SignInMutationResult = NonNullable<Awaited<ReturnType<typeof signIn>>>
-    export type SignInMutationBody = BodyType<SignInBody>
+    export type SignInMutationBody = BodyType<SignInInput>
     export type SignInMutationError = ErrorType<ApiError>
-    export type SignInMutationVariables = {data: BodyType<SignInBody>}
+    export type SignInMutationVariables = {data: BodyType<SignInInput>}
 
     /**
  * @summary Entrar com e-mail e senha
@@ -549,7 +549,7 @@ export const getUpdateProfileUrl = () => {
 /**
  * @summary Atualizar o nome da conta atual
  */
-export const updateProfile = async (updateProfileBody: UpdateProfileBody, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
+export const updateProfile = async (profileUpdateInput: ProfileUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -570,7 +570,7 @@ return customFetch<AuthSession>(getUpdateProfileUrl(),
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(updateProfileBody)
+    body: JSON.stringify(profileUpdateInput)
   }
 );}
 
@@ -608,9 +608,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type UpdateProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfile>>>
-    export type UpdateProfileMutationBody = BodyType<UpdateProfileBody>
+    export type UpdateProfileMutationBody = BodyType<ProfileUpdateInput>
     export type UpdateProfileMutationError = ErrorType<ApiError>
-    export type UpdateProfileMutationVariables = {data: BodyType<UpdateProfileBody>}
+    export type UpdateProfileMutationVariables = {data: BodyType<ProfileUpdateInput>}
 
     /**
  * @summary Atualizar o nome da conta atual
@@ -637,7 +637,7 @@ export const getChangePasswordUrl = () => {
 /**
  * @summary Alterar a senha da conta atual
  */
-export const changePassword = async (changePasswordBody: ChangePasswordBody, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
+export const changePassword = async (passwordChangeInput: PasswordChangeInput, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -658,7 +658,7 @@ return customFetch<AuthSession>(getChangePasswordUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(changePasswordBody)
+    body: JSON.stringify(passwordChangeInput)
   }
 );}
 
@@ -696,9 +696,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ChangePasswordMutationResult = NonNullable<Awaited<ReturnType<typeof changePassword>>>
-    export type ChangePasswordMutationBody = BodyType<ChangePasswordBody>
+    export type ChangePasswordMutationBody = BodyType<PasswordChangeInput>
     export type ChangePasswordMutationError = ErrorType<ApiError>
-    export type ChangePasswordMutationVariables = {data: BodyType<ChangePasswordBody>}
+    export type ChangePasswordMutationVariables = {data: BodyType<PasswordChangeInput>}
 
     /**
  * @summary Alterar a senha da conta atual
