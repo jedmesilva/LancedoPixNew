@@ -9,6 +9,8 @@ Keep the prototype icon beside the “Lance atual” label. Do not add visible c
 
 Use the primary text color for the current bidder name and ordinary timer digits, not the green accent. Reserve green for status accents and red for timer urgency.
 
-**Why:** The prototype separates the active bid from bid history, and the user asked for exact recency values rather than estimates such as “há poucos segundos.” The user also corrected the extra timer caption, requested the missing label icon, and rejected green on the name and timer.
+Animate the current-bid highlight whenever a new live bid arrives, whether the leader is the signed-in user or another participant. Do not replay it on initial load, timer updates, or round transitions.
 
-**How to apply:** Do not repeat the current leader in the history list. Use precise elapsed-time labels and make older rows visually subordinate without adding a colored background. Keep the icon in the label wrapper while updating its text dynamically; do not add visible text below the timer ring. Keep the bidder and timer dark except for the timer's urgent red state.
+**Why:** The prototype separates the active bid from bid history, and the user asked for exact recency values rather than estimates such as “há poucos segundos.” The user also corrected the extra timer caption, requested the missing label icon, rejected green on the name and timer, and asked for the bid effect on bids from everyone.
+
+**How to apply:** Do not repeat the current leader in the history list. Use precise elapsed-time labels and make older rows visually subordinate without adding a colored background. Keep the icon in the label wrapper while updating its text dynamically; do not add visible text below the timer ring. Keep the bidder and timer dark except for the timer's urgent red state. Emit the highlight only when a same-round live bid increases the leader value; local bid success already emits it directly.

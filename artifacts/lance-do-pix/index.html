@@ -2424,6 +2424,8 @@ const Server = (() => {
     const requestedAt = Date.now();
     const value = await getLanceState({ cache: "no-store" });
     const key = stableKey(value);
+    const previousRound = A.round;
+    const previousValue = A.value;
     apply(value, requestedAt, Date.now());
     const notice = document.getElementById("lae");
     if (notice) notice.hidden = true;
@@ -2433,7 +2435,11 @@ const Server = (() => {
     }
     if (key !== lastStableState) {
       lastStableState = key;
-      emit("render");
+      const newLiveBid =
+        value.auction.phase === "live" &&
+        value.auction.round === previousRound &&
+        value.auction.value > previousValue;
+      emit(newLiveBid ? "bid" : "render");
       emit("wallet");
       emit("session");
       emit("bids");
