@@ -1,10 +1,12 @@
 ---
-name: Lance do Pix demo scope
-description: Product boundary for the prototype's login, wallet, and Pix flows.
+name: Lance do Pix real activity
+description: User requirement to keep displayed participants, balances, and bids grounded in real database activity.
 ---
 
-Keep the account, wallet, and Pix flows as demonstrations. Do not connect real authentication or process real payments unless the user explicitly requests it.
+Do not auto-create sample accounts, test-bot participants, artificial wallet credits, automated bids, or numeric transaction examples in user-facing flows. Participants, balances, and bids shown must come from persistent database records. If the database lacks valid records, show an empty state or require explicit provisioning rather than inventing data. Do not delete existing database records without the user's explicit approval.
 
-**Why:** The user chose to keep the prototype's demo profile, and the current product flow is a simulation.
+Keep real authentication-provider and payment-provider integrations out of scope until explicitly requested. A database record created by a simulated payment is still not real payment-backed credit.
 
-**How to apply:** Keep session state isolated for the demo and label or treat Pix outcomes as simulated; ask before replacing those flows with real services.
+**Why:** On 2026-11-02, the user said this app must not load example data or content and that users, credits, and bids must be real database data.
+
+**How to apply:** Remove runtime test-account/bot generation and fake balance/bid paths from the live product flow. Use verified payment settlement or an explicitly authorized real ledger process for credits; ask before choosing a payment provider or deleting historical test data.
