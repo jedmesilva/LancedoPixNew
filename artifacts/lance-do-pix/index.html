@@ -3027,7 +3027,7 @@ try {
 /* ═══ 1. CONFIG, UTILITÁRIOS E ESTADO DE TELA ═══
    $, fmt, brl, mmss, plural, dur, textos dos estados (S) e rascunho do lance (myBid). */
 const $=id=>document.getElementById(id);
-const {V,N,TOTAL,START,STEP}=Server.cfg,r2=Server.r2,A=Server.auction,W=Server.wallet,U=Server.user;
+const {V,TOTAL,START,STEP}=Server.cfg,r2=Server.r2,A=Server.auction,W=Server.wallet,U=Server.user;
 const fmt=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const brl=n=>'R$\u00a0'+fmt(n);
 const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -3090,7 +3090,7 @@ function escapeHistoryText(value){
 }
 function paintHist(){
   $('hist').innerHTML=A.H.slice(0,4).map((h,index)=>{
-    const rank=index+1,name=escapeHistoryText(N[h.n]??'Participante');
+    const rank=index+1,name=escapeHistoryText(Server.cfg.N[h.n]??'Participante');
     const value=escapeHistoryText(brl(h.v));
     const label=escapeHistoryText(agoLabel((Server.now()-h.at)/1000));
     const remainingSeconds=Math.max(0,Math.floor(h.t));
@@ -3106,7 +3106,7 @@ function paintHistorySection(){
   paintHist();
 }
 function paintBid(){
-  const H=A.H,id=A.phase,live=id==='live',paused=id==='paused',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':(N[A.leader]??'Participante'),urg=live&&!noLeader&&A.left<=10;
+  const H=A.H,id=A.phase,live=id==='live',paused=id==='paused',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':(Server.cfg.N[A.leader]??'Participante'),urg=live&&!noLeader&&A.left<=10;
   $('lvs').textContent=paused?'Disputa pausada':'Disputa ao vivo';
   $('lvg').dataset.p=paused?'paused':'live';
   $('bl').textContent=noLeader?'Primeiro lance':'Lance atual';
@@ -3131,7 +3131,7 @@ function paintResult(){
   const bonus=Server.bonus(),b=$('rbn');
   $('rpz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
   $('rwv').textContent=brl(A.value);
-  $('rwt').textContent=A.leader<0?'Sem vencedor':A.leader===0?'Você venceu!':(N[A.leader]??'Participante')+' venceu';
+  $('rwt').textContent=A.leader<0?'Sem vencedor':A.leader===0?'Você venceu!':(Server.cfg.N[A.leader]??'Participante')+' venceu';
   b.hidden=bonus===null;
   if(bonus!==null)b.textContent='+ R$ '+fmt(bonus)+' de bônus';
 }
