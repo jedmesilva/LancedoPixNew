@@ -2567,6 +2567,10 @@ import {
   updateProfile,
 } from "@workspace/api-client-react";
 import {
+  describeRemainingBidTime,
+  formatRemainingBidTime,
+} from "./src/lib/remaining-bid-time";
+import {
   Check,
   ChevronLeft,
   ChevronRight,
@@ -3130,12 +3134,13 @@ function paintHist(animateLatest=false){
     const value=escapeHistoryText(brl(h.v));
     const label=escapeHistoryText(agoLabel((Server.now()-h.at)/1000));
     const remainingSeconds=Math.max(0,Math.floor(h.t));
-    const remainingLabel=plural(remainingSeconds,'segundo restante','segundos restantes');
+    const remainingLabel=escapeHistoryText(describeRemainingBidTime(remainingSeconds));
+    const remainingTime=escapeHistoryText(formatRemainingBidTime(remainingSeconds));
     const scale=(.86-index*.08).toFixed(2),opacity=(1-index*.09).toFixed(2);
     const key=String(h.at)+'-'+String(h.n)+'-'+String(h.v);
-    return '<div class="wn hr" data-history-key="'+key+'" data-rank="'+rank+'" style="--s:'+scale+';--o:'+opacity+'" role="listitem" aria-label="'+rank+'º lance, '+name+', '+value+', '+label+', superado com '+remainingLabel+'">'
+    return '<div class="wn hr" data-history-key="'+key+'" data-rank="'+rank+'" style="--s:'+scale+';--o:'+opacity+'" role="listitem" aria-label="'+rank+'º lance, '+name+', '+value+', '+label+', superado quando faltavam '+remainingLabel+'">'
       +'<div class="wn-lb"><span class="wn-k">'+label+'</span><strong class="wn-vl">'+value+'</strong><b>'+name+'</b></div>'
-      +'<span class="wn-tm" aria-hidden="true">'+remainingSeconds+'s<small>'+(remainingSeconds===1?'restante':'restantes')+'</small></span></div>';
+      +'<span class="wn-tm" aria-hidden="true">'+remainingTime+'<small>'+(remainingSeconds<60?(remainingSeconds===1?'restante':'restantes'):'restante')+'</small></span></div>';
   }).join('');
   if(!animateLatest||!previousPositions)return;
   for(const row of history.children){

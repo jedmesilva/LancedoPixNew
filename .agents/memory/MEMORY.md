@@ -7,3 +7,4 @@
 - [Recent-bid hierarchy](recent-bid-visual-hierarchy.md) — Keep the current leader in the hero; show only superseded bids in the unfilled, descending-scale history list.
 - [Inactive bid panel](bid-panel-inactive-state.md) — Keep bidding controls visible but disabled outside a live dispute; don't replace them with redemption or notification actions.
 - [Exact recent-bid age](exact-recent-bid-age.md) — Show exact seconds for recent bids; avoid estimates such as “há poucos segundos.”
+- [Outbid countdown display](outbid-countdown-display.md) — Show the superseded bid's remaining countdown at the moment it was overtaken, using seconds, MM:SS, or HH:MM:SS.

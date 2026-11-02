@@ -44,6 +44,7 @@ import {
   nextVictoryDurationSeconds,
   selectNextPrizeTier,
 } from "./dispute-progression";
+import { secondsRemainingAtOvertake } from "./bid-time";
 import { ensurePrizeObligation } from "./treasury";
 import { notifyLanceStateChanged } from "./realtime";
 
@@ -361,7 +362,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
     .from(bidsTable)
     .innerJoin(usersTable, eq(bidsTable.userId, usersTable.id))
     .where(eq(bidsTable.disputeId, currentDispute.id))
-    .orderBy(desc(bidsTable.valueCents), desc(bidsTable.createdAt))
+    .orderBy(desc(bidsTable.createdAt), desc(bidsTable.valueCents))
     .limit(30);
 
   const nameIndexes = new Map<string, number>();
@@ -380,16 +381,10 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   const previousBids = currentBids.slice(1, 5);
   const history = previousBids.map((bid, index) => {
     const overtakingBid = currentBids[index];
+    // Pair each bid with the next event and use its persisted deadline.
     const secondsRemainingWhenOvertaken =
       overtakingBid?.createdAt
-        ? Math.max(
-            0,
-            Math.ceil(
-              (bid.expiresAt.getTime() -
-                overtakingBid.createdAt.getTime()) /
-                1000,
-            ),
-          )
+        ? secondsRemainingAtOvertake(bid.expiresAt, overtakingBid.createdAt)
         : 0;
     return {
       n: nameIndex(bid.userId, bid.publicName),
