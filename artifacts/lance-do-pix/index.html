@@ -3175,10 +3175,11 @@ function paintHistorySection({animateLatest=false,animateVisibility=true}={}){
 }
 function paintBid(){
   const H=A.H,id=A.phase,live=id==='live',paused=id==='paused',none=id==='none',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':(Server.cfg.N[A.leader]??'Participante'),urg=live&&!noLeader&&A.left<=10;
+  const openingBid=noLeader&&!none;
   $('lvs').textContent=none?'Sem disputa ativa':paused?'Disputa pausada':'Disputa ao vivo';
   $('lvg').dataset.p=none?'none':paused?'paused':'live';
-  $('bl').textContent=none?'Status':noLeader?'Primeiro lance':'Lance atual';
-  $('bv').textContent=brl(A.value);
+  $('bl').textContent=none?'Status':openingBid?'Lance atual':noLeader?'Primeiro lance':'Lance atual';
+  $('bv').textContent=brl(openingBid?Server.minBid():A.value);
   $('whoText').textContent=none?'Nenhuma disputa ativa no momento.':noLeader?'Aguardando o primeiro lance':n;
   $('clk').textContent=none?'—':mmss(A.left);
   $('clk').setAttribute('aria-label',none?'Nenhuma disputa ativa':(paused?'Cronômetro pausado':'Tempo até a vitória')+': '+mmss(A.left));
