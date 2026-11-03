@@ -13,7 +13,6 @@ import {
   eq,
   inArray,
   isNull,
-  lt,
   or,
   sql,
 } from "drizzle-orm";
@@ -64,26 +63,12 @@ const START = 60;
 const DISPUTE_ENGINE_INTERVAL_MS = 1_000;
 const PAYMENT_EXPIRY_SECONDS = 600;
 const MAX_AMOUNT_CENTS = 100_000_000;
-const TEST_BID_BOT_EMAIL = "lance-test-bot@example.invalid";
-const TEST_BID_BOT_CREDIT_RESERVE_CENTS = 100_000n;
-const TEST_BID_BOT_DISPUTE_SPEND_LIMIT_CENTS = 100_000n;
-const TEST_BID_BOT_MAX_RESPONSES_PER_DISPUTE = 12;
-const TEST_BID_BOT_RESPONSE_DELAY_MS = 700;
 const LOCK_ID = 781_927;
 const ACTIVE_STATUSES = ["scheduled", "live", "paused"] as const;
 const PAYMENT_STATES = ["pending", "paid", "expired", "failed"] as const;
-const TEST_BID_BOT_ENABLED = process.env.NODE_ENV === "development";
 type PaymentState = (typeof PAYMENT_STATES)[number];
 type ActionResult = "ok" | "funds" | "invalid" | "exists" | "creds" | "not-found";
 type DisputeRecord = typeof disputesTable.$inferSelect;
-
-let testBidBotUserPromise: Promise<string> | null = null;
-const testBidBotFundingByRound = new Map<number, Promise<void>>();
-const pendingTestBidBotResponses = new Map<
-  number,
-  ReturnType<typeof setTimeout>
->();
-const runningTestBidBotRounds = new Set<number>();
 
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
 const centsToMoney = (value: bigint) => Number(value) / 100;
@@ -139,7 +124,6 @@ async function ensureInitialDispute(): Promise<boolean> {
       .find((candidate) => candidate.forecast?.passed);
     if (!selected?.forecast) return false;
 
-    const simulated = process.env.NODE_ENV !== "production";
     const [dispute] = await transaction
       .insert(disputesTable)
       .values({
@@ -154,14 +138,14 @@ async function ensureInitialDispute(): Promise<boolean> {
         minimumCashCoverageBps:
           selected.tier.minimumCashCoverageBps ??
           batch.parameters.minimumCashCoverageBps,
-        simulated,
+        simulated: false,
         bidDurationS: TOTAL,
         status: "live",
         startsAt: now,
         startedAt: now,
       })
       .returning();
-    await ensurePrizeObligation(transaction, dispute, simulated);
+    await ensurePrizeObligation(transaction, dispute, false);
     return true;
   });
 }
@@ -206,7 +190,6 @@ async function ensureNextDispute(): Promise<boolean> {
 
     const now = new Date();
     const startsImmediately = startsAt <= now;
-    const simulated = process.env.NODE_ENV !== "production";
     const [next] = await transaction
       .insert(disputesTable)
       .values({
@@ -221,7 +204,7 @@ async function ensureNextDispute(): Promise<boolean> {
         minimumCashCoverageBps:
           selected.tier.minimumCashCoverageBps ??
           batch.parameters.minimumCashCoverageBps,
-        simulated,
+        simulated: false,
         bidDurationS: nextVictoryDurationSeconds(latest.bidDurationS),
         status: startsImmediately ? "live" : "scheduled",
         startsAt,
@@ -229,7 +212,7 @@ async function ensureNextDispute(): Promise<boolean> {
       })
       .returning();
 
-    await ensurePrizeObligation(transaction, next, simulated);
+    await ensurePrizeObligation(transaction, next, false);
     return true;
   });
 }
@@ -432,7 +415,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       platformShareBps: 9000,
       coverageShareBps: 1000,
       minimumCashCoverageBps: 40000,
-      simulated: true,
+      simulated: false,
       bidDurationS: TOTAL,
       status: "blocked",
       startsAt: placeholderTime,
@@ -841,227 +824,6 @@ async function placeBid(userId: string, amount: number): Promise<ActionResult> {
   });
 }
 
-async function ensureTestBidBot(roundNumber: number): Promise<string | null> {
-  if (!TEST_BID_BOT_ENABLED) return null;
-
-  if (!testBidBotUserPromise) {
-    const createBot = db.transaction(async (transaction) => {
-      await transaction
-        .insert(usersTable)
-        .values({
-          name: "Bot de teste",
-          publicName: "Bot de teste",
-          email: TEST_BID_BOT_EMAIL,
-          passwordHash: null,
-          testAccount: true,
-        })
-        .onConflictDoNothing();
-
-      const [bot] = await transaction
-        .select({ id: usersTable.id })
-        .from(usersTable)
-        .where(eq(usersTable.email, TEST_BID_BOT_EMAIL))
-        .limit(1);
-      if (!bot) throw new Error("Could not create the test bid bot.");
-
-      await transaction
-        .insert(walletsTable)
-        .values({ userId: bot.id })
-        .onConflictDoNothing();
-      return bot.id;
-    });
-
-    testBidBotUserPromise = createBot.catch((error: unknown) => {
-      testBidBotUserPromise = null;
-      throw error;
-    });
-  }
-
-  const botUserId = await testBidBotUserPromise;
-  let funding = testBidBotFundingByRound.get(roundNumber);
-  if (!funding) {
-    funding = db.transaction(async (transaction) => {
-      const [wallet] = await transaction
-        .select()
-        .from(walletsTable)
-        .where(eq(walletsTable.userId, botUserId))
-        .limit(1)
-        .for("update");
-      if (!wallet) throw new Error("The test bid bot wallet is missing.");
-      if (wallet.balanceCents >= TEST_BID_BOT_CREDIT_RESERVE_CENTS) return;
-
-      const creditedCents =
-        TEST_BID_BOT_CREDIT_RESERVE_CENTS - wallet.balanceCents;
-      const now = new Date();
-      await transaction
-        .update(walletsTable)
-        .set({
-          balanceCents: TEST_BID_BOT_CREDIT_RESERVE_CENTS,
-          updatedAt: now,
-        })
-        .where(eq(walletsTable.userId, botUserId));
-      await transaction.insert(walletEntriesTable).values({
-        userId: botUserId,
-        type: "adjustment",
-        amountCents: creditedCents,
-        balanceAfterCents: TEST_BID_BOT_CREDIT_RESERVE_CENTS,
-        refType: "manual",
-      });
-    });
-
-    testBidBotFundingByRound.set(roundNumber, funding);
-    void funding.catch(() => {
-      if (testBidBotFundingByRound.get(roundNumber) === funding) {
-        testBidBotFundingByRound.delete(roundNumber);
-      }
-    });
-  }
-  await funding;
-
-  for (const fundedRound of testBidBotFundingByRound.keys()) {
-    if (fundedRound < roundNumber - 16) {
-      testBidBotFundingByRound.delete(fundedRound);
-    }
-  }
-  return botUserId;
-}
-
-async function shouldTestBotYieldToUser(
-  roundNumber: number,
-  botUserId: string,
-): Promise<boolean> {
-  const [lastBotAssistedRound] = await db
-    .select({ winnerId: disputesTable.winnerId })
-    .from(disputesTable)
-    .innerJoin(bidsTable, eq(bidsTable.disputeId, disputesTable.id))
-    .where(
-      and(
-        eq(bidsTable.userId, botUserId),
-        lt(disputesTable.number, roundNumber),
-        eq(disputesTable.status, "ended"),
-      ),
-    )
-    .groupBy(disputesTable.number, disputesTable.winnerId)
-    .orderBy(desc(disputesTable.number))
-    .limit(1);
-
-  // Start with you; after each bot-assisted result, target the other winner.
-  return !lastBotAssistedRound || lastBotAssistedRound.winnerId === botUserId;
-}
-
-async function runTestBidBotResponse(roundNumber: number): Promise<void> {
-  if (!TEST_BID_BOT_ENABLED || runningTestBidBotRounds.has(roundNumber)) return;
-  runningTestBidBotRounds.add(roundNumber);
-
-  try {
-    const botUserId = await ensureTestBidBot(roundNumber);
-    if (!botUserId) return;
-
-    const userShouldWin = await shouldTestBotYieldToUser(
-      roundNumber,
-      botUserId,
-    );
-    const responseLimit = userShouldWin
-      ? 1
-      : TEST_BID_BOT_MAX_RESPONSES_PER_DISPUTE;
-
-    // Retry a few times if a human bid races this scheduled response.
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const [dispute] = await db
-        .select()
-        .from(disputesTable)
-        .where(
-          and(
-            eq(disputesTable.number, roundNumber),
-            eq(disputesTable.status, "live"),
-          ),
-        )
-        .limit(1);
-      if (!dispute?.leaderBidId) return;
-
-      const [leader] = await db
-        .select({
-          userId: bidsTable.userId,
-          valueCents: bidsTable.valueCents,
-        })
-        .from(bidsTable)
-        .where(eq(bidsTable.id, dispute.leaderBidId))
-        .limit(1);
-      if (!leader || leader.userId === botUserId) return;
-
-      const botBids = await db
-        .select({ costCents: bidsTable.costCents })
-        .from(bidsTable)
-        .where(
-          and(
-            eq(bidsTable.disputeId, dispute.id),
-            eq(bidsTable.userId, botUserId),
-          ),
-        );
-      if (botBids.length >= responseLimit) return;
-
-      const spentCents = botBids.reduce(
-        (total, bid) => total + bid.costCents,
-        0n,
-      );
-      const nextBidCents = leader.valueCents + dispute.stepCents;
-      if (
-        nextBidCents > BigInt(MAX_AMOUNT_CENTS) ||
-        spentCents + nextBidCents > TEST_BID_BOT_DISPUTE_SPEND_LIMIT_CENTS
-      ) {
-        logger.warn(
-          { roundNumber, spentCents: spentCents.toString() },
-          "Test bid bot reached its per-dispute limit.",
-        );
-        return;
-      }
-
-      const result = await placeBid(botUserId, Number(nextBidCents) / 100);
-      if (result === "ok") {
-        notifyLanceStateChanged();
-        logger.info(
-          {
-            roundNumber,
-            amountCents: nextBidCents.toString(),
-            target: userShouldWin ? "user" : "bot",
-          },
-          "Test bid bot placed a bid.",
-        );
-        return;
-      }
-      if (result === "funds") {
-        logger.warn({ roundNumber }, "Test bid bot ran out of test credits.");
-        return;
-      }
-      if (result !== "invalid") return;
-    }
-  } finally {
-    runningTestBidBotRounds.delete(roundNumber);
-  }
-}
-
-function scheduleTestBidBotResponse(roundNumber: number): void {
-  if (!TEST_BID_BOT_ENABLED) return;
-  const pending = pendingTestBidBotResponses.get(roundNumber);
-  if (pending) clearTimeout(pending);
-
-  const timer = setTimeout(() => {
-    pendingTestBidBotResponses.delete(roundNumber);
-    if (runningTestBidBotRounds.has(roundNumber)) {
-      scheduleTestBidBotResponse(roundNumber);
-      return;
-    }
-    void runTestBidBotResponse(roundNumber).catch((error: unknown) => {
-      logger.error(
-        { err: error, roundNumber },
-        "Test bid bot response failed.",
-      );
-    });
-  }, TEST_BID_BOT_RESPONSE_DELAY_MS);
-  timer.unref();
-  pendingTestBidBotResponses.set(roundNumber, timer);
-}
-
 async function createCreditTopup(
   userId: string,
   amount: number,
@@ -1294,14 +1056,6 @@ export async function applyLanceAction(
   const state = await getState(user);
   if (result === "ok") {
     notifyLanceStateChanged();
-    if (
-      action.action === "bid" &&
-      user &&
-      user.email !== TEST_BID_BOT_EMAIL &&
-      TEST_BID_BOT_ENABLED
-    ) {
-      scheduleTestBidBotResponse(state.auction.round);
-    }
   }
   return { result, state };
 }

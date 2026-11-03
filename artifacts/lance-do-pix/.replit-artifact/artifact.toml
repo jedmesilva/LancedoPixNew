@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "Lance do Pix"
-description = "Protótipo web responsivo do Lance do Pix, com leilão demonstrativo, saldo, lances e fluxo de créditos inspirado fielmente no protótipo fornecido."
+description = "Aplicação web de disputas por prêmios com dados compartilhados e persistidos. A confirmação de pagamento de recargas é simulada até a integração Pix; o acesso Google usa uma conta de teste enquanto não há integração."
 version = "1.0.0"
 id = "artifacts/lance-do-pix"
 router = "path"

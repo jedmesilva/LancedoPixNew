@@ -26,7 +26,7 @@ CATÁLOGO (componente: classes > quem desenha)
   Histórico: .rw > paintHist
   Sheet de lance: .sheet .sk .hw .st .sq .fd .cp .nt(#cn, saldo insuficiente) > paintSheet
   Botão: .cta .cta.g
-  Simulação: .sim (só protótipo)
+  Status simulado de pagamento de recarga: .sim (Pix ainda não integrado)
   Modal: dialog .mh .mx .id > #hm #vm #am #ac #bm #lo
   Chip de status: .tg (.w venceu, .l ganhando) > paintBids, paintAcct
   Linha de menu: .lk > paintAcct
@@ -1358,8 +1358,8 @@ header .cta {
 }
 
 /* ══════════════════════════════════════════════════════════
-   13. COMPONENTE · Painel de simulação
-   .sim: só protótipo, remover na versão final.
+   13. COMPONENTE · Status simulado de pagamento
+   A simulação limita-se às confirmações de pagamento da recarga enquanto o Pix não está integrado.
    ══════════════════════════════════════════════════════════ */
 
 .sim {

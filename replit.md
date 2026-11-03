@@ -1,6 +1,6 @@
 # Lance do Pix
 
-Protótipo web de disputas por prêmios com lances, saldo e fluxos demonstrativos de créditos.
+Aplicação web de disputas por prêmios com usuários, lances, saldos e atividade persistidos no PostgreSQL. Apenas a confirmação de pagamento de recargas é simulada até a integração Pix; o acesso Google usa uma conta de teste enquanto o provedor não está integrado.
 
 ## Run & Operate
 
@@ -23,23 +23,27 @@ Protótipo web de disputas por prêmios com lances, saldo e fluxos demonstrativo
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/lance-do-pix/index.html` — interface web
+- `artifacts/api-server/src` — autenticação, estado compartilhado e regras das disputas
+- `lib/db/src/schema` — esquema PostgreSQL
+- `lib/api-spec/openapi.yaml` — contrato da API
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Usuários e atividade compartilhada são persistidos no PostgreSQL; a interface não inventa lances ou saldos.
+- Recargas exibem uma confirmação explicitamente simulada até a integração Pix.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Usuários criam contas, consultam disputas compartilhadas, participam com lances debitados da carteira e podem solicitar resgate de prêmios. Recargas usam uma simulação claramente identificada até a integração Pix. Não usar saldos iniciais, lances, usuários ou disputas artificiais.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Não usar dados ou atividade de demonstração. A única simulação permitida é o status do pagamento de recargas; Google pode usar uma conta de teste até haver integração.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Não executar `push-force` nem alterar o banco de produção sem confirmar o banco-alvo e revisar o impacto.
 
 ## Pointers
 
