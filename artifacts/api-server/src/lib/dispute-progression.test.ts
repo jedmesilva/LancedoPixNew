@@ -3,8 +3,8 @@ import test from "node:test";
 import {
   NEXT_DISPUTE_DELAY_MS,
   getDisputeDisplayState,
+  getTierBidDurationSeconds,
   nextDisputeStartsAt,
-  nextVictoryDurationSeconds,
   selectNextPrizeTier,
 } from "./dispute-progression";
 
@@ -61,11 +61,16 @@ test("requires a different active prize value", () => {
   );
 });
 
-test("cycles the victory window through 60, 90, and 120 seconds", () => {
-  assert.equal(nextVictoryDurationSeconds(60), 90);
-  assert.equal(nextVictoryDurationSeconds(90), 120);
-  assert.equal(nextVictoryDurationSeconds(120), 60);
-  assert.equal(nextVictoryDurationSeconds(45), 60);
+test("uses the configured positive duration for a prize tier", () => {
+  assert.equal(getTierBidDurationSeconds({ bidDurationS: 90 }), 90);
+  assert.throws(
+    () => getTierBidDurationSeconds({ bidDurationS: 0 }),
+    /positive integer in seconds/i,
+  );
+  assert.throws(
+    () => getTierBidDurationSeconds({ bidDurationS: 1.5 }),
+    /positive integer in seconds/i,
+  );
 });
 
 test("schedules the next dispute one minute after the previous end", () => {

@@ -39,9 +39,9 @@ import {
 import { logger } from "./logger";
 import type { CurrentUser } from "./auth";
 import {
+  getTierBidDurationSeconds,
   getDisputeDisplayState,
   nextDisputeStartsAt,
-  nextVictoryDurationSeconds,
 } from "./dispute-progression";
 import { secondsRemainingAtOvertake } from "./bid-time";
 import {
@@ -61,7 +61,6 @@ import {
 } from "./prize-queue";
 import { notifyLanceStateChanged } from "./realtime";
 
-const TOTAL = 60;
 const START = 60;
 const DISPUTE_ENGINE_INTERVAL_MS = 1_000;
 const PAYMENT_EXPIRY_SECONDS = 600;
@@ -217,7 +216,7 @@ async function ensureInitialDispute(): Promise<boolean> {
           selected.tier.minimumCashCoverageBps ??
           batch.parameters.minimumCashCoverageBps,
         simulated: false,
-        bidDurationS: TOTAL,
+        bidDurationS: getTierBidDurationSeconds(selected.tier),
         status: "live",
         startsAt: now,
         startedAt: now,
@@ -285,7 +284,7 @@ async function ensureNextDispute(): Promise<boolean> {
           selected.tier.minimumCashCoverageBps ??
           batch.parameters.minimumCashCoverageBps,
         simulated: false,
-        bidDurationS: nextVictoryDurationSeconds(latest.bidDurationS),
+        bidDurationS: getTierBidDurationSeconds(selected.tier),
         status: startsImmediately ? "live" : "scheduled",
         startsAt,
         startedAt: startsImmediately ? now : null,
@@ -502,7 +501,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       coverageShareBps: 1000,
       minimumCashCoverageBps: 40000,
       simulated: false,
-      bidDurationS: TOTAL,
+      bidDurationS: getTierBidDurationSeconds(firstTier),
       status: "blocked",
       startsAt: placeholderTime,
       startedAt: null,

@@ -19,6 +19,7 @@ export const prizeTiersTable = pgTable(
     active: boolean("active").notNull().default(true),
     sortOrder: smallint("sort_order").notNull().default(0),
     minimumStepCents: bigint("minimum_step_cents", { mode: "bigint" }).notNull(),
+    bidDurationS: integer("bid_duration_s").notNull().default(60),
     minimumCashCoverageBps: integer("minimum_cash_coverage_bps"),
   },
   (table) => [
@@ -27,6 +28,10 @@ export const prizeTiersTable = pgTable(
     check(
       "prize_tiers_minimum_step_positive",
       sql`${table.minimumStepCents} > 0`,
+    ),
+    check(
+      "prize_tiers_bid_duration_positive",
+      sql`${table.bidDurationS} > 0`,
     ),
     check(
       "prize_tiers_cash_coverage_positive",

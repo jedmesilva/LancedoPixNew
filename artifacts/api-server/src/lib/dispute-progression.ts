@@ -1,5 +1,15 @@
 export const NEXT_DISPUTE_DELAY_MS = 60_000;
-export const VICTORY_DURATION_CYCLE_SECONDS = [60, 90, 120] as const;
+
+export function getTierBidDurationSeconds(tier: {
+  bidDurationS: number;
+}): number {
+  if (!Number.isSafeInteger(tier.bidDurationS) || tier.bidDurationS <= 0) {
+    throw new RangeError(
+      "Prize tier bid duration must be a positive integer in seconds.",
+    );
+  }
+  return tier.bidDurationS;
+}
 
 type PrizeTierOption = {
   active: boolean;
@@ -40,17 +50,6 @@ export function selectNextPrizeTier(
   throw new Error(
     "At least two distinct active prize values are required to create a new dispute prize.",
   );
-}
-
-export function nextVictoryDurationSeconds(currentDuration: number): number {
-  const currentIndex = VICTORY_DURATION_CYCLE_SECONDS.indexOf(
-    currentDuration as (typeof VICTORY_DURATION_CYCLE_SECONDS)[number],
-  );
-
-  if (currentIndex < 0) return VICTORY_DURATION_CYCLE_SECONDS[0];
-  return VICTORY_DURATION_CYCLE_SECONDS[
-    (currentIndex + 1) % VICTORY_DURATION_CYCLE_SECONDS.length
-  ];
 }
 
 export function nextDisputeStartsAt(endedAt: Date): Date {
