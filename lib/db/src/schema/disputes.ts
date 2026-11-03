@@ -4,6 +4,7 @@ import {
   bigint,
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -13,7 +14,9 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
+import { bidsTable } from "./bids";
 import { prizeTiersTable } from "./prize-tiers";
 import { usersTable } from "./users";
 
@@ -47,8 +50,6 @@ export const disputesTable = pgTable(
     pausedRemainingS: integer("paused_remaining_s"),
     pausedAt: timestamp("paused_at", { withTimezone: true }),
     pausedTotalS: integer("paused_total_s").notNull().default(0),
-    // The pointer is maintained transactionally; its FK would create a cyclic
-    // table dependency with bids.dispute_id in Drizzle's schema push.
     leaderBidId: uuid("leader_bid_id"),
     bidsCount: integer("bids_count").notNull().default(0),
     bidsTotalCents: bigint("bids_total_cents", { mode: "bigint" })
@@ -66,7 +67,12 @@ export const disputesTable = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      name: "disputes_leader_bid_id_bids_id_fk",
+      columns: [table.leaderBidId],
+      foreignColumns: [bidsTable.id],
+    }),
     uniqueIndex("disputes_number_unique").on(table.number),
     check(
       "disputes_status_check",

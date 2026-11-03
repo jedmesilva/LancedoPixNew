@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import {
   bigint,
   check,
+  foreignKey,
   index,
   pgTable,
   text,
@@ -10,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { PgTableExtraConfigValue } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { disputesTable } from "./disputes";
 import { usersTable } from "./users";
@@ -20,8 +22,7 @@ export const bidsTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     disputeId: uuid("dispute_id")
-      .notNull()
-      .references(() => disputesTable.id),
+      .notNull(),
     userId: uuid("user_id")
       .notNull()
       .references(() => usersTable.id),
@@ -36,7 +37,12 @@ export const bidsTable = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     result: text("result"),
   },
-  (table) => [
+  (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      name: "bids_dispute_id_disputes_id_fk",
+      columns: [table.disputeId],
+      foreignColumns: [disputesTable.id],
+    }),
     check("bids_value_positive_check", sql`${table.valueCents} > 0`),
     check(
       "bids_result_check",
