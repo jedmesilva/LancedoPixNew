@@ -1,10 +1,10 @@
 ---
-name: Tier-specific bid timing
-description: Product preference for a per-tier bidding countdown instead of a global duration cycle.
+name: Unified dispute countdown
+description: Product rule for one 60-second countdown that starts with the dispute and resets on every bid.
 ---
 
-The user favors configuring the bidding countdown duration per prize tier. A newly created dispute should inherit the duration configured for its selected tier, while its stored duration remains fixed for that dispute.
+Use a single 60-second countdown for the entire dispute. Start it when the dispute starts and reset it to 60 seconds after every accepted bid. If it expires without any bids, close the dispute without a winner; if bids were placed, close it after 60 seconds pass with no new bid. Do not switch to a separate timer after the first bid or vary this countdown by prize tier.
 
-**Why:** The user suggested each prize tier have its own bid duration rather than sharing the current duration sequence.
+**Why:** On 2026-11-03, the user clarified that the initial no-bid period and the post-bid period use the same timer, reset by each new bid.
 
-**How to apply:** Keep the setting in internal tier configuration, copy it into the dispute's duration snapshot at creation, and do not expose other tier settings to end users.
+**How to apply:** Keep one consistent 60-second deadline across the dispute lifecycle. A bid resets that deadline; no bid before it expires ends the dispute.
