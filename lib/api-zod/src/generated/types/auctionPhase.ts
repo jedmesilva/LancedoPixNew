@@ -6,6 +6,9 @@
  * OpenAPI spec version: 1.0.0
  */
 
+/**
+ * `none` means there is no active dispute; internal eligibility details are never returned.
+ */
 export type AuctionPhase = typeof AuctionPhase[keyof typeof AuctionPhase];
 
 
@@ -14,5 +17,5 @@ export const AuctionPhase = {
   paused: 'paused',
   ended: 'ended',
   soon: 'soon',
-  blocked: 'blocked',
+  none: 'none',
 } as const;

@@ -109,6 +109,9 @@ export interface Wallet {
   pay: Payment | null;
 }
 
+/**
+ * `none` means there is no active dispute; internal eligibility details are never returned.
+ */
 export type AuctionPhase = typeof AuctionPhase[keyof typeof AuctionPhase];
 
 
@@ -117,13 +120,14 @@ export const AuctionPhase = {
   paused: 'paused',
   ended: 'ended',
   soon: 'soon',
-  blocked: 'blocked',
+  none: 'none',
 } as const;
 
 export interface Auction {
   round: number;
   /** @nullable */
   prize: number | null;
+  /** `none` means there is no active dispute; internal eligibility details are never returned. */
   phase: AuctionPhase;
   value: number;
   leader: number;
@@ -176,8 +180,6 @@ export interface Bid {
 export type LanceStateCfg = {
   N: string[];
   TOTAL: number;
-  START: number;
-  STEP: number;
 };
 
 export interface LanceState {

@@ -9,6 +9,4 @@
 export type LanceStateCfg = {
   N: string[];
   TOTAL: number;
-  START: number;
-  STEP: number;
 };

@@ -27,7 +27,7 @@ export type TierGateResult = {
   cashGatePassed: boolean;
   demandGatePassed: boolean;
   passed: boolean;
-  blockedReason: "history" | "cash" | "demand" | "cash_and_demand" | null;
+  blockedReason: "cash" | "demand" | "cash_and_demand" | null;
   expectedCoverageCents: bigint;
   demandCoverageBps: number;
   cashCoverageBps: number;
@@ -153,14 +153,18 @@ export function evaluateTierGates(input: {
       : 0;
   const cashGatePassed = cashFreeCents >= minimumCashCents;
   const demandGatePassed = expectedCoverageCents >= prizeCents;
-  const passed = demand.enoughHistory && cashGatePassed && demandGatePassed;
+  // Missing real history means demand is unknown, not that no one will bid.
+  // Use the cash reserve as the bootstrap gate until the demand forecast is
+  // supported by enough comparable activity.
+  const demandGateApplies = demand.enoughHistory;
+  const passed =
+    cashGatePassed && (!demandGateApplies || demandGatePassed);
   let blockedReason: TierGateResult["blockedReason"] = null;
 
-  if (!demand.enoughHistory) blockedReason = "history";
-  else if (!cashGatePassed && !demandGatePassed) {
+  if (!cashGatePassed && demandGateApplies && !demandGatePassed) {
     blockedReason = "cash_and_demand";
   } else if (!cashGatePassed) blockedReason = "cash";
-  else if (!demandGatePassed) blockedReason = "demand";
+  else if (demandGateApplies && !demandGatePassed) blockedReason = "demand";
 
   return {
     cashGatePassed,

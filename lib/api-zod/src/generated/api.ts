@@ -163,14 +163,12 @@ export const GetLanceStateResponse = zod.object({
   "serverTime": zod.number().int(),
   "cfg": zod.object({
   "N": zod.array(zod.string()),
-  "TOTAL": zod.number().int(),
-  "START": zod.number().int(),
-  "STEP": zod.number()
+  "TOTAL": zod.number().int()
 }),
   "auction": zod.object({
   "round": zod.number().int(),
   "prize": zod.number().nullable(),
-  "phase": zod.enum(['live', 'paused', 'ended', 'soon', 'blocked']),
+  "phase": zod.enum(['live', 'paused', 'ended', 'soon', 'none']).describe('`none` means there is no active dispute; internal eligibility details are never returned.'),
   "value": zod.number(),
   "leader": zod.number().int(),
   "left": zod.number().int(),
@@ -258,14 +256,12 @@ export const PostLanceActionResponse = zod.object({
   "serverTime": zod.number().int(),
   "cfg": zod.object({
   "N": zod.array(zod.string()),
-  "TOTAL": zod.number().int(),
-  "START": zod.number().int(),
-  "STEP": zod.number()
+  "TOTAL": zod.number().int()
 }),
   "auction": zod.object({
   "round": zod.number().int(),
   "prize": zod.number().nullable(),
-  "phase": zod.enum(['live', 'paused', 'ended', 'soon', 'blocked']),
+  "phase": zod.enum(['live', 'paused', 'ended', 'soon', 'none']).describe('`none` means there is no active dispute; internal eligibility details are never returned.'),
   "value": zod.number(),
   "leader": zod.number().int(),
   "left": zod.number().int(),

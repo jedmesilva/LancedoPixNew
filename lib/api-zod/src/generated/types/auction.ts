@@ -12,6 +12,7 @@ export interface Auction {
   round: number;
   /** @nullable */
   prize: number | null;
+  /** `none` means there is no active dispute; internal eligibility details are never returned. */
   phase: AuctionPhase;
   value: number;
   leader: number;

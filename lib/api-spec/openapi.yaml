@@ -290,7 +290,10 @@ components:
       properties:
         round: { type: integer }
         prize: { type: [number, "null"] }
-        phase: { type: string, enum: [live, paused, ended, soon, blocked] }
+        phase:
+          type: string
+          enum: [live, paused, ended, soon, none]
+          description: "`none` means there is no active dispute; internal eligibility details are never returned."
         value: { type: number }
         leader: { type: integer }
         left: { type: integer }
@@ -329,9 +332,7 @@ components:
               type: array
               items: { type: string }
             TOTAL: { type: integer }
-            START: { type: integer }
-            STEP: { type: number }
-          required: [N, TOTAL, START, STEP]
+          required: [N, TOTAL]
         auction: { $ref: "#/components/schemas/Auction" }
         wallet: { $ref: "#/components/schemas/Wallet" }
         user: { $ref: "#/components/schemas/User" }

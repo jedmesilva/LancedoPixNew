@@ -581,6 +581,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       : (phase === "soon" || phase === "ended") && targetAt !== null
         ? millisecondsLeft(new Date(targetAt), now)
         : START;
+  const noActiveDispute = phase === "blocked";
   const valueCents = leader?.valueCents ?? currentDispute.startingValueCents;
   let balanceCents = 0n;
   let payment: LanceStateOutput["wallet"]["pay"] = null;
@@ -698,29 +699,35 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
 
   return GetLanceStateResponse.parse({
     cfg: {
-      N: names,
-      TOTAL: currentDispute.bidDurationS,
-      START,
-      STEP: centsToMoney(currentDispute.stepCents),
+      N: noActiveDispute ? [] : names,
+      TOTAL: noActiveDispute ? 0 : currentDispute.bidDurationS,
     },
     auction: {
-      round: currentDispute.number,
+      round: noActiveDispute ? 0 : currentDispute.number,
       prize:
-        phase === "soon" || phase === "blocked"
+        phase === "soon" || noActiveDispute
           ? null
           : centsToMoney(currentDispute.prizeCents),
-      phase,
-      value: centsToMoney(valueCents),
-      leader: leader ? nameIndex(leader.userId, leader.publicName) : -1,
-      left,
-      soon,
-      targetAt,
+      phase: noActiveDispute ? "none" : phase,
+      value: noActiveDispute ? 0 : centsToMoney(valueCents),
+      leader:
+        noActiveDispute || !leader
+          ? -1
+          : nameIndex(leader.userId, leader.publicName),
+      left: noActiveDispute ? 0 : left,
+      soon: noActiveDispute ? 0 : soon,
+      targetAt: noActiveDispute ? null : targetAt,
       bonusSecs: 0,
       notify: false,
-      H: history,
-      paid: payoutForLeader.length > 0,
-      minimumBid: centsToMoney(valueCents + currentDispute.stepCents),
-      bonus: bonusCents > 0n ? centsToMoney(bonusCents) : null,
+      H: noActiveDispute ? [] : history,
+      paid: noActiveDispute ? false : payoutForLeader.length > 0,
+      minimumBid: noActiveDispute
+        ? 0
+        : centsToMoney(valueCents + currentDispute.stepCents),
+      bonus:
+        noActiveDispute || bonusCents <= 0n
+          ? null
+          : centsToMoney(bonusCents),
     },
     serverTime: Date.now(),
     wallet: { bal: centsToMoney(balanceCents), pay: payment },

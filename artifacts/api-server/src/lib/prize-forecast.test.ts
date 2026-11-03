@@ -37,9 +37,41 @@ test("forecasts from eight same-time samples and caps spend by wallet credits", 
   assert.equal(demand.averageBidCents, 250n);
 });
 
-test("blocks a forecast with too little comparable history", () => {
+test("uses the cash reserve to bootstrap when comparable history is missing", () => {
+  const demand = estimateDemand([], new Map());
+  const result = evaluateTierGates({
+    cashFreeCents: 10_000n,
+    prizeCents: 1_000n,
+    minimumCashCoverageBps: 40_000,
+    coverageShareBps: 1_000,
+    demand,
+  });
+
+  assert.equal(demand.enoughHistory, false);
+  assert.equal(result.cashGatePassed, true);
+  assert.equal(result.demandGatePassed, false);
+  assert.equal(result.passed, true);
+  assert.equal(result.blockedReason, null);
+});
+
+test("still blocks a bootstrap tier that fails the cash reserve", () => {
+  const demand = estimateDemand([], new Map());
+  const result = evaluateTierGates({
+    cashFreeCents: 3_999n,
+    prizeCents: 1_000n,
+    minimumCashCoverageBps: 40_000,
+    coverageShareBps: 1_000,
+    demand,
+  });
+
+  assert.equal(result.cashGatePassed, false);
+  assert.equal(result.passed, false);
+  assert.equal(result.blockedReason, "cash");
+});
+
+test("enforces the demand gate after enough comparable history exists", () => {
   const demand = estimateDemand(
-    activityForFourWeeks().slice(0, 3),
+    activityForFourWeeks(),
     new Map([
       ["a", 2_000n],
       ["b", 2_000n],
@@ -54,9 +86,11 @@ test("blocks a forecast with too little comparable history", () => {
     demand,
   });
 
-  assert.equal(demand.enoughHistory, false);
+  assert.equal(demand.enoughHistory, true);
+  assert.equal(result.cashGatePassed, true);
+  assert.equal(result.demandGatePassed, false);
   assert.equal(result.passed, false);
-  assert.equal(result.blockedReason, "history");
+  assert.equal(result.blockedReason, "demand");
 });
 
 test("applies the four-times-cash and ten-percent-demand gates", () => {
