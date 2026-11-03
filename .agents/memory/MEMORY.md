@@ -11,3 +11,4 @@
 - [Initial treasury funding](initial-treasury-funding.md) — The planned R$1,000 aporte counts only after receipt; “lance mínimo” means the increment between bids.
 - [Orval Node runtime](orval-node-runtime.md) — Orval v8 Zod code generation requires Node 22+ because it uses `Map.groupBy`.
 - [Test account identity](test-account-identity.md) — Keep test accounts human-readable, uniquely addressable, and clearly non-deliverable.
+- [Unpredictable dispute generation](unpredictable-dispute-generation.md) — Select the next eligible prize tier unpredictably rather than by ascending or descending value.
