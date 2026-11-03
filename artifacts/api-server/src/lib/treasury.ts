@@ -5,9 +5,16 @@ import {
   disputesTable,
   treasuryLedgerEntriesTable,
 } from "@workspace/db";
+import {
+  calculateTreasuryCashPosition,
+  type TreasuryCashPosition,
+} from "./treasury-accounting";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type TreasuryQueryExecutor = typeof db | Transaction;
 type LedgerEntryInput = typeof treasuryLedgerEntriesTable.$inferInsert;
+
+export const DEFAULT_INCLUDE_SIMULATED_TREASURY_ENTRIES = false;
 
 export async function recordLedgerEntry(
   transaction: Transaction,
@@ -234,16 +241,6 @@ export async function updatePrizeCoverage(
     );
 }
 
-export type TreasuryCashPosition = {
-  settledCashCents: bigint;
-  cashOutflowsCents: bigint;
-  lockedWalletCents: bigint;
-  unpaidPrizeCents: bigint;
-  reservedBonusCents: bigint;
-  freeCashCents: bigint;
-  includesSimulated: boolean;
-};
-
 export type PrizeReleaseCashPosition = {
   cashNetCents: bigint;
   openDebtCents: bigint;
@@ -256,84 +253,23 @@ export async function getPrizeReleaseCashPosition(
   transaction: Transaction,
   options: { includeSimulated?: boolean } = {},
 ): Promise<PrizeReleaseCashPosition> {
-  const includeSimulated = options.includeSimulated ?? false;
-  const ledgerFilters = [
-    inArray(treasuryLedgerEntriesTable.entryType, [
-      "house_contribution",
-      "platform_bid_revenue",
-      "dispute_close_loss",
-      "dispute_close_surplus",
-      "ad_revenue_receipt",
-    ]),
-  ];
-  if (!includeSimulated) {
-    ledgerFilters.push(eq(treasuryLedgerEntriesTable.simulated, false));
-  }
-  const ledgerRows = await transaction
-    .select({
-      entryType: treasuryLedgerEntriesTable.entryType,
-      amountCents: treasuryLedgerEntriesTable.amountCents,
-    })
-    .from(treasuryLedgerEntriesTable)
-    .where(and(...ledgerFilters));
-  const cashNetCents = ledgerRows.reduce(
-    (total, row) =>
-      total +
-      (row.entryType === "dispute_close_loss"
-        ? -row.amountCents
-        : row.amountCents),
-    0n,
-  );
-
-  const openDisputes = await transaction
-    .select({
-      prizeCents: disputesTable.prizeCents,
-      bidsTotalCents: disputesTable.bidsTotalCents,
-      coverageShareBps: disputesTable.coverageShareBps,
-      simulated: disputesTable.simulated,
-    })
-    .from(disputesTable)
-    .where(inArray(disputesTable.status, ["scheduled", "live", "paused"]));
-  const openDebtCents = openDisputes.reduce((total, dispute) => {
-    if (!includeSimulated && dispute.simulated) return total;
-    const covered =
-      (dispute.bidsTotalCents * BigInt(dispute.coverageShareBps)) / 10_000n;
-    const debt =
-      dispute.prizeCents > covered ? dispute.prizeCents - covered : 0n;
-    return total + debt;
-  }, 0n);
-
-  const reservationFilters = includeSimulated
-    ? []
-    : [eq(disputeCashReservationsTable.simulated, false)];
-  const bonusReservations = await transaction
-    .select({ amountCents: disputeCashReservationsTable.amountCents })
-    .from(disputeCashReservationsTable)
-    .where(
-      and(
-        eq(disputeCashReservationsTable.reservationType, "bonus"),
-        inArray(disputeCashReservationsTable.status, [
-          "reserved",
-          "payout_requested",
-        ]),
-        ...reservationFilters,
-      ),
-    );
-  const reservedBonusCents = bonusReservations.reduce(
-    (total, row) => total + row.amountCents,
-    0n,
-  );
+  const position = await getTreasuryCashPosition(options, transaction);
+  const cashNetCents =
+    position.settledCashCents -
+    position.cashOutflowsCents -
+    position.lockedWalletCents;
 
   return {
     cashNetCents,
-    openDebtCents,
-    reservedBonusCents,
-    freeCashCents: cashNetCents - openDebtCents - reservedBonusCents,
-    includesSimulated: includeSimulated,
+    openDebtCents: position.unpaidPrizeCents,
+    reservedBonusCents: position.reservedBonusCents,
+    freeCashCents: position.freeCashCents,
+    includesSimulated: position.includesSimulated,
   };
 }
 
 async function sumLedgerEntries(
+  executor: TreasuryQueryExecutor,
   entryTypes: string[],
   includeSimulated: boolean,
 ): Promise<bigint> {
@@ -341,7 +277,7 @@ async function sumLedgerEntries(
   if (!includeSimulated) {
     filters.push(eq(treasuryLedgerEntriesTable.simulated, false));
   }
-  const rows = await db
+  const rows = await executor
     .select({ amountCents: treasuryLedgerEntriesTable.amountCents })
     .from(treasuryLedgerEntriesTable)
     .where(and(...filters));
@@ -350,28 +286,31 @@ async function sumLedgerEntries(
 
 export async function getTreasuryCashPosition(
   options: { includeSimulated?: boolean } = {},
+  executor: TreasuryQueryExecutor = db,
 ): Promise<TreasuryCashPosition> {
-  const includeSimulated = options.includeSimulated ?? false;
+  const includeSimulated =
+    options.includeSimulated ?? DEFAULT_INCLUDE_SIMULATED_TREASURY_ENTRIES;
   const [settledCashCents, paidOutCents, refundCents, feeCents] =
     await Promise.all([
-      sumLedgerEntries(["cash_receipt", "ad_revenue_receipt"], includeSimulated),
-      sumLedgerEntries(["payout_paid"], includeSimulated),
-      sumLedgerEntries(["refund_paid"], includeSimulated),
-      sumLedgerEntries(["processing_fee"], includeSimulated),
+      sumLedgerEntries(
+        executor,
+        ["cash_receipt", "house_contribution", "ad_revenue_receipt"],
+        includeSimulated,
+      ),
+      sumLedgerEntries(executor, ["payout_paid"], includeSimulated),
+      sumLedgerEntries(executor, ["refund_paid"], includeSimulated),
+      sumLedgerEntries(executor, ["processing_fee"], includeSimulated),
     ]);
   const [walletCreditsCents, walletSpendsCents] = await Promise.all([
-    sumLedgerEntries(["wallet_credit"], includeSimulated),
-    sumLedgerEntries(["wallet_spend"], includeSimulated),
+    sumLedgerEntries(executor, ["wallet_credit"], includeSimulated),
+    sumLedgerEntries(executor, ["wallet_spend"], includeSimulated),
   ]);
   const cashOutflowsCents = paidOutCents + refundCents + feeCents;
-  const rawLockedWalletCents = walletCreditsCents - walletSpendsCents;
-  const lockedWalletCents =
-    rawLockedWalletCents > 0n ? rawLockedWalletCents : 0n;
 
   const reservationFilters = includeSimulated
     ? []
     : [eq(disputeCashReservationsTable.simulated, false)];
-  const reservations = await db
+  const reservations = await executor
     .select({
       reservationType: disputeCashReservationsTable.reservationType,
       amountCents: disputeCashReservationsTable.amountCents,
@@ -394,22 +333,16 @@ export async function getTreasuryCashPosition(
   const reservedBonusCents = reservations
     .filter((row) => row.reservationType === "bonus")
     .reduce((sum, row) => sum + row.amountCents, 0n);
-  const freeCashCents =
-    settledCashCents -
-    cashOutflowsCents -
-    lockedWalletCents -
-    unpaidPrizeCents -
-    reservedBonusCents;
 
-  return {
+  return calculateTreasuryCashPosition({
     settledCashCents,
     cashOutflowsCents,
-    lockedWalletCents,
+    walletCreditsCents,
+    walletSpendsCents,
     unpaidPrizeCents,
     reservedBonusCents,
-    freeCashCents,
     includesSimulated: includeSimulated,
-  };
+  });
 }
 
 export async function backfillTreasuryLedger() {

@@ -20,7 +20,10 @@ import {
   usersTable,
   bidsTable,
 } from "@workspace/db";
-import { getPrizeReleaseCashPosition } from "./treasury";
+import {
+  DEFAULT_INCLUDE_SIMULATED_TREASURY_ENTRIES,
+  getPrizeReleaseCashPosition,
+} from "./treasury";
 import {
   estimateDemand,
   evaluateTierGates,
@@ -48,8 +51,6 @@ const TARGET_PRIZES_CENTS = [
   50_000_000n,
   100_000_000n,
 ] as const;
-const TEST_OR_DEVELOPMENT = process.env.NODE_ENV !== "production";
-
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type ForecastBatch = {
   forecasts: (typeof prizeTierForecastsTable.$inferSelect)[];
@@ -175,7 +176,7 @@ export async function createOrReuseForecastBatch(
   }
 
   const { parameters, tiers } = await ensureTreasuryCatalog(transaction);
-  const includeSimulated = TEST_OR_DEVELOPMENT;
+  const includeSimulated = DEFAULT_INCLUDE_SIMULATED_TREASURY_ENTRIES;
   const cashPosition = await getPrizeReleaseCashPosition(transaction, {
     includeSimulated,
   });

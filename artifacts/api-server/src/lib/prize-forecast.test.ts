@@ -81,3 +81,31 @@ test("applies the four-times-cash and ten-percent-demand gates", () => {
   assert.equal(result.passed, true);
   assert.equal(result.maximumLossCents, 200n);
 });
+
+test("one million reais in free cash supports at most a 250 thousand prize at 4x", () => {
+  const demand = estimateDemand(
+    activityForFourWeeks(),
+    new Map([
+      ["a", 2_000n],
+      ["b", 2_000n],
+      ["c", 2_000n],
+    ]),
+  );
+  const atCashLimit = evaluateTierGates({
+    cashFreeCents: 100_000_000n,
+    prizeCents: 25_000_000n,
+    minimumCashCoverageBps: 40_000,
+    coverageShareBps: 1_000,
+    demand,
+  });
+  const aboveCashLimit = evaluateTierGates({
+    cashFreeCents: 100_000_000n,
+    prizeCents: 25_000_001n,
+    minimumCashCoverageBps: 40_000,
+    coverageShareBps: 1_000,
+    demand,
+  });
+
+  assert.equal(atCashLimit.cashGatePassed, true);
+  assert.equal(aboveCashLimit.cashGatePassed, false);
+});
