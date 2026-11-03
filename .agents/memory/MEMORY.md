@@ -12,3 +12,4 @@
 - [Orval Node runtime](orval-node-runtime.md) — Orval v8 Zod code generation requires Node 22+ because it uses `Map.groupBy`.
 - [Test account identity](test-account-identity.md) — Keep test accounts human-readable, uniquely addressable, and clearly non-deliverable.
 - [Unpredictable dispute generation](unpredictable-dispute-generation.md) — Select the next eligible prize tier unpredictably rather than by ascending or descending value.
+- [Operator-only prize operations](operator-only-prize-operations.md) — Keep tier values, eligibility forecasts, and future queue details inaccessible to end users.
