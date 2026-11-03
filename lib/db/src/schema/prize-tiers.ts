@@ -18,9 +18,7 @@ export const prizeTiersTable = pgTable(
     prizeCents: bigint("prize_cents", { mode: "bigint" }).notNull(),
     active: boolean("active").notNull().default(true),
     sortOrder: smallint("sort_order").notNull().default(0),
-    minimumStepCents: bigint("minimum_step_cents", { mode: "bigint" })
-      .notNull()
-      .default(sql`10`),
+    minimumStepCents: bigint("minimum_step_cents", { mode: "bigint" }).notNull(),
     minimumCashCoverageBps: integer("minimum_cash_coverage_bps"),
   },
   (table) => [
