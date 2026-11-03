@@ -146,12 +146,12 @@ router.post("/auth/sign-out", async (req, res): Promise<void> => {
 
 router.post("/auth/google-test", async (_req, res): Promise<void> => {
   const suffix = randomUUID();
-  const email = `google-test+${suffix}@example.invalid`;
+  const email = `joao.teste+${suffix}@example.invalid`;
   const [user] = await db.transaction(async (transaction) => {
     const [created] = await transaction
       .insert(usersTable)
       .values({
-        name: "Conta de teste do Google",
+        name: "João Teste",
         publicName: `Pessoa ${suffix.slice(0, 8)}`,
         email,
         passwordHash: null,

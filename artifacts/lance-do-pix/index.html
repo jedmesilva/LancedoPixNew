@@ -3458,7 +3458,7 @@ function toggleTheme(){
 }
 function paintAcct(){
   const L=Server.myBids(),n=Server.redeemable(),g=$('acg');
-  $('acv').textContent=ini();$('act').textContent=U.name;$('acm').textContent=U.testAccount?'Conta de teste do Google':U.email;
+  $('acv').textContent=ini();$('act').textContent=U.name;$('acm').textContent=U.testAccount?U.email+' · Conta de teste':U.email;
   $('acb').textContent=brl(W.bal);
   $('acs').textContent=L.length?plural(L.length,'lance','lances'):'Nenhum lance ainda';
   g.hidden=n<1;g.textContent=n+' para resgatar';
