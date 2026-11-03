@@ -15,3 +15,4 @@
 - [Operator-only prize operations](operator-only-prize-operations.md) — Keep tier values, eligibility forecasts, and future queue details inaccessible to end users.
 - [Unified dispute countdown](tier-specific-bid-timing.md) — Start a 60-second timer with the dispute and reset it to 60 seconds after every accepted bid.
 - [Prize demand cold start](prize-demand-cold-start.md) — When real demand history is insufficient, allow cash-backed disputes so activity can begin; enforce demand forecasts once history is reliable.
+- [No-bid dispute result](no-bid-dispute-result.md) — An ended dispute with no bids is not a zero-value win; show a clear no-bids outcome instead.
