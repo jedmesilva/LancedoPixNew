@@ -22,10 +22,12 @@ export async function recordLedgerEntry(
 export async function ensurePrizeObligation(
   transaction: Transaction,
   dispute: typeof disputesTable.$inferSelect,
-  simulated = true,
+  simulated = dispute.simulated,
 ) {
+  const coveredCents =
+    (dispute.bidsTotalCents * BigInt(dispute.coverageShareBps)) / 10_000n;
   const status =
-    dispute.bidsTotalCents >= dispute.prizeCents ? "funded" : "obligated";
+    coveredCents >= dispute.prizeCents ? "funded" : "obligated";
 
   await recordLedgerEntry(transaction, {
     entryType: "prize_obligation",
@@ -95,11 +97,24 @@ export async function recordBidAllocation(
     userId: string;
     disputeId: string;
     amountCents: bigint;
+    platformShareBps: number;
+    coverageShareBps: number;
     simulated?: boolean;
   },
 ) {
   const simulated = input.simulated ?? true;
-  const metadata = { walletMovement: "spent", revenueAttribution: "dispute" };
+  if (input.platformShareBps + input.coverageShareBps !== 10_000) {
+    throw new Error("Bid allocation shares must add up to 10000 basis points.");
+  }
+  const platformShareCents =
+    (input.amountCents * BigInt(input.platformShareBps)) / 10_000n;
+  const coverageShareCents = input.amountCents - platformShareCents;
+  const metadata = {
+    walletMovement: "spent",
+    revenueAttribution: "dispute",
+    platformShareBps: input.platformShareBps,
+    coverageShareBps: input.coverageShareBps,
+  };
 
   await recordLedgerEntry(transaction, {
     entryType: "wallet_spend",
@@ -123,19 +138,91 @@ export async function recordBidAllocation(
     simulated,
     metadata,
   });
+  await recordLedgerEntry(transaction, {
+    entryType: "platform_bid_revenue",
+    amountCents: platformShareCents,
+    sourceType: "bid",
+    sourceId: input.bidId,
+    idempotencyKey: `bid:${input.bidId}:platform-share`,
+    userId: input.userId,
+    disputeId: input.disputeId,
+    simulated,
+    metadata,
+  });
+  await recordLedgerEntry(transaction, {
+    entryType: "prize_coverage",
+    amountCents: coverageShareCents,
+    sourceType: "bid",
+    sourceId: input.bidId,
+    idempotencyKey: `bid:${input.bidId}:prize-coverage`,
+    userId: input.userId,
+    disputeId: input.disputeId,
+    simulated,
+    metadata,
+  });
+}
+
+export async function recordHouseContribution(
+  transaction: Transaction,
+  input: {
+    id: string;
+    amountCents: bigint;
+    receivedAt: Date;
+    simulated?: boolean;
+  },
+) {
+  if (input.amountCents <= 0n) {
+    throw new Error("A house contribution must be greater than zero.");
+  }
+
+  await recordLedgerEntry(transaction, {
+    entryType: "house_contribution",
+    amountCents: input.amountCents,
+    sourceType: "house_contribution",
+    sourceId: input.id,
+    idempotencyKey: `house-contribution:${input.id}`,
+    simulated: input.simulated ?? false,
+    metadata: { receivedAt: input.receivedAt.toISOString() },
+    createdAt: input.receivedAt,
+  });
+}
+
+export async function recordDisputeCloseAdjustment(
+  transaction: Transaction,
+  dispute: typeof disputesTable.$inferSelect,
+) {
+  const coverageCents =
+    (dispute.bidsTotalCents * BigInt(dispute.coverageShareBps)) / 10_000n;
+  const difference = coverageCents - dispute.prizeCents;
+  if (difference === 0n) return;
+
+  const isSurplus = difference > 0n;
+  await recordLedgerEntry(transaction, {
+    entryType: isSurplus ? "dispute_close_surplus" : "dispute_close_loss",
+    amountCents: isSurplus ? difference : -difference,
+    sourceType: "dispute",
+    sourceId: dispute.id,
+    idempotencyKey: `dispute:${dispute.id}:closing-adjustment`,
+    disputeId: dispute.id,
+    simulated: dispute.simulated,
+    metadata: {
+      coverageCents: coverageCents.toString(),
+      prizeCents: dispute.prizeCents.toString(),
+    },
+  });
 }
 
 export async function updatePrizeCoverage(
   transaction: Transaction,
   disputeId: string,
-  bidRevenueCents: bigint,
+  coveredCents: bigint,
   prizeCents: bigint,
   now = new Date(),
 ) {
   await transaction
     .update(disputeCashReservationsTable)
     .set({
-      status: bidRevenueCents >= prizeCents ? "funded" : "obligated",
+      status: coveredCents >= prizeCents ? "funded" : "obligated",
       updatedAt: now,
     })
     .where(
@@ -156,6 +243,95 @@ export type TreasuryCashPosition = {
   freeCashCents: bigint;
   includesSimulated: boolean;
 };
+
+export type PrizeReleaseCashPosition = {
+  cashNetCents: bigint;
+  openDebtCents: bigint;
+  reservedBonusCents: bigint;
+  freeCashCents: bigint;
+  includesSimulated: boolean;
+};
+
+export async function getPrizeReleaseCashPosition(
+  transaction: Transaction,
+  options: { includeSimulated?: boolean } = {},
+): Promise<PrizeReleaseCashPosition> {
+  const includeSimulated = options.includeSimulated ?? false;
+  const ledgerFilters = [
+    inArray(treasuryLedgerEntriesTable.entryType, [
+      "house_contribution",
+      "platform_bid_revenue",
+      "dispute_close_loss",
+      "dispute_close_surplus",
+      "ad_revenue_receipt",
+    ]),
+  ];
+  if (!includeSimulated) {
+    ledgerFilters.push(eq(treasuryLedgerEntriesTable.simulated, false));
+  }
+  const ledgerRows = await transaction
+    .select({
+      entryType: treasuryLedgerEntriesTable.entryType,
+      amountCents: treasuryLedgerEntriesTable.amountCents,
+    })
+    .from(treasuryLedgerEntriesTable)
+    .where(and(...ledgerFilters));
+  const cashNetCents = ledgerRows.reduce(
+    (total, row) =>
+      total +
+      (row.entryType === "dispute_close_loss"
+        ? -row.amountCents
+        : row.amountCents),
+    0n,
+  );
+
+  const openDisputes = await transaction
+    .select({
+      prizeCents: disputesTable.prizeCents,
+      bidsTotalCents: disputesTable.bidsTotalCents,
+      coverageShareBps: disputesTable.coverageShareBps,
+      simulated: disputesTable.simulated,
+    })
+    .from(disputesTable)
+    .where(inArray(disputesTable.status, ["scheduled", "live", "paused"]));
+  const openDebtCents = openDisputes.reduce((total, dispute) => {
+    if (!includeSimulated && dispute.simulated) return total;
+    const covered =
+      (dispute.bidsTotalCents * BigInt(dispute.coverageShareBps)) / 10_000n;
+    const debt =
+      dispute.prizeCents > covered ? dispute.prizeCents - covered : 0n;
+    return total + debt;
+  }, 0n);
+
+  const reservationFilters = includeSimulated
+    ? []
+    : [eq(disputeCashReservationsTable.simulated, false)];
+  const bonusReservations = await transaction
+    .select({ amountCents: disputeCashReservationsTable.amountCents })
+    .from(disputeCashReservationsTable)
+    .where(
+      and(
+        eq(disputeCashReservationsTable.reservationType, "bonus"),
+        inArray(disputeCashReservationsTable.status, [
+          "reserved",
+          "payout_requested",
+        ]),
+        ...reservationFilters,
+      ),
+    );
+  const reservedBonusCents = bonusReservations.reduce(
+    (total, row) => total + row.amountCents,
+    0n,
+  );
+
+  return {
+    cashNetCents,
+    openDebtCents,
+    reservedBonusCents,
+    freeCashCents: cashNetCents - openDebtCents - reservedBonusCents,
+    includesSimulated: includeSimulated,
+  };
+}
 
 async function sumLedgerEntries(
   entryTypes: string[],
@@ -301,7 +477,7 @@ export async function backfillTreasuryLedger() {
          dispute_id, simulated, metadata, created_at)
       SELECT 'prize_obligation', prize_cents, 'dispute', id::text,
              'dispute:' || id::text || ':prize-obligation',
-             id, true, jsonb_build_object('backfilled', true), created_at
+              id, simulated, jsonb_build_object('backfilled', true), created_at
       FROM disputes
       ON CONFLICT (idempotency_key) DO NOTHING
     `);
@@ -311,9 +487,13 @@ export async function backfillTreasuryLedger() {
         (dispute_id, reservation_type, amount_cents, status, source_type,
          source_id, idempotency_key, simulated, metadata, created_at, updated_at)
       SELECT id, 'prize', prize_cents,
-             CASE WHEN bids_total_cents >= prize_cents THEN 'funded' ELSE 'obligated' END,
+              CASE
+                WHEN (bids_total_cents * coverage_share_bps / 10000) >= prize_cents
+                  THEN 'funded'
+                ELSE 'obligated'
+              END,
              'dispute', id::text, 'dispute:' || id::text || ':prize-reservation',
-             true, jsonb_build_object('backfilled', true), created_at, updated_at
+              simulated, jsonb_build_object('backfilled', true), created_at, updated_at
       FROM disputes
       ON CONFLICT (idempotency_key) DO NOTHING
     `);
@@ -326,6 +506,85 @@ export async function backfillTreasuryLedger() {
              'bonus:' || id::text || ':reserved',
              dispute_id, true, jsonb_build_object('backfilled', true), created_at
       FROM bonuses
+      ON CONFLICT (idempotency_key) DO NOTHING
+    `);
+
+    await transaction.execute(sql`
+      INSERT INTO treasury_ledger_entries
+        (entry_type, amount_cents, source_type, source_id, idempotency_key,
+         user_id, dispute_id, simulated, metadata, created_at)
+      SELECT
+        'platform_bid_revenue',
+        (ABS(b.cost_cents) * d.platform_share_bps / 10000),
+        'bid',
+        b.id::text,
+        'bid:' || b.id::text || ':platform-share',
+        b.user_id,
+        b.dispute_id,
+        (COALESCE(t.txid LIKE 'SIM-%', true) OR d.simulated),
+        jsonb_build_object('backfilled', true, 'grossCents', ABS(b.cost_cents)::text),
+        b.created_at
+      FROM bids b
+      INNER JOIN disputes d ON d.id = b.dispute_id
+      LEFT JOIN wallet_entries w ON w.id = b.wallet_entry_id
+      LEFT JOIN credit_topups t ON t.wallet_entry_id = w.id
+      WHERE ABS(b.cost_cents) * d.platform_share_bps / 10000 > 0
+      ON CONFLICT (idempotency_key) DO NOTHING
+    `);
+
+    await transaction.execute(sql`
+      INSERT INTO treasury_ledger_entries
+        (entry_type, amount_cents, source_type, source_id, idempotency_key,
+         user_id, dispute_id, simulated, metadata, created_at)
+      SELECT
+        'prize_coverage',
+        ABS(b.cost_cents) -
+          (ABS(b.cost_cents) * d.platform_share_bps / 10000),
+        'bid',
+        b.id::text,
+        'bid:' || b.id::text || ':prize-coverage',
+        b.user_id,
+        b.dispute_id,
+        (COALESCE(t.txid LIKE 'SIM-%', true) OR d.simulated),
+        jsonb_build_object('backfilled', true, 'grossCents', ABS(b.cost_cents)::text),
+        b.created_at
+      FROM bids b
+      INNER JOIN disputes d ON d.id = b.dispute_id
+      LEFT JOIN wallet_entries w ON w.id = b.wallet_entry_id
+      LEFT JOIN credit_topups t ON t.wallet_entry_id = w.id
+      WHERE ABS(b.cost_cents) -
+          (ABS(b.cost_cents) * d.platform_share_bps / 10000) > 0
+      ON CONFLICT (idempotency_key) DO NOTHING
+    `);
+
+    await transaction.execute(sql`
+      INSERT INTO treasury_ledger_entries
+        (entry_type, amount_cents, source_type, source_id, idempotency_key,
+         dispute_id, simulated, metadata, created_at)
+      SELECT
+        CASE
+          WHEN coverage.covered_cents >= d.prize_cents THEN 'dispute_close_surplus'
+          ELSE 'dispute_close_loss'
+        END,
+        ABS(coverage.covered_cents - d.prize_cents),
+        'dispute',
+        d.id::text,
+        'dispute:' || d.id::text || ':closing-adjustment',
+        d.id,
+        d.simulated,
+        jsonb_build_object(
+          'backfilled', true,
+          'coverageCents', coverage.covered_cents::text,
+          'prizeCents', d.prize_cents::text
+        ),
+        d.ended_at
+      FROM disputes d
+      CROSS JOIN LATERAL (
+        SELECT d.bids_total_cents * d.coverage_share_bps / 10000 AS covered_cents
+      ) coverage
+      WHERE d.status = 'ended'
+        AND d.ended_at IS NOT NULL
+        AND coverage.covered_cents <> d.prize_cents
       ON CONFLICT (idempotency_key) DO NOTHING
     `);
 

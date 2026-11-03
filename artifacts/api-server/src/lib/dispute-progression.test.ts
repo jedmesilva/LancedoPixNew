@@ -9,10 +9,10 @@ import {
 } from "./dispute-progression";
 
 const tiers = [
-  { id: 1, prizeCents: 50_000n, active: true },
-  { id: 2, prizeCents: 100_000n, active: true },
-  { id: 3, prizeCents: 250_000n, active: true },
-  { id: 4, prizeCents: 1_000_000n, active: false },
+  { id: 1, prizeCents: 50_000n, active: true, sortOrder: 1 },
+  { id: 2, prizeCents: 100_000n, active: true, sortOrder: 2 },
+  { id: 3, prizeCents: 250_000n, active: true, sortOrder: 3 },
+  { id: 4, prizeCents: 1_000_000n, active: false, sortOrder: 4 },
 ];
 
 test("advances to the next active prize tier and wraps at the end", () => {
@@ -28,15 +28,25 @@ test("advances to the next active prize tier and wraps at the end", () => {
 
 test("does not select a tier with the same prize value", () => {
   const repeatedPrizeTiers = [
-    { id: 1, prizeCents: 50_000n, active: true },
-    { id: 2, prizeCents: 50_000n, active: true },
-    { id: 3, prizeCents: 100_000n, active: true },
+    { id: 1, prizeCents: 50_000n, active: true, sortOrder: 1 },
+    { id: 2, prizeCents: 50_000n, active: true, sortOrder: 2 },
+    { id: 3, prizeCents: 100_000n, active: true, sortOrder: 3 },
   ];
 
   assert.equal(
     selectNextPrizeTier(repeatedPrizeTiers, 1, 50_000n).id,
     3,
   );
+});
+
+test("uses configured tier order instead of numeric IDs", () => {
+  const reorderedTiers = [
+    { id: 1, prizeCents: 200n, active: true, sortOrder: 2 },
+    { id: 2, prizeCents: 100n, active: true, sortOrder: 1 },
+    { id: 3, prizeCents: 300n, active: true, sortOrder: 3 },
+  ];
+
+  assert.equal(selectNextPrizeTier(reorderedTiers, 2, 100n).id, 1);
 });
 
 test("requires a different active prize value", () => {

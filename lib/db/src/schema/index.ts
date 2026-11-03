@@ -26,6 +26,8 @@ export * from "./wallets";
 export * from "./wallet-entries";
 export * from "./credit-topups";
 export * from "./prize-tiers";
+export * from "./treasury-parameters";
+export * from "./prize-tier-forecasts";
 export * from "./disputes";
 export * from "./bids";
 export * from "./bonuses";

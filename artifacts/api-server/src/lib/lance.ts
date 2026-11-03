@@ -14,6 +14,7 @@ import {
   inArray,
   isNull,
   lt,
+  or,
   sql,
 } from "drizzle-orm";
 import {
@@ -42,10 +43,20 @@ import {
   getDisputeDisplayState,
   nextDisputeStartsAt,
   nextVictoryDurationSeconds,
-  selectNextPrizeTier,
 } from "./dispute-progression";
 import { secondsRemainingAtOvertake } from "./bid-time";
-import { ensurePrizeObligation } from "./treasury";
+import {
+  backfillTreasuryLedger,
+  ensurePrizeObligation,
+  recordBidAllocation,
+  recordDisputeCloseAdjustment,
+  updatePrizeCoverage,
+} from "./treasury";
+import {
+  createOrReuseForecastBatch,
+  ensureTreasuryCatalog,
+  selectPassingForecast,
+} from "./prize-release";
 import { notifyLanceStateChanged } from "./realtime";
 
 const TOTAL = 60;
@@ -58,13 +69,13 @@ const TEST_BID_BOT_CREDIT_RESERVE_CENTS = 100_000n;
 const TEST_BID_BOT_DISPUTE_SPEND_LIMIT_CENTS = 100_000n;
 const TEST_BID_BOT_MAX_RESPONSES_PER_DISPUTE = 12;
 const TEST_BID_BOT_RESPONSE_DELAY_MS = 700;
-const INITIAL_TIER_ID = 2;
 const LOCK_ID = 781_927;
 const ACTIVE_STATUSES = ["scheduled", "live", "paused"] as const;
 const PAYMENT_STATES = ["pending", "paid", "expired", "failed"] as const;
 const TEST_BID_BOT_ENABLED = process.env.NODE_ENV === "development";
 type PaymentState = (typeof PAYMENT_STATES)[number];
 type ActionResult = "ok" | "funds" | "invalid" | "exists" | "creds" | "not-found";
+type DisputeRecord = typeof disputesTable.$inferSelect;
 
 let testBidBotUserPromise: Promise<string> | null = null;
 const testBidBotFundingByRound = new Map<number, Promise<void>>();
@@ -74,22 +85,30 @@ const pendingTestBidBotResponses = new Map<
 >();
 const runningTestBidBotRounds = new Set<number>();
 
-const prizeValues = [
-  50_000n,
-  100_000n,
-  250_000n,
-  1_000_000n,
-  5_000_000n,
-  10_000_000n,
-  100_000_000n,
-];
-
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
 const centsToMoney = (value: bigint) => Number(value) / 100;
 const millisecondsLeft = (date: Date, now: number) =>
   Math.max(0, Math.ceil((date.getTime() - now) / 1000));
 
-async function ensureInitialDispute() {
+let engineSetupPromise: Promise<void> | null = null;
+
+async function ensureEngineSetup() {
+  if (!engineSetupPromise) {
+    engineSetupPromise = (async () => {
+      await db.transaction(async (transaction) => {
+        await transaction.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_ID})`);
+        await ensureTreasuryCatalog(transaction);
+      });
+      await backfillTreasuryLedger();
+    })().catch((error: unknown) => {
+      engineSetupPromise = null;
+      throw error;
+    });
+  }
+  await engineSetupPromise;
+}
+
+async function ensureInitialDispute(): Promise<boolean> {
   return db.transaction(async (transaction) => {
     await transaction.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_ID})`);
 
@@ -98,36 +117,52 @@ async function ensureInitialDispute() {
       .from(disputesTable)
       .orderBy(desc(disputesTable.number))
       .limit(1);
-    if (existing) return existing;
-
-    await transaction
-      .insert(prizeTiersTable)
-      .values(
-        prizeValues.map((prizeCents, index) => ({
-          id: index + 1,
-          prizeCents,
-          active: true,
-        })),
-      )
-      .onConflictDoNothing();
+    if (existing) return false;
 
     const now = new Date();
+    const startsAt = new Date(
+      Math.floor(now.getTime() / 60_000) * 60_000,
+    );
+    const batch = await createOrReuseForecastBatch(transaction, {
+      anchorDisputeNumber: null,
+      startsAt,
+    });
+    const selected = [...batch.tiers]
+      .sort(
+        (left, right) =>
+          left.sortOrder - right.sortOrder || left.id - right.id,
+      )
+      .map((tier) => ({
+        tier,
+        forecast: batch.forecasts.find((row) => row.tierId === tier.id),
+      }))
+      .find((candidate) => candidate.forecast?.passed);
+    if (!selected?.forecast) return false;
+
+    const simulated = process.env.NODE_ENV !== "production";
     const [dispute] = await transaction
       .insert(disputesTable)
       .values({
         number: 1,
-        tierId: INITIAL_TIER_ID,
-        prizeCents: prizeValues[INITIAL_TIER_ID - 1],
+        tierId: selected.tier.id,
+        forecastId: selected.forecast.id,
+        prizeCents: selected.tier.prizeCents,
         startingValueCents: 0n,
-        stepCents: 10n,
+        stepCents: selected.tier.minimumStepCents,
+        platformShareBps: batch.parameters.platformShareBps,
+        coverageShareBps: batch.parameters.coverageShareBps,
+        minimumCashCoverageBps:
+          selected.tier.minimumCashCoverageBps ??
+          batch.parameters.minimumCashCoverageBps,
+        simulated,
         bidDurationS: TOTAL,
         status: "live",
         startsAt: now,
         startedAt: now,
       })
       .returning();
-    await ensurePrizeObligation(transaction, dispute, true);
-    return dispute;
+    await ensurePrizeObligation(transaction, dispute, simulated);
+    return true;
   });
 }
 
@@ -155,27 +190,38 @@ async function ensureNextDispute(): Promise<boolean> {
       throw new Error(`Ended dispute ${latest.id} is missing endedAt.`);
     }
 
-    const tiers = await transaction
-      .select()
-      .from(prizeTiersTable)
-      .where(eq(prizeTiersTable.active, true))
-      .orderBy(asc(prizeTiersTable.id));
-    const nextTier = selectNextPrizeTier(
-      tiers,
+    const startsAt = nextDisputeStartsAt(latest.endedAt);
+    const batch = await createOrReuseForecastBatch(transaction, {
+      anchorDisputeNumber: latest.number,
+      startsAt,
+      currentTierId: latest.tierId,
+      currentPrizeCents: latest.prizeCents,
+    });
+    const selected = selectPassingForecast(
+      batch,
       latest.tierId,
       latest.prizeCents,
     );
-    const startsAt = nextDisputeStartsAt(latest.endedAt);
+    if (!selected) return false;
+
     const now = new Date();
     const startsImmediately = startsAt <= now;
+    const simulated = process.env.NODE_ENV !== "production";
     const [next] = await transaction
       .insert(disputesTable)
       .values({
         number: latest.number + 1,
-        tierId: nextTier.id,
-        prizeCents: nextTier.prizeCents,
+        tierId: selected.tier.id,
+        forecastId: selected.forecast.id,
+        prizeCents: selected.tier.prizeCents,
         startingValueCents: latest.startingValueCents,
-        stepCents: latest.stepCents,
+        stepCents: selected.tier.minimumStepCents,
+        platformShareBps: batch.parameters.platformShareBps,
+        coverageShareBps: batch.parameters.coverageShareBps,
+        minimumCashCoverageBps:
+          selected.tier.minimumCashCoverageBps ??
+          batch.parameters.minimumCashCoverageBps,
+        simulated,
         bidDurationS: nextVictoryDurationSeconds(latest.bidDurationS),
         status: startsImmediately ? "live" : "scheduled",
         startsAt,
@@ -183,7 +229,7 @@ async function ensureNextDispute(): Promise<boolean> {
       })
       .returning();
 
-    await ensurePrizeObligation(transaction, next, true);
+    await ensurePrizeObligation(transaction, next, simulated);
     return true;
   });
 }
@@ -233,6 +279,12 @@ async function advanceDispute(): Promise<boolean> {
         winnerId: leader.userId,
       })
       .where(eq(disputesTable.id, dispute.id));
+    await recordDisputeCloseAdjustment(transaction, {
+      ...dispute,
+      status: "ended",
+      endedAt: now,
+      winnerId: leader.userId,
+    });
     return true;
   });
 }
@@ -243,10 +295,11 @@ export function runDisputeEngine(): Promise<void> {
   if (currentEngineTick) return currentEngineTick;
 
   const tick = (async () => {
-    await ensureInitialDispute();
+    await ensureEngineSetup();
+    const createdInitial = await ensureInitialDispute();
     const advanced = await advanceDispute();
     const createdNext = await ensureNextDispute();
-    if (advanced || createdNext) notifyLanceStateChanged();
+    if (createdInitial || advanced || createdNext) notifyLanceStateChanged();
   })();
   currentEngineTick = tick;
 
@@ -318,38 +371,97 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   await runDisputeEngine();
   const now = Date.now();
 
-  const [dispute] = await db
+  const [activeDispute] = await db
     .select()
     .from(disputesTable)
     .where(inArray(disputesTable.status, [...ACTIVE_STATUSES]))
     .orderBy(desc(disputesTable.number))
     .limit(1);
-  const [latest] = dispute
-    ? [dispute]
+  const [latest] = activeDispute
+    ? [activeDispute]
     : await db
         .select()
         .from(disputesTable)
         .orderBy(desc(disputesTable.number))
         .limit(1);
+  const activeTiers = await db
+    .select()
+    .from(prizeTiersTable)
+    .where(eq(prizeTiersTable.active, true))
+    .orderBy(asc(prizeTiersTable.sortOrder), asc(prizeTiersTable.id));
   const [previousDispute] =
-    latest.status === "scheduled"
+    latest?.status === "scheduled"
       ? await db
           .select()
           .from(disputesTable)
           .where(eq(disputesTable.number, latest.number - 1))
           .limit(1)
       : [];
-  const displayState = getDisputeDisplayState(
-    latest,
-    previousDispute ?? null,
-  );
-  const currentDispute = displayState.dispute;
+
+  let currentDispute: DisputeRecord;
+  let phase: "soon" | "live" | "paused" | "ended" | "blocked";
+  let nextStartsAt: Date | null = null;
+  if (latest) {
+    const displayState = getDisputeDisplayState(
+      latest,
+      previousDispute ?? null,
+    );
+    currentDispute = displayState.dispute;
+    phase = displayState.phase;
+    nextStartsAt = displayState.nextStartsAt;
+    if (
+      latest.status === "ended" &&
+      nextStartsAt !== null &&
+      nextStartsAt.getTime() <= now
+    ) {
+      phase = "blocked";
+      nextStartsAt = null;
+    }
+  } else {
+    const firstTier = activeTiers[0];
+    if (!firstTier) throw new Error("No active prize tiers are configured.");
+    const placeholderTime = new Date(now);
+    currentDispute = {
+      id: randomUUID(),
+      number: 0,
+      tierId: firstTier.id,
+      forecastId: null,
+      prizeCents: firstTier.prizeCents,
+      startingValueCents: 0n,
+      stepCents: firstTier.minimumStepCents,
+      platformShareBps: 9000,
+      coverageShareBps: 1000,
+      minimumCashCoverageBps: 40000,
+      simulated: true,
+      bidDurationS: TOTAL,
+      status: "blocked",
+      startsAt: placeholderTime,
+      startedAt: null,
+      endedAt: null,
+      pausedRemainingS: null,
+      pausedAt: null,
+      pausedTotalS: 0,
+      leaderBidId: null,
+      bidsCount: 0,
+      bidsTotalCents: 0n,
+      bonusTotalCents: 0n,
+      winnerId: null,
+      createdAt: placeholderTime,
+      updatedAt: placeholderTime,
+    };
+    phase = "blocked";
+  }
 
   const tiers = await db
     .select()
     .from(prizeTiersTable)
-    .where(eq(prizeTiersTable.active, true))
-    .orderBy(asc(prizeTiersTable.id));
+    .where(
+      or(
+        eq(prizeTiersTable.active, true),
+        eq(prizeTiersTable.id, currentDispute.tierId),
+      ),
+    )
+    .orderBy(asc(prizeTiersTable.sortOrder), asc(prizeTiersTable.id));
   const currentBids = await db
     .select({
       id: bidsTable.id,
@@ -395,10 +507,9 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   });
   if (leader) nameIndex(leader.userId, leader.publicName);
 
-  const phase = displayState.phase;
   const targetAt =
     (phase === "soon" || phase === "ended")
-      ? (displayState.nextStartsAt?.getTime() ?? null)
+      ? (nextStartsAt?.getTime() ?? null)
       : phase === "live" && leader
         ? leader.expiresAt.getTime()
         : null;
@@ -407,9 +518,11 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       ? millisecondsLeft(new Date(targetAt), now)
       : 0;
   const soon =
-    (phase === "soon" || phase === "ended") && targetAt !== null
-      ? millisecondsLeft(new Date(targetAt), now)
-      : START;
+    phase === "blocked"
+      ? 0
+      : (phase === "soon" || phase === "ended") && targetAt !== null
+        ? millisecondsLeft(new Date(targetAt), now)
+        : START;
   const valueCents = leader?.valueCents ?? currentDispute.startingValueCents;
   const tierIndex = Math.max(
     0,
@@ -596,6 +709,11 @@ async function placeBid(userId: string, amount: number): Promise<ActionResult> {
   const now = new Date();
 
   return db.transaction(async (transaction) => {
+    const [bidder] = await transaction
+      .select({ testAccount: usersTable.testAccount })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
     const [dispute] = await transaction
       .select()
       .from(disputesTable)
@@ -629,6 +747,12 @@ async function placeBid(userId: string, amount: number): Promise<ActionResult> {
             winnerId: leader.userId,
           })
           .where(eq(disputesTable.id, dispute.id));
+      await recordDisputeCloseAdjustment(transaction, {
+        ...dispute,
+        status: "ended",
+        endedAt: now,
+        winnerId: leader.userId,
+      });
         return "invalid";
       }
     }
@@ -692,6 +816,27 @@ async function placeBid(userId: string, amount: number): Promise<ActionResult> {
         bidsTotalCents: sql`${disputesTable.bidsTotalCents} + ${bidValueCents}`,
       })
       .where(eq(disputesTable.id, dispute.id));
+    const simulated = dispute.simulated || bidder?.testAccount !== false;
+    await recordBidAllocation(transaction, {
+      bidId: bid.id,
+      userId,
+      disputeId: dispute.id,
+      amountCents: bid.costCents,
+      platformShareBps: dispute.platformShareBps,
+      coverageShareBps: dispute.coverageShareBps,
+      simulated,
+    });
+    const coveredCents =
+      ((dispute.bidsTotalCents + bidValueCents) *
+        BigInt(dispute.coverageShareBps)) /
+      10_000n;
+    await updatePrizeCoverage(
+      transaction,
+      dispute.id,
+      coveredCents,
+      dispute.prizeCents,
+      now,
+    );
     return "ok";
   });
 }

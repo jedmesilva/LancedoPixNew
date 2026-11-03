@@ -41,7 +41,7 @@ export const treasuryLedgerEntriesTable = pgTable(
   (table) => [
     check(
       "treasury_ledger_entry_type_check",
-      sql`${table.entryType} IN ('cash_receipt', 'wallet_credit', 'wallet_spend', 'bid_revenue', 'prize_obligation', 'bonus_reserved', 'payout_requested', 'payout_paid', 'refund_paid', 'processing_fee', 'ad_revenue_receipt')`,
+      sql`${table.entryType} IN ('cash_receipt', 'wallet_credit', 'wallet_spend', 'bid_revenue', 'platform_bid_revenue', 'prize_coverage', 'house_contribution', 'dispute_close_loss', 'dispute_close_surplus', 'prize_obligation', 'bonus_reserved', 'payout_requested', 'payout_paid', 'refund_paid', 'processing_fee', 'ad_revenue_receipt')`,
     ),
     check(
       "treasury_ledger_amount_positive_check",

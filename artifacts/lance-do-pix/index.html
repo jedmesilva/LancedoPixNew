@@ -3107,8 +3107,15 @@ function paintBonus(){
   if(!first){b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}
 }
 function paintSoon(){
+  if(A.phase==='blocked'){
+    $('nxs').textContent='—';$('nxa').textContent='Faixas bloqueadas';
+    $('nxt').querySelector('.nt').textContent='Nenhuma faixa atende aos critérios de caixa e demanda neste momento.';
+    $('nxt').style.setProperty('--rp',0);
+    return;
+  }
   if(A.phase!=='soon'&&A.phase!=='ended')return;
   $('nxs').textContent=A.soon;$('nxa').textContent='Próxima disputa';
+  $('nxt').querySelector('.nt').textContent='Uma nova disputa vai começar em breve';
   $('nxt').style.setProperty('--rp',(1-A.soon/START)*100);
 }
 function agoLabel(seconds){
@@ -3167,21 +3174,23 @@ function paintHistorySection({animateLatest=false,animateVisibility=true}={}){
   paintHist(animateLatest);
 }
 function paintBid(){
-  const H=A.H,id=A.phase,live=id==='live',paused=id==='paused',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':(Server.cfg.N[A.leader]??'Participante'),urg=live&&!noLeader&&A.left<=10;
-  $('lvs').textContent=paused?'Disputa pausada':'Disputa ao vivo';
-  $('lvg').dataset.p=paused?'paused':'live';
-  $('bl').textContent=noLeader?'Primeiro lance':'Lance atual';
+  const H=A.H,id=A.phase,live=id==='live',paused=id==='paused',blocked=id==='blocked',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':(Server.cfg.N[A.leader]??'Participante'),urg=live&&!noLeader&&A.left<=10;
+  $('lvs').textContent=blocked?'Aguardando liberação':paused?'Disputa pausada':'Disputa ao vivo';
+  $('lvg').dataset.p=blocked?'blocked':paused?'paused':'live';
+  $('bl').textContent=blocked?'Faixa indisponível':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(A.value);
-  $('whoText').textContent=noLeader?'Aguardando o primeiro lance':n;
-  $('clk').textContent=mmss(A.left);
-  $('clk').setAttribute('aria-label',(paused?'Cronômetro pausado':'Tempo até a vitória')+': '+mmss(A.left));
-  $('lvu').textContent=paused?'Cronômetro pausado':'Tempo até a vitória';
+  $('whoText').textContent=blocked?'Aguardando os critérios de liberação':noLeader?'Aguardando o primeiro lance':n;
+  $('clk').textContent=blocked?'—':mmss(A.left);
+  $('clk').setAttribute('aria-label',blocked?'Disputa indisponível':(paused?'Cronômetro pausado':'Tempo até a vitória')+': '+mmss(A.left));
+  $('lvu').textContent=blocked?'Disputa indisponível':paused?'Cronômetro pausado':'Tempo até a vitória';
   $('lvc').hidden=noLeader;
   $('lvc').style.setProperty('--rp',Math.max(0,Math.min(100,A.left/TOTAL*100)));
   $('lvc').toggleAttribute('data-urg',urg);
   const note=$('lvr');
-  note.hidden=!live;
-  note.textContent=noLeader
+  note.hidden=!live&&!blocked;
+  note.textContent=blocked
+    ?'A próxima disputa só começa quando uma faixa passar pelos critérios financeiros e de demanda.'
+    :noLeader
     ?'Ainda não há lances. Dê o primeiro para disputar o prêmio.'
     :mine
       ?'Você deu o maior lance. Se ninguém superar até o cronômetro zerar, o prêmio é seu.'
@@ -3197,14 +3206,14 @@ function paintResult(){
   if(bonus!==null)b.textContent='+ R$ '+fmt(bonus)+' de bônus';
 }
 function paintSheet(){
-  const id=A.phase,live=id==='live',mine=A.leader===0,min=Server.minBid(),c=$('cta'),paid=A.paid;
+  const id=A.phase,live=id==='live',blocked=id==='blocked',mine=A.leader===0,min=Server.minBid(),c=$('cta'),paid=A.paid;
   if(A.value!==seen){seen=A.value;myBid=min}
   if(myBid<min)myBid=min;
   const cost=Server.bidCost(myBid),show=U.signedIn&&live&&!mine,low=show&&W.bal<cost;
   $('ctl').hidden=false;$('val').textContent=fmt(myBid);
   c.textContent=live
     ?mine?'Seu lance é o maior':low?'Adicionar créditos':A.leader<0?'Dar o primeiro lance de '+brl(myBid):'Superar com '+brl(myBid)
-    :'Dar lance de '+brl(myBid);
+    :blocked?'Aguardando liberação':'Dar lance de '+brl(myBid);
   c.disabled=!live||mine;
   if(bidSubmitting){c.textContent='Enviando lance…';c.disabled=true;c.dataset.loading='';c.setAttribute('aria-busy','true')}
   else{delete c.dataset.loading;c.removeAttribute('aria-busy')}
@@ -3215,8 +3224,8 @@ function paintSheet(){
   $('app').style.paddingBottom=($('sheet').offsetHeight+24)+'px';
 }
 function render(animateTransitions=true){
-  const id=A.phase,isSoon=id==='soon',ended=id==='ended';
-  const showNext=isSoon||ended;
+  const id=A.phase,isSoon=id==='soon',ended=id==='ended',blocked=id==='blocked';
+  const showNext=isSoon||ended||blocked;
   const phaseChanged=lastRenderedPhase!==null&&lastRenderedPhase!==id;
   transitionVisibility($('nxt'),showNext,{
     animate:animateTransitions,
@@ -3227,7 +3236,7 @@ function render(animateTransitions=true){
     animate:animateTransitions,
     duration:380
   });
-  transitionVisibility($('prz'),!isSoon&&!ended,{
+  transitionVisibility($('prz'),!isSoon&&!ended&&!blocked,{
     animate:animateTransitions,
     duration:300
   });

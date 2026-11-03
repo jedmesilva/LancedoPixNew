@@ -5,6 +5,7 @@ type PrizeTierOption = {
   active: boolean;
   id: number;
   prizeCents: bigint;
+  sortOrder?: number;
 };
 
 export function selectNextPrizeTier(
@@ -14,7 +15,11 @@ export function selectNextPrizeTier(
 ): PrizeTierOption {
   const activeTiers = tiers
     .filter((tier) => tier.active)
-    .sort((left, right) => left.id - right.id);
+    .sort(
+      (left, right) =>
+        (left.sortOrder ?? left.id) - (right.sortOrder ?? right.id) ||
+        left.id - right.id,
+    );
 
   if (activeTiers.length < 2) {
     throw new Error(

@@ -14,4 +14,5 @@ export const AuctionPhase = {
   paused: 'paused',
   ended: 'ended',
   soon: 'soon',
+  blocked: 'blocked',
 } as const;

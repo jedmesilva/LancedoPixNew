@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import {
   bigint,
+  boolean,
   check,
   index,
   integer,
@@ -24,6 +25,7 @@ export const disputesTable = pgTable(
     tierId: smallint("tier_id")
       .notNull()
       .references(() => prizeTiersTable.id),
+    forecastId: bigint("forecast_id", { mode: "bigint" }),
     prizeCents: bigint("prize_cents", { mode: "bigint" }).notNull(),
     startingValueCents: bigint("starting_value_cents", {
       mode: "bigint",
@@ -31,6 +33,12 @@ export const disputesTable = pgTable(
       .notNull()
       .default(sql`0`),
     stepCents: bigint("step_cents", { mode: "bigint" }).notNull(),
+    platformShareBps: integer("platform_share_bps").notNull().default(9000),
+    coverageShareBps: integer("coverage_share_bps").notNull().default(1000),
+    minimumCashCoverageBps: integer("minimum_cash_coverage_bps")
+      .notNull()
+      .default(40000),
+    simulated: boolean("simulated").notNull().default(true),
     bidDurationS: integer("bid_duration_s").notNull(),
     status: text("status").notNull(),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
@@ -88,6 +96,7 @@ export const disputesTable = pgTable(
     ),
     index("disputes_status_starts_at_idx").on(table.status, table.startsAt),
     index("disputes_leader_bid_id_idx").on(table.leaderBidId),
+    index("disputes_forecast_id_idx").on(table.forecastId),
   ],
 );
 

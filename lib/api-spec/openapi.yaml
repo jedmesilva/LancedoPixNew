@@ -296,7 +296,7 @@ components:
       properties:
         round: { type: integer }
         p: { type: integer }
-        phase: { type: string, enum: [live, paused, ended, soon] }
+        phase: { type: string, enum: [live, paused, ended, soon, blocked] }
         value: { type: number }
         leader: { type: integer }
         left: { type: integer }

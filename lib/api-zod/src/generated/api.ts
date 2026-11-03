@@ -174,7 +174,7 @@ export const GetLanceStateResponse = zod.object({
   "auction": zod.object({
   "round": zod.number().int(),
   "p": zod.number().int(),
-  "phase": zod.enum(['live', 'paused', 'ended', 'soon']),
+  "phase": zod.enum(['live', 'paused', 'ended', 'soon', 'blocked']),
   "value": zod.number(),
   "leader": zod.number().int(),
   "left": zod.number().int(),
@@ -273,7 +273,7 @@ export const PostLanceActionResponse = zod.object({
   "auction": zod.object({
   "round": zod.number().int(),
   "p": zod.number().int(),
-  "phase": zod.enum(['live', 'paused', 'ended', 'soon']),
+  "phase": zod.enum(['live', 'paused', 'ended', 'soon', 'blocked']),
   "value": zod.number(),
   "leader": zod.number().int(),
   "left": zod.number().int(),
