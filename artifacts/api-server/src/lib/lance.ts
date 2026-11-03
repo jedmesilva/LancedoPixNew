@@ -39,7 +39,9 @@ import {
 import { logger } from "./logger";
 import type { CurrentUser } from "./auth";
 import {
-  getTierBidDurationSeconds,
+  DISPUTE_COUNTDOWN_SECONDS,
+  getDisputeCountdownDeadline,
+  getDisputeDeadline,
   getDisputeDisplayState,
   nextDisputeStartsAt,
 } from "./dispute-progression";
@@ -49,6 +51,7 @@ import {
   ensurePrizeObligation,
   recordBidAllocation,
   recordDisputeCloseAdjustment,
+  releaseUnawardedPrizeReservation,
   updatePrizeCoverage,
 } from "./treasury";
 import {
@@ -61,7 +64,7 @@ import {
 } from "./prize-queue";
 import { notifyLanceStateChanged } from "./realtime";
 
-const START = 60;
+const START = DISPUTE_COUNTDOWN_SECONDS;
 const DISPUTE_ENGINE_INTERVAL_MS = 1_000;
 const PAYMENT_EXPIRY_SECONDS = 600;
 const MAX_AMOUNT_CENTS = 100_000_000;
@@ -216,7 +219,7 @@ async function ensureInitialDispute(): Promise<boolean> {
           selected.tier.minimumCashCoverageBps ??
           batch.parameters.minimumCashCoverageBps,
         simulated: false,
-        bidDurationS: getTierBidDurationSeconds(selected.tier),
+        bidDurationS: DISPUTE_COUNTDOWN_SECONDS,
         status: "live",
         startsAt: now,
         startedAt: now,
@@ -284,7 +287,7 @@ async function ensureNextDispute(): Promise<boolean> {
           selected.tier.minimumCashCoverageBps ??
           batch.parameters.minimumCashCoverageBps,
         simulated: false,
-        bidDurationS: getTierBidDurationSeconds(selected.tier),
+        bidDurationS: DISPUTE_COUNTDOWN_SECONDS,
         status: startsImmediately ? "live" : "scheduled",
         startsAt,
         startedAt: startsImmediately ? now : null,
@@ -300,6 +303,22 @@ async function ensureNextDispute(): Promise<boolean> {
     );
     return true;
   });
+}
+
+async function endDisputeWithoutBids(
+  transaction: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  dispute: DisputeRecord,
+  endedAt: Date,
+) {
+  await transaction
+    .update(disputesTable)
+    .set({
+      status: "ended",
+      endedAt,
+      winnerId: null,
+    })
+    .where(eq(disputesTable.id, dispute.id));
+  await releaseUnawardedPrizeReservation(transaction, dispute.id, endedAt);
 }
 
 async function advanceDispute(): Promise<boolean> {
@@ -322,14 +341,28 @@ async function advanceDispute(): Promise<boolean> {
       return true;
     }
 
-    if (dispute.status !== "live" || !dispute.leaderBidId) return false;
+    if (dispute.status !== "live") return false;
+
+    if (!dispute.leaderBidId) {
+      const deadline = getDisputeDeadline(
+        dispute.startedAt,
+        dispute.startsAt,
+        null,
+      );
+      if (deadline > now) return false;
+      await endDisputeWithoutBids(transaction, dispute, now);
+      return true;
+    }
 
     const [leader] = await transaction
       .select()
       .from(bidsTable)
       .where(eq(bidsTable.id, dispute.leaderBidId))
       .limit(1);
-    if (!leader || leader.expiresAt > now) return false;
+    if (!leader) {
+      throw new Error(`Dispute ${dispute.id} is missing its leader bid.`);
+    }
+    if (leader.expiresAt > now) return false;
 
     await transaction
       .update(bidsTable)
@@ -501,7 +534,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
       coverageShareBps: 1000,
       minimumCashCoverageBps: 40000,
       simulated: false,
-      bidDurationS: getTierBidDurationSeconds(firstTier),
+      bidDurationS: DISPUTE_COUNTDOWN_SECONDS,
       status: "blocked",
       startsAt: placeholderTime,
       startedAt: null,
@@ -568,13 +601,19 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   const targetAt =
     (phase === "soon" || phase === "ended")
       ? (nextStartsAt?.getTime() ?? null)
-      : phase === "live" && leader
-        ? leader.expiresAt.getTime()
+      : phase === "live"
+        ? getDisputeDeadline(
+            currentDispute.startedAt,
+            currentDispute.startsAt,
+            leader?.expiresAt ?? null,
+          ).getTime()
         : null;
   const left =
     phase === "live" && targetAt !== null
       ? millisecondsLeft(new Date(targetAt), now)
-      : 0;
+      : phase === "paused"
+        ? currentDispute.pausedRemainingS ?? 0
+        : 0;
   const soon =
     phase === "blocked"
       ? 0
@@ -700,7 +739,7 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
   return GetLanceStateResponse.parse({
     cfg: {
       N: noActiveDispute ? [] : names,
-      TOTAL: noActiveDispute ? 0 : currentDispute.bidDurationS,
+      TOTAL: noActiveDispute ? 0 : DISPUTE_COUNTDOWN_SECONDS,
     },
     auction: {
       round: noActiveDispute ? 0 : currentDispute.number,
@@ -785,6 +824,7 @@ async function placeBid(userId: string, amount: number): Promise<ActionResult> {
       .for("update");
     if (!dispute || dispute.status !== "live") return "invalid";
 
+    let leaderBid: typeof bidsTable.$inferSelect | null = null;
     if (dispute.leaderBidId) {
       const [leader] = await transaction
         .select()
@@ -792,7 +832,19 @@ async function placeBid(userId: string, amount: number): Promise<ActionResult> {
         .where(eq(bidsTable.id, dispute.leaderBidId))
         .limit(1)
         .for("update");
-      if (leader && leader.expiresAt <= now) {
+      if (!leader) {
+        throw new Error(`Dispute ${dispute.id} is missing its leader bid.`);
+      }
+      leaderBid = leader;
+    }
+
+    const deadline = getDisputeDeadline(
+      dispute.startedAt,
+      dispute.startsAt,
+      leaderBid?.expiresAt ?? null,
+    );
+    if (deadline <= now) {
+      if (leaderBid) {
         await transaction
           .update(bidsTable)
           .set({ result: "lost" })
@@ -800,35 +852,28 @@ async function placeBid(userId: string, amount: number): Promise<ActionResult> {
         await transaction
           .update(bidsTable)
           .set({ result: "won" })
-          .where(eq(bidsTable.id, leader.id));
+          .where(eq(bidsTable.id, leaderBid.id));
         await transaction
           .update(disputesTable)
           .set({
             status: "ended",
             endedAt: now,
-            winnerId: leader.userId,
+            winnerId: leaderBid.userId,
           })
           .where(eq(disputesTable.id, dispute.id));
-      await recordDisputeCloseAdjustment(transaction, {
-        ...dispute,
-        status: "ended",
-        endedAt: now,
-        winnerId: leader.userId,
-      });
-        return "invalid";
+        await recordDisputeCloseAdjustment(transaction, {
+          ...dispute,
+          status: "ended",
+          endedAt: now,
+          winnerId: leaderBid.userId,
+        });
+      } else {
+        await endDisputeWithoutBids(transaction, dispute, now);
       }
+      return "invalid";
     }
 
-    const currentValue =
-      dispute.leaderBidId === null
-        ? dispute.startingValueCents
-        : (
-            await transaction
-              .select({ valueCents: bidsTable.valueCents })
-              .from(bidsTable)
-              .where(eq(bidsTable.id, dispute.leaderBidId))
-              .limit(1)
-          )[0]?.valueCents ?? dispute.startingValueCents;
+    const currentValue = leaderBid?.valueCents ?? dispute.startingValueCents;
     if (bidValueCents < currentValue + dispute.stepCents) return "invalid";
 
     const [wallet] = await transaction
@@ -854,7 +899,7 @@ async function placeBid(userId: string, amount: number): Promise<ActionResult> {
         refType: "manual",
       })
       .returning();
-    const expiresAt = new Date(now.getTime() + dispute.bidDurationS * 1000);
+    const expiresAt = getDisputeCountdownDeadline(now);
     const [bid] = await transaction
       .insert(bidsTable)
       .values({

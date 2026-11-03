@@ -1,14 +1,26 @@
-export const NEXT_DISPUTE_DELAY_MS = 60_000;
+export const DISPUTE_COUNTDOWN_SECONDS = 60;
+const DISPUTE_COUNTDOWN_MS = DISPUTE_COUNTDOWN_SECONDS * 1_000;
 
-export function getTierBidDurationSeconds(tier: {
-  bidDurationS: number;
-}): number {
-  if (!Number.isSafeInteger(tier.bidDurationS) || tier.bidDurationS <= 0) {
-    throw new RangeError(
-      "Prize tier bid duration must be a positive integer in seconds.",
-    );
+export function getDisputeCountdownDeadline(startedAt: Date): Date {
+  const startedAtMs = startedAt.getTime();
+  if (!Number.isFinite(startedAtMs)) {
+    throw new Error("A dispute countdown must start at a valid time.");
   }
-  return tier.bidDurationS;
+  return new Date(startedAtMs + DISPUTE_COUNTDOWN_MS);
+}
+
+export function getDisputeDeadline(
+  startedAt: Date | null,
+  startsAt: Date,
+  leaderExpiresAt: Date | null,
+): Date {
+  if (leaderExpiresAt) {
+    if (!Number.isFinite(leaderExpiresAt.getTime())) {
+      throw new Error("A leader bid must have a valid expiry time.");
+    }
+    return leaderExpiresAt;
+  }
+  return getDisputeCountdownDeadline(startedAt ?? startsAt);
 }
 
 type PrizeTierOption = {
@@ -57,7 +69,7 @@ export function nextDisputeStartsAt(endedAt: Date): Date {
   if (!Number.isFinite(endedAtMs)) {
     throw new Error("An ended dispute must have a valid end time.");
   }
-  return new Date(endedAtMs + NEXT_DISPUTE_DELAY_MS);
+  return new Date(endedAtMs);
 }
 
 type DisputeProgressionRecord = {

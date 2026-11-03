@@ -63,6 +63,23 @@ export async function ensurePrizeObligation(
     .onConflictDoNothing();
 }
 
+export async function releaseUnawardedPrizeReservation(
+  transaction: Transaction,
+  disputeId: string,
+  now: Date,
+) {
+  await transaction
+    .update(disputeCashReservationsTable)
+    .set({ status: "released", updatedAt: now })
+    .where(
+      and(
+        eq(disputeCashReservationsTable.disputeId, disputeId),
+        eq(disputeCashReservationsTable.reservationType, "prize"),
+        inArray(disputeCashReservationsTable.status, ["obligated", "funded"]),
+      ),
+    );
+}
+
 export async function recordTopupSettlement(
   transaction: Transaction,
   input: {
@@ -198,6 +215,8 @@ export async function recordDisputeCloseAdjustment(
   transaction: Transaction,
   dispute: typeof disputesTable.$inferSelect,
 ) {
+  if (!dispute.winnerId) return;
+
   const coverageCents =
     (dispute.bidsTotalCents * BigInt(dispute.coverageShareBps)) / 10_000n;
   const difference = coverageCents - dispute.prizeCents;
@@ -421,6 +440,7 @@ export async function backfillTreasuryLedger() {
          source_id, idempotency_key, simulated, metadata, created_at, updated_at)
       SELECT id, 'prize', prize_cents,
               CASE
+                WHEN status = 'ended' AND winner_id IS NULL THEN 'released'
                 WHEN (bids_total_cents * coverage_share_bps / 10000) >= prize_cents
                   THEN 'funded'
                 ELSE 'obligated'
@@ -516,6 +536,7 @@ export async function backfillTreasuryLedger() {
         SELECT d.bids_total_cents * d.coverage_share_bps / 10000 AS covered_cents
       ) coverage
       WHERE d.status = 'ended'
+        AND d.winner_id IS NOT NULL
         AND d.ended_at IS NOT NULL
         AND coverage.covered_cents <> d.prize_cents
       ON CONFLICT (idempotency_key) DO NOTHING

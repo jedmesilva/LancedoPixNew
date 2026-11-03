@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  NEXT_DISPUTE_DELAY_MS,
+  DISPUTE_COUNTDOWN_SECONDS,
+  getDisputeCountdownDeadline,
+  getDisputeDeadline,
   getDisputeDisplayState,
-  getTierBidDurationSeconds,
   nextDisputeStartsAt,
   selectNextPrizeTier,
 } from "./dispute-progression";
@@ -61,24 +62,28 @@ test("requires a different active prize value", () => {
   );
 });
 
-test("uses the configured positive duration for a prize tier", () => {
-  assert.equal(getTierBidDurationSeconds({ bidDurationS: 90 }), 90);
-  assert.throws(
-    () => getTierBidDurationSeconds({ bidDurationS: 0 }),
-    /positive integer in seconds/i,
+test("starts and resets the same 60-second countdown", () => {
+  const disputeStartedAt = new Date("2026-10-25T12:00:00.000Z");
+  const startsAt = new Date("2026-10-25T11:59:00.000Z");
+  const bidCreatedAt = new Date("2026-10-25T12:00:45.000Z");
+  const expectedMs = 60_000;
+
+  assert.equal(DISPUTE_COUNTDOWN_SECONDS, 60);
+  assert.equal(
+    getDisputeDeadline(disputeStartedAt, startsAt, null).getTime(),
+    disputeStartedAt.getTime() + expectedMs,
   );
-  assert.throws(
-    () => getTierBidDurationSeconds({ bidDurationS: 1.5 }),
-    /positive integer in seconds/i,
+
+  const bidDeadline = getDisputeCountdownDeadline(bidCreatedAt);
+  assert.equal(
+    getDisputeDeadline(disputeStartedAt, startsAt, bidDeadline).getTime(),
+    bidCreatedAt.getTime() + expectedMs,
   );
 });
 
-test("schedules the next dispute one minute after the previous end", () => {
+test("starts the next dispute immediately after the previous end", () => {
   const endedAt = new Date("2026-10-25T12:00:00.000Z");
-  assert.equal(
-    nextDisputeStartsAt(endedAt).getTime() - endedAt.getTime(),
-    NEXT_DISPUTE_DELAY_MS,
-  );
+  assert.equal(nextDisputeStartsAt(endedAt).getTime(), endedAt.getTime());
 });
 
 test("keeps the previous dispute ended while the next one is scheduled", () => {

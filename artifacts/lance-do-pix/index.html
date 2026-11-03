@@ -3174,17 +3174,18 @@ function paintHistorySection({animateLatest=false,animateVisibility=true}={}){
   paintHist(animateLatest);
 }
 function paintBid(){
-  const H=A.H,id=A.phase,live=id==='live',paused=id==='paused',none=id==='none',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':(Server.cfg.N[A.leader]??'Participante'),urg=live&&!noLeader&&A.left<=10;
-  const openingBid=noLeader&&!none;
+  const H=A.H,id=A.phase,live=id==='live',paused=id==='paused',none=id==='none',mine=A.leader===0,noLeader=A.leader<0,n=noLeader?'':(Server.cfg.N[A.leader]??'Participante'),urg=live&&A.left<=10;
+  const openingBid=noLeader&&(live||paused);
+  const timerLabel=none?'Nenhuma disputa ativa':paused?'Cronômetro pausado':live&&noLeader?'Tempo para o primeiro lance':'Tempo até a vitória';
   $('lvs').textContent=none?'Sem disputa ativa':paused?'Disputa pausada':'Disputa ao vivo';
   $('lvg').dataset.p=none?'none':paused?'paused':'live';
   $('bl').textContent=none?'Status':openingBid?'Lance atual':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(openingBid?Server.minBid():A.value);
   $('whoText').textContent=none?'Nenhuma disputa ativa no momento.':noLeader?'Aguardando o primeiro lance':n;
   $('clk').textContent=none?'—':mmss(A.left);
-  $('clk').setAttribute('aria-label',none?'Nenhuma disputa ativa':(paused?'Cronômetro pausado':'Tempo até a vitória')+': '+mmss(A.left));
-  $('lvu').textContent=none?'Sem disputa ativa':paused?'Cronômetro pausado':'Tempo até a vitória';
-  $('lvc').hidden=noLeader;
+  $('clk').setAttribute('aria-label',timerLabel+': '+mmss(A.left));
+  $('lvu').textContent=timerLabel;
+  $('lvc').hidden=!live&&!paused;
   $('lvc').style.setProperty('--rp',Math.max(0,Math.min(100,A.left/TOTAL*100)));
   $('lvc').toggleAttribute('data-urg',urg);
   const note=$('lvr');
@@ -3192,7 +3193,7 @@ function paintBid(){
   note.textContent=none
     ?'Não há disputa ativa no momento. Volte em breve.'
     :noLeader
-    ?'Ainda não há lances. Dê o primeiro para disputar o prêmio.'
+    ?'Ainda não há lances. Dê o primeiro antes que o tempo termine.'
     :mine
       ?'Você deu o maior lance. Se ninguém superar até o cronômetro zerar, o prêmio é seu.'
       :(n+' levará o prêmio quando o cronômetro zerar. Dê um lance maior para vencer a disputa.');
