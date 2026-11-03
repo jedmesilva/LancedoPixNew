@@ -3031,7 +3031,7 @@ try {
 /* ═══ 1. CONFIG, UTILITÁRIOS E ESTADO DE TELA ═══
    $, fmt, brl, mmss, plural, dur, textos dos estados (S) e rascunho do lance (myBid). */
 const $=id=>document.getElementById(id);
-const {TOTAL,START,STEP}=Server.cfg,r2=Server.r2,A=Server.auction,W=Server.wallet,U=Server.user;
+const {TOTAL,STEP}=Server.cfg,r2=Server.r2,A=Server.auction,W=Server.wallet,U=Server.user;
 const fmt=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const brl=n=>'R$\u00a0'+fmt(n);
 const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -3116,7 +3116,8 @@ function paintSoon(){
   if(A.phase!=='soon'&&A.phase!=='ended')return;
   $('nxs').textContent=A.soon;$('nxa').textContent='Próxima disputa';
   $('nxt').querySelector('.nt').textContent='Uma nova disputa vai começar em breve';
-  $('nxt').style.setProperty('--rp',(1-A.soon/START)*100);
+  const progress=TOTAL>0?(1-A.soon/TOTAL)*100:0;
+  $('nxt').style.setProperty('--rp',Math.max(0,Math.min(100,progress)));
 }
 function agoLabel(seconds){
   const value=Math.max(0,Math.floor(seconds));
