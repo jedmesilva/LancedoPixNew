@@ -13,3 +13,4 @@
 - [Test account identity](test-account-identity.md) — Keep test accounts human-readable, uniquely addressable, and clearly non-deliverable.
 - [Unpredictable dispute generation](unpredictable-dispute-generation.md) — Select the next eligible prize tier unpredictably rather than by ascending or descending value.
 - [Operator-only prize operations](operator-only-prize-operations.md) — Keep tier values, eligibility forecasts, and future queue details inaccessible to end users.
+- [Tier-specific bid timing](tier-specific-bid-timing.md) — Configure each tier's bid countdown separately and copy its duration onto each new dispute.
