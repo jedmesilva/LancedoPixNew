@@ -2668,7 +2668,7 @@ document.querySelector("#plusb")?.replaceChildren(lucideElement("plus", 20));
 replaceWithLucide(".rot", "loader-circle");
 
 const Server = (() => {
-  const cfg = { V: [], N: [], TOTAL: 0, START: 0, STEP: 0 };
+  const cfg = { N: [], TOTAL: 0, START: 0, STEP: 0 };
   const A = { H: [] };
   const W = { bal: 0, pay: null };
   const U = { name: "", email: "", signedIn: false };
@@ -3031,7 +3031,7 @@ try {
 /* ═══ 1. CONFIG, UTILITÁRIOS E ESTADO DE TELA ═══
    $, fmt, brl, mmss, plural, dur, textos dos estados (S) e rascunho do lance (myBid). */
 const $=id=>document.getElementById(id);
-const {V,TOTAL,START,STEP}=Server.cfg,r2=Server.r2,A=Server.auction,W=Server.wallet,U=Server.user;
+const {TOTAL,START,STEP}=Server.cfg,r2=Server.r2,A=Server.auction,W=Server.wallet,U=Server.user;
 const fmt=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const brl=n=>'R$\u00a0'+fmt(n);
 const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -3199,7 +3199,7 @@ function paintBid(){
 }
 function paintResult(){
   const bonus=Server.bonus(),b=$('rbn');
-  $('rpz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
+  $('rpz').innerHTML='<small>R$</small>'+fmt(A.prize??0);
   $('rwv').textContent=brl(A.value);
   $('rwt').textContent=A.leader<0?'Sem vencedor':A.leader===0?'Você venceu!':(Server.cfg.N[A.leader]??'Participante')+' venceu';
   b.hidden=bonus===null;
@@ -3240,7 +3240,7 @@ function render(animateTransitions=true){
     animate:animateTransitions,
     duration:300
   });
-  $('pz').innerHTML='<small>R$</small>'+fmt(V[A.p].v);
+  $('pz').innerHTML=A.prize===null?'':'<small>R$</small>'+fmt(A.prize);
   paintBonus();
   if(ended)paintResult();
   fit();

@@ -13,7 +13,6 @@ import {
   eq,
   inArray,
   isNull,
-  or,
   sql,
 } from "drizzle-orm";
 import {
@@ -30,6 +29,7 @@ import {
   disputesTable,
   payoutEventsTable,
   payoutRequestsTable,
+  prizeTierQueueEntriesTable,
   prizeTiersTable,
   userSessionsTable,
   usersTable,
@@ -54,8 +54,11 @@ import {
 import {
   createOrReuseForecastBatch,
   loadTreasuryConfiguration,
-  selectPassingForecast,
 } from "./prize-release";
+import {
+  eligiblePrizeCandidates,
+  shufflePrizeCandidates,
+} from "./prize-queue";
 import { notifyLanceStateChanged } from "./realtime";
 
 const TOTAL = 60;
@@ -93,6 +96,90 @@ async function ensureEngineSetup() {
   await engineSetupPromise;
 }
 
+async function getQueuedPrizeEntries(
+  transaction: Parameters<Parameters<typeof db.transaction>[0]>[0],
+) {
+  const [firstPending] = await transaction
+    .select({ cycleId: prizeTierQueueEntriesTable.cycleId })
+    .from(prizeTierQueueEntriesTable)
+    .where(eq(prizeTierQueueEntriesTable.status, "queued"))
+    .orderBy(
+      asc(prizeTierQueueEntriesTable.createdAt),
+      asc(prizeTierQueueEntriesTable.position),
+    )
+    .limit(1)
+    .for("update");
+  if (!firstPending) return [];
+
+  return transaction
+    .select()
+    .from(prizeTierQueueEntriesTable)
+    .where(
+      and(
+        eq(prizeTierQueueEntriesTable.cycleId, firstPending.cycleId),
+        eq(prizeTierQueueEntriesTable.status, "queued"),
+      ),
+    )
+    .orderBy(asc(prizeTierQueueEntriesTable.position))
+    .for("update");
+}
+
+async function selectNextQueuedPrize(
+  transaction: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  batch: Awaited<ReturnType<typeof createOrReuseForecastBatch>>,
+) {
+  for (let cycleAttempt = 0; cycleAttempt < 2; cycleAttempt += 1) {
+    let queuedEntries = await getQueuedPrizeEntries(transaction);
+    if (queuedEntries.length === 0) {
+      const eligible = eligiblePrizeCandidates(batch.tiers, batch.forecasts);
+      if (eligible.length === 0) return null;
+
+      const cycleId = randomUUID();
+      await transaction.insert(prizeTierQueueEntriesTable).values(
+        shufflePrizeCandidates(eligible).map((candidate, position) => ({
+          cycleId,
+          tierId: candidate.tier.id,
+          forecastId: candidate.forecast.id,
+          position,
+        })),
+      );
+      queuedEntries = await getQueuedPrizeEntries(transaction);
+    }
+
+    for (const entry of queuedEntries) {
+      const tier = batch.tiers.find((candidate) => candidate.id === entry.tierId);
+      const forecast = batch.forecasts.find(
+        (candidate) => candidate.tierId === entry.tierId,
+      );
+      if (!tier || !forecast?.passed) {
+        await transaction
+          .update(prizeTierQueueEntriesTable)
+          .set({ status: "skipped", resolvedAt: new Date() })
+          .where(eq(prizeTierQueueEntriesTable.id, entry.id));
+        continue;
+      }
+      return { tier, forecast, queueEntryId: entry.id };
+    }
+  }
+  return null;
+}
+
+async function markPrizeQueueEntryUsed(
+  transaction: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  queueEntryId: string,
+  disputeId: string,
+  resolvedAt: Date,
+) {
+  await transaction
+    .update(prizeTierQueueEntriesTable)
+    .set({
+      status: "used",
+      disputeId,
+      resolvedAt,
+    })
+    .where(eq(prizeTierQueueEntriesTable.id, queueEntryId));
+}
+
 async function ensureInitialDispute(): Promise<boolean> {
   return db.transaction(async (transaction) => {
     await transaction.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_ID})`);
@@ -112,17 +199,8 @@ async function ensureInitialDispute(): Promise<boolean> {
       anchorDisputeNumber: null,
       startsAt,
     });
-    const selected = [...batch.tiers]
-      .sort(
-        (left, right) =>
-          left.sortOrder - right.sortOrder || left.id - right.id,
-      )
-      .map((tier) => ({
-        tier,
-        forecast: batch.forecasts.find((row) => row.tierId === tier.id),
-      }))
-      .find((candidate) => candidate.forecast?.passed);
-    if (!selected?.forecast) return false;
+    const selected = await selectNextQueuedPrize(transaction, batch);
+    if (!selected) return false;
 
     const [dispute] = await transaction
       .insert(disputesTable)
@@ -146,6 +224,12 @@ async function ensureInitialDispute(): Promise<boolean> {
       })
       .returning();
     await ensurePrizeObligation(transaction, dispute, false);
+    await markPrizeQueueEntryUsed(
+      transaction,
+      selected.queueEntryId,
+      dispute.id,
+      now,
+    );
     return true;
   });
 }
@@ -181,11 +265,7 @@ async function ensureNextDispute(): Promise<boolean> {
       currentTierId: latest.tierId,
       currentPrizeCents: latest.prizeCents,
     });
-    const selected = selectPassingForecast(
-      batch,
-      latest.tierId,
-      latest.prizeCents,
-    );
+    const selected = await selectNextQueuedPrize(transaction, batch);
     if (!selected) return false;
 
     const now = new Date();
@@ -213,6 +293,12 @@ async function ensureNextDispute(): Promise<boolean> {
       .returning();
 
     await ensurePrizeObligation(transaction, next, false);
+    await markPrizeQueueEntryUsed(
+      transaction,
+      selected.queueEntryId,
+      next.id,
+      now,
+    );
     return true;
   });
 }
@@ -435,16 +521,6 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
     phase = "blocked";
   }
 
-  const tiers = await db
-    .select()
-    .from(prizeTiersTable)
-    .where(
-      or(
-        eq(prizeTiersTable.active, true),
-        eq(prizeTiersTable.id, currentDispute.tierId),
-      ),
-    )
-    .orderBy(asc(prizeTiersTable.sortOrder), asc(prizeTiersTable.id));
   const currentBids = await db
     .select({
       id: bidsTable.id,
@@ -507,11 +583,6 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
         ? millisecondsLeft(new Date(targetAt), now)
         : START;
   const valueCents = leader?.valueCents ?? currentDispute.startingValueCents;
-  const tierIndex = Math.max(
-    0,
-    tiers.findIndex((tier) => tier.id === currentDispute.tierId),
-  );
-
   let balanceCents = 0n;
   let payment: LanceStateOutput["wallet"]["pay"] = null;
   if (user) {
@@ -628,7 +699,6 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
 
   return GetLanceStateResponse.parse({
     cfg: {
-      V: tiers.map((tier) => ({ v: centsToMoney(tier.prizeCents), b: 0 })),
       N: names,
       TOTAL: currentDispute.bidDurationS,
       START,
@@ -636,7 +706,10 @@ async function getState(user: CurrentUser | null): Promise<LanceStateOutput> {
     },
     auction: {
       round: currentDispute.number,
-      p: tierIndex,
+      prize:
+        phase === "soon" || phase === "blocked"
+          ? null
+          : centsToMoney(currentDispute.prizeCents),
       phase,
       value: centsToMoney(valueCents),
       leader: leader ? nameIndex(leader.userId, leader.publicName) : -1,

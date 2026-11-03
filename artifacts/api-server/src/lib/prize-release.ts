@@ -235,27 +235,4 @@ async function getComparableHistory(
   }));
 }
 
-export function selectPassingForecast(
-  batch: ForecastBatch,
-  currentTierId?: number,
-  currentPrizeCents?: bigint,
-) {
-  const ordered = [...batch.tiers].sort(
-    (left, right) =>
-      left.sortOrder - right.sortOrder || left.id - right.id,
-  );
-  let startIndex = 0;
-  if (currentTierId !== undefined) {
-    const index = ordered.findIndex((tier) => tier.id === currentTierId);
-    if (index >= 0) startIndex = (index + 1) % ordered.length;
-  }
-
-  for (let offset = 0; offset < ordered.length; offset += 1) {
-    const tier = ordered[(startIndex + offset) % ordered.length];
-    if (!tier || tier.prizeCents === currentPrizeCents) continue;
-    const forecast = batch.forecasts.find((row) => row.tierId === tier.id);
-    if (forecast?.passed) return { tier, forecast };
-  }
-  return null;
-}
 

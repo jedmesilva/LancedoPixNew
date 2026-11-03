@@ -239,12 +239,6 @@ components:
       properties:
         error: { type: string }
       required: [error]
-    Prize:
-      type: object
-      properties:
-        v: { type: number }
-        b: { type: number }
-      required: [v, b]
     HistoryEntry:
       type: object
       properties:
@@ -295,7 +289,7 @@ components:
       type: object
       properties:
         round: { type: integer }
-        p: { type: integer }
+        prize: { type: [number, "null"] }
         phase: { type: string, enum: [live, paused, ended, soon, blocked] }
         value: { type: number }
         leader: { type: integer }
@@ -310,7 +304,7 @@ components:
         paid: { type: boolean }
         minimumBid: { type: number }
         bonus: { type: [number, "null"] }
-      required: [round, p, phase, value, leader, left, soon, targetAt, bonusSecs, notify, H, paid, minimumBid, bonus]
+      required: [round, prize, phase, value, leader, left, soon, targetAt, bonusSecs, notify, H, paid, minimumBid, bonus]
     Bid:
       type: object
       properties:
@@ -331,16 +325,13 @@ components:
         cfg:
           type: object
           properties:
-            V:
-              type: array
-              items: { $ref: "#/components/schemas/Prize" }
             N:
               type: array
               items: { type: string }
             TOTAL: { type: integer }
             START: { type: integer }
             STEP: { type: number }
-          required: [V, N, TOTAL, START, STEP]
+          required: [N, TOTAL, START, STEP]
         auction: { $ref: "#/components/schemas/Auction" }
         wallet: { $ref: "#/components/schemas/Wallet" }
         user: { $ref: "#/components/schemas/User" }
