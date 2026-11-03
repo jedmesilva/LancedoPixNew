@@ -5,10 +5,8 @@
  * API de contas, carteira e disputas do Lance do Pix
  * OpenAPI spec version: 1.0.0
  */
-import type { Prize } from './prize';
 
 export type LanceStateCfg = {
-  V: Prize[];
   N: string[];
   TOTAL: number;
   START: number;

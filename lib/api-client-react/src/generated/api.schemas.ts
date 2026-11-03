@@ -59,11 +59,6 @@ export interface ApiError {
   error: string;
 }
 
-export interface Prize {
-  v: number;
-  b: number;
-}
-
 export interface HistoryEntry {
   /** Index of the bidder in cfg.N. */
   n: number;
@@ -127,7 +122,8 @@ export const AuctionPhase = {
 
 export interface Auction {
   round: number;
-  p: number;
+  /** @nullable */
+  prize: number | null;
   phase: AuctionPhase;
   value: number;
   leader: number;
@@ -178,7 +174,6 @@ export interface Bid {
 }
 
 export type LanceStateCfg = {
-  V: Prize[];
   N: string[];
   TOTAL: number;
   START: number;

@@ -10,7 +10,8 @@ import type { HistoryEntry } from './historyEntry';
 
 export interface Auction {
   round: number;
-  p: number;
+  /** @nullable */
+  prize: number | null;
   phase: AuctionPhase;
   value: number;
   leader: number;

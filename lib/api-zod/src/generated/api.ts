@@ -162,10 +162,6 @@ export const ChangePasswordResponse = zod.object({
 export const GetLanceStateResponse = zod.object({
   "serverTime": zod.number().int(),
   "cfg": zod.object({
-  "V": zod.array(zod.object({
-  "v": zod.number(),
-  "b": zod.number()
-})),
   "N": zod.array(zod.string()),
   "TOTAL": zod.number().int(),
   "START": zod.number().int(),
@@ -173,7 +169,7 @@ export const GetLanceStateResponse = zod.object({
 }),
   "auction": zod.object({
   "round": zod.number().int(),
-  "p": zod.number().int(),
+  "prize": zod.number().nullable(),
   "phase": zod.enum(['live', 'paused', 'ended', 'soon', 'blocked']),
   "value": zod.number(),
   "leader": zod.number().int(),
@@ -261,10 +257,6 @@ export const PostLanceActionResponse = zod.object({
   "state": zod.object({
   "serverTime": zod.number().int(),
   "cfg": zod.object({
-  "V": zod.array(zod.object({
-  "v": zod.number(),
-  "b": zod.number()
-})),
   "N": zod.array(zod.string()),
   "TOTAL": zod.number().int(),
   "START": zod.number().int(),
@@ -272,7 +264,7 @@ export const PostLanceActionResponse = zod.object({
 }),
   "auction": zod.object({
   "round": zod.number().int(),
-  "p": zod.number().int(),
+  "prize": zod.number().nullable(),
   "phase": zod.enum(['live', 'paused', 'ended', 'soon', 'blocked']),
   "value": zod.number(),
   "leader": zod.number().int(),

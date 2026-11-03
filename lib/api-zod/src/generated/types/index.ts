@@ -26,7 +26,6 @@ export * from './lanceStateCfg';
 export * from './passwordChangeInput';
 export * from './payment';
 export * from './paymentState';
-export * from './prize';
 export * from './profileUpdateInput';
 export * from './signInInput';
 export * from './signOut200';
