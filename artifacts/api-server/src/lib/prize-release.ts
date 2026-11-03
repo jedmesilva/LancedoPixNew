@@ -30,27 +30,8 @@ import {
   type HistoricalBidActivity,
 } from "./prize-forecast";
 
-const CATALOG_VERSION = 1;
-const DEFAULT_STEP_CENTS = 10n;
 const BASIS_POINTS = 10_000n;
 const FORECAST_REUSE_MS = 60_000;
-const TARGET_PRIZES_CENTS = [
-  1_000n,
-  2_000n,
-  5_000n,
-  10_000n,
-  100_000n,
-  1_000_000n,
-  1_500_000n,
-  2_500_000n,
-  3_000_000n,
-  5_000_000n,
-  10_000_000n,
-  25_000_000n,
-  30_000_000n,
-  50_000_000n,
-  100_000_000n,
-] as const;
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type ForecastBatch = {
   forecasts: (typeof prizeTierForecastsTable.$inferSelect)[];
@@ -58,7 +39,7 @@ type ForecastBatch = {
   tiers: (typeof prizeTiersTable.$inferSelect)[];
 };
 
-export async function ensureTreasuryCatalog(transaction: Transaction) {
+export async function loadTreasuryConfiguration(transaction: Transaction) {
   await transaction
     .insert(treasuryParametersTable)
     .values({ id: 1 })
@@ -72,52 +53,6 @@ export async function ensureTreasuryCatalog(transaction: Transaction) {
     .for("update");
   if (!parameters) throw new Error("Treasury parameters could not be initialized.");
 
-  if (parameters.catalogVersion < CATALOG_VERSION) {
-    const existingTiers = await transaction
-      .select()
-      .from(prizeTiersTable)
-      .orderBy(asc(prizeTiersTable.id));
-    const byPrize = new Map(
-      existingTiers.map((tier) => [tier.prizeCents.toString(), tier]),
-    );
-    let nextId =
-      existingTiers.reduce((maxId, tier) => Math.max(maxId, tier.id), 0) + 1;
-
-    for (const [index, prizeCents] of TARGET_PRIZES_CENTS.entries()) {
-      const existing = byPrize.get(prizeCents.toString());
-      if (existing) {
-        await transaction
-          .update(prizeTiersTable)
-          .set({ active: true, sortOrder: index + 1 })
-          .where(eq(prizeTiersTable.id, existing.id));
-      } else {
-        await transaction.insert(prizeTiersTable).values({
-          id: nextId,
-          prizeCents,
-          active: true,
-          sortOrder: index + 1,
-          minimumStepCents: DEFAULT_STEP_CENTS,
-        });
-        nextId += 1;
-      }
-    }
-
-    const targetValues = TARGET_PRIZES_CENTS.map((value) => value.toString());
-    for (const tier of existingTiers) {
-      if (!targetValues.includes(tier.prizeCents.toString())) {
-        await transaction
-          .update(prizeTiersTable)
-          .set({ active: false })
-          .where(eq(prizeTiersTable.id, tier.id));
-      }
-    }
-
-    await transaction
-      .update(treasuryParametersTable)
-      .set({ catalogVersion: CATALOG_VERSION, updatedAt: new Date() })
-      .where(eq(treasuryParametersTable.id, 1));
-  }
-
   const [currentParameters] = await transaction
     .select()
     .from(treasuryParametersTable)
@@ -130,6 +65,9 @@ export async function ensureTreasuryCatalog(transaction: Transaction) {
     .from(prizeTiersTable)
     .where(eq(prizeTiersTable.active, true))
     .orderBy(asc(prizeTiersTable.sortOrder), asc(prizeTiersTable.id));
+  if (tiers.length === 0) {
+    throw new Error("No active prize tiers are configured in the database.");
+  }
 
   return { parameters: currentParameters, tiers };
 }
@@ -171,11 +109,11 @@ export async function createOrReuseForecastBatch(
       .from(prizeTierForecastsTable)
       .where(eq(prizeTierForecastsTable.simulationId, latest.simulationId))
       .orderBy(asc(prizeTierForecastsTable.tierId));
-    const { parameters, tiers } = await ensureTreasuryCatalog(transaction);
+    const { parameters, tiers } = await loadTreasuryConfiguration(transaction);
     return { forecasts, parameters, tiers };
   }
 
-  const { parameters, tiers } = await ensureTreasuryCatalog(transaction);
+  const { parameters, tiers } = await loadTreasuryConfiguration(transaction);
   const includeSimulated = DEFAULT_INCLUDE_SIMULATED_TREASURY_ENTRIES;
   const cashPosition = await getPrizeReleaseCashPosition(transaction, {
     includeSimulated,

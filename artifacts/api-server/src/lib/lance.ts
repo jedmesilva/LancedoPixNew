@@ -54,7 +54,7 @@ import {
 } from "./treasury";
 import {
   createOrReuseForecastBatch,
-  ensureTreasuryCatalog,
+  loadTreasuryConfiguration,
   selectPassingForecast,
 } from "./prize-release";
 import { notifyLanceStateChanged } from "./realtime";
@@ -97,7 +97,7 @@ async function ensureEngineSetup() {
     engineSetupPromise = (async () => {
       await db.transaction(async (transaction) => {
         await transaction.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_ID})`);
-        await ensureTreasuryCatalog(transaction);
+        await loadTreasuryConfiguration(transaction);
       });
       await backfillTreasuryLedger();
     })().catch((error: unknown) => {
