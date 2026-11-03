@@ -16,3 +16,4 @@
 - [Unified dispute countdown](tier-specific-bid-timing.md) — Start a 60-second timer with the dispute and reset it to 60 seconds after every accepted bid.
 - [Prize demand cold start](prize-demand-cold-start.md) — When real demand history is insufficient, allow cash-backed disputes so activity can begin; enforce demand forecasts once history is reliable.
 - [No-bid dispute result](no-bid-dispute-result.md) — An ended dispute with no bids is not a zero-value win; show a clear no-bids outcome instead.
+- [Dispute intermission](dispute-intermission.md) — Keep the completed result and next-dispute countdown visible together until the next dispute starts.

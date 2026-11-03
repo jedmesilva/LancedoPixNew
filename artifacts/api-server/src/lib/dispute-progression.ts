@@ -1,4 +1,5 @@
 export const DISPUTE_COUNTDOWN_SECONDS = 60;
+export const DISPUTE_INTERMISSION_SECONDS = 60;
 const DISPUTE_COUNTDOWN_MS = DISPUTE_COUNTDOWN_SECONDS * 1_000;
 
 export function getDisputeCountdownDeadline(startedAt: Date): Date {
@@ -69,7 +70,9 @@ export function nextDisputeStartsAt(endedAt: Date): Date {
   if (!Number.isFinite(endedAtMs)) {
     throw new Error("An ended dispute must have a valid end time.");
   }
-  return new Date(endedAtMs);
+  return new Date(
+    endedAtMs + DISPUTE_INTERMISSION_SECONDS * 1_000,
+  );
 }
 
 type DisputeProgressionRecord = {

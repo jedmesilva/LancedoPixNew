@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   DISPUTE_COUNTDOWN_SECONDS,
+  DISPUTE_INTERMISSION_SECONDS,
   getDisputeCountdownDeadline,
   getDisputeDeadline,
   getDisputeDisplayState,
@@ -81,9 +82,14 @@ test("starts and resets the same 60-second countdown", () => {
   );
 });
 
-test("starts the next dispute immediately after the previous end", () => {
+test("keeps the result visible during the next-dispute intermission", () => {
   const endedAt = new Date("2026-10-25T12:00:00.000Z");
-  assert.equal(nextDisputeStartsAt(endedAt).getTime(), endedAt.getTime());
+  const startsAt = nextDisputeStartsAt(endedAt);
+  assert.equal(DISPUTE_INTERMISSION_SECONDS, 60);
+  assert.equal(
+    startsAt.getTime(),
+    endedAt.getTime() + DISPUTE_INTERMISSION_SECONDS * 1_000,
+  );
 });
 
 test("keeps the previous dispute ended while the next one is scheduled", () => {
