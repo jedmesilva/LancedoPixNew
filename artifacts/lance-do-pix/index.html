@@ -3217,7 +3217,7 @@ function paintBid(){
   $('lvg').dataset.p=none?'none':paused?'paused':'live';
   $('bl').textContent=none?'Status':openingBid?'Lance atual':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(openingBid?Server.minBid():A.value);
-  $('whoText').textContent=none?'Nenhuma disputa ativa no momento.':noLeader?'Aguardando o primeiro lance':n;
+  $('whoText').textContent=none?'Nenhuma disputa ativa no momento.':noLeader?'Abertura':n;
   $('clk').textContent=none?'—':formatRemainingBidTime(A.left);
   $('clk').setAttribute('aria-label',none?'Nenhuma disputa ativa':timerLabel+': '+describeRemainingBidTime(A.left));
   $('lvu').textContent=timerLabel;
