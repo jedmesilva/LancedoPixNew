@@ -2700,7 +2700,7 @@ document.querySelector("#plusb")?.replaceChildren(lucideElement("plus", 20));
 replaceWithLucide(".rot", "loader-circle");
 
 const Server = (() => {
-  const cfg = { N: [], TOTAL: 0, START: 0, STEP: 0 };
+  const cfg = { N: [], TOTAL: 0 };
   const A = { H: [] };
   const W = { bal: 0, pay: null };
   const U = { name: "", email: "", signedIn: false };
@@ -2972,6 +2972,7 @@ const Server = (() => {
       return state?.controlsEnabled ?? false;
     },
     minBid: () => A.minimumBid,
+    bidStep: () => Math.max(0, r2(A.minimumBid - A.value)),
     bidCost: amount => r2(amount),
     bonus: () => A.bonus,
     placeBid: async amount => {
@@ -3063,7 +3064,7 @@ try {
 /* ═══ 1. CONFIG, UTILITÁRIOS E ESTADO DE TELA ═══
    $, fmt, brl, mmss, plural, dur, textos dos estados (S) e rascunho do lance (myBid). */
 const $=id=>document.getElementById(id);
-const {TOTAL,STEP}=Server.cfg,r2=Server.r2,A=Server.auction,W=Server.wallet,U=Server.user;
+const {TOTAL}=Server.cfg,r2=Server.r2,A=Server.auction,W=Server.wallet,U=Server.user;
 const fmt=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const brl=n=>'R$\u00a0'+fmt(n);
 const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -3440,14 +3441,18 @@ function paintWin(allowNewVictory=false){
   }
 }
 /* Modal "Como funciona": preenche cada <data> com os valores atuais da disputa (Server.cfg). */
-function paintHow(){const v={step:brl(STEP),dur:dur(TOTAL)};document.querySelectorAll('[data-how]').forEach(e=>{e.textContent=v[e.dataset.how]||''})}
+function paintHow(){const step=Server.bidStep(),v={step:step>0?brl(step):'—',dur:dur(TOTAL)};document.querySelectorAll('[data-how]').forEach(e=>{e.textContent=v[e.dataset.how]||''})}
 /* ═══ 3. AÇÕES · lance ═══
    hit é só animação; bump mexe no rascunho; o lance de verdade é Server.placeBid (devolve 'funds' sem saldo; aí o clique abre o modal de créditos). */
 function hit(){const b=$('bid');b.removeAttribute('data-hit');void b.offsetWidth;b.dataset.hit=A.leader===0?'me':'other'}
-function bump(d){myBid=Math.max(Server.minBid(),r2(myBid+d));paintSheet()}
+function bump(d){
+  if(A.phase!=='live'||!Number.isFinite(d)||d===0)return;
+  myBid=Math.max(Server.minBid(),r2(myBid+d));
+  paintSheet();
+}
 const place=()=>Server.placeBid(myBid);
 /* ═══ 4. EVENTOS · disputa compartilhada ═══ */
-$('minus').onclick=()=>bump(-STEP);$('plusb').onclick=()=>bump(STEP);
+$('minus').onclick=()=>bump(-Server.bidStep());$('plusb').onclick=()=>bump(Server.bidStep());
 document.querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>bump(Number(b.dataset.add))});
 $('cta').onclick=async()=>{if(bidSubmitting)return;const id=A.phase;
   if(!U.signedIn&&(id==='live'||(id==='ended'&&A.leader===0))){authOpen();return}
