@@ -3238,10 +3238,10 @@ function paintBid(){
     :mine
       ?closingWithLeader
         ?'Se ninguém superar seu lance antes de o cronômetro zerar, você ganha o prêmio.'
-        :'Você está na liderança. O prêmio será seu se ninguém superar seu lance.'
+        :'Você deu o maior lance. Se ninguém superar até o cronômetro zerar, o prêmio é seu.'
       :closingWithLeader
         ?('Se ninguém superar o lance de '+n+' antes de o cronômetro zerar, '+n+' ganha o prêmio.')
-        :(n+' está na liderança. Dê um lance maior para disputar o prêmio.');
+        :(n+' deu o maior lance. Se ninguém superar até o cronômetro zerar, '+n+' leva o prêmio.');
   paintSheet();
 }
 function paintResult(){
