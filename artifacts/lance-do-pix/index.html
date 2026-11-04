@@ -3231,7 +3231,7 @@ function paintResult(){
   const noBids=A.leader<0;
   $('res').dataset.outcome=noBids?'no-bids':'winner';
   $('rstate-icon').hidden=noBids;
-  $('rstate-label').textContent=noBids?'Encerrada sem lances':'Disputa encerrada';
+  $('rstate-label').textContent=noBids?'Encerrado':'Vitória';
   $('rwk').textContent='Lance vencedor';
   $('rwv').hidden=false;
   $('rwv').textContent=noBids?'Nenhum':brl(A.value);
