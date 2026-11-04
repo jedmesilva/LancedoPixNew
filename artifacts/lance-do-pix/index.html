@@ -561,6 +561,11 @@ header .cta {
   color: var(--tx);
 }
 
+.rc[data-outcome="no-bids"] .wn-ic,
+.rc[data-outcome="no-bids"] .wn-ck {
+  visibility: hidden;
+}
+
 .wn {
   display: flex;
   align-items: center;
@@ -3223,11 +3228,9 @@ function paintResult(){
   $('res').dataset.outcome=noBids?'no-bids':'winner';
   $('rstate-icon').hidden=noBids;
   $('rstate-label').textContent=noBids?'Encerrada sem lances':'Disputa encerrada';
-  $('rwic').hidden=noBids;
-  $('rwck').hidden=noBids;
-  $('rwk').textContent=noBids?'Resultado da disputa':'Lance vencedor';
-  $('rwv').hidden=noBids;
-  $('rwv').textContent=noBids?'':brl(A.value);
+  $('rwk').textContent='Lance vencedor';
+  $('rwv').hidden=false;
+  $('rwv').textContent=noBids?'Nenhum lance':brl(A.value);
   $('rwt').textContent=noBids?'Ninguém deu lance nesta disputa.':A.leader===0?'Você venceu!':(Server.cfg.N[A.leader]??'Participante')+' venceu';
   $('rpz').innerHTML='<small>R$</small>'+fmt(A.prize??0);
   b.hidden=bonus===null;
