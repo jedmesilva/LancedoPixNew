@@ -3227,13 +3227,21 @@ function paintBid(){
   $('lvc').toggleAttribute('data-urg-mine',urg&&mine);
   const note=$('lvr');
   note.hidden=!live&&!none;
+  const closingWithoutBids=live&&noLeader&&A.left<=10;
+  const closingWithLeader=live&&!noLeader&&A.left<=10;
   note.textContent=none
     ?'Não há disputa ativa no momento. Volte em breve.'
     :noLeader
-    ?'Seja o primeiro a dar um lance para vencer a disputa'
+    ?closingWithoutBids
+      ?'Sem lances até agora. Se o cronômetro zerar assim, a disputa termina sem ganhador.'
+      :'Seja o primeiro a dar um lance para vencer a disputa.'
     :mine
-      ?'Você deu o maior lance. Se ninguém superar até o cronômetro zerar, o prêmio é seu.'
-      :(n+' levará o prêmio quando o cronômetro zerar. Dê um lance maior para vencer a disputa.');
+      ?closingWithLeader
+        ?'Se ninguém superar seu lance antes de o cronômetro zerar, você ganha o prêmio.'
+        :'Você está na liderança. O prêmio será seu se ninguém superar seu lance.'
+      :closingWithLeader
+        ?('Se ninguém superar o lance de '+n+' antes de o cronômetro zerar, '+n+' ganha o prêmio.')
+        :(n+' está na liderança. Dê um lance maior para disputar o prêmio.');
   paintSheet();
 }
 function paintResult(){
