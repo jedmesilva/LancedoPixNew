@@ -730,6 +730,10 @@ header .cta {
   color: var(--al);
 }
 
+.wn-tm[data-urg-mine] {
+  color: var(--gt);
+}
+
 .rc.lv .wn-rl {
   margin: 12px 0 0;
   color: var(--mu);
@@ -759,6 +763,10 @@ header .cta {
 
 .rc.lv .wn-tm[data-urg] .rf {
   stroke: var(--al);
+}
+
+.rc.lv .wn-tm[data-urg-mine] .rf {
+  stroke: var(--gr);
 }
 
 /* Círculo de confirmação usado no diálogo de vitória. */
@@ -3216,6 +3224,7 @@ function paintBid(){
   $('lvc').hidden=!live&&!paused;
   $('lvc').style.setProperty('--rp',Math.max(0,Math.min(100,A.left/TOTAL*100)));
   $('lvc').toggleAttribute('data-urg',urg);
+  $('lvc').toggleAttribute('data-urg-mine',urg&&mine);
   const note=$('lvr');
   note.hidden=!live&&!none;
   note.textContent=none
