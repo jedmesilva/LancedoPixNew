@@ -7,4 +7,4 @@ When a dispute ends without bids, use the same result-row hierarchy as a win: la
 
 **Why:** The user wants the no-bid outcome to keep the familiar result layout while making it visually distinct from an actual win.
 
-**How to apply:** Preserve the winner row's typography and alignment, but use the no-bid copy and neutral gray styling for no-bid results. Keep the regular winning amount, trophy color, check, and green styling only for actual wins.
+**How to apply:** Keep result-row spacing aligned with the live bid row, changing only outcome-specific content and icons. Preserve the winner row's typography and alignment, but use the no-bid copy and neutral gray styling for no-bid results. Keep the regular winning amount, trophy color, check, and green styling only for actual wins.
