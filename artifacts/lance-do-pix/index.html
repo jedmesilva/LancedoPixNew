@@ -3234,8 +3234,8 @@ function paintResult(){
   $('rstate-label').textContent=noBids?'Encerrada sem lances':'Disputa encerrada';
   $('rwk').textContent='Lance vencedor';
   $('rwv').hidden=false;
-  $('rwv').textContent=noBids?'Nenhum lance':brl(A.value);
-  $('rwt').textContent=noBids?'Ninguém deu lance nesta disputa.':A.leader===0?'Você venceu!':(Server.cfg.N[A.leader]??'Participante')+' venceu';
+  $('rwv').textContent=noBids?'Nenhum':brl(A.value);
+  $('rwt').textContent=noBids?'Ninguém venceu a disputa':A.leader===0?'Você venceu!':(Server.cfg.N[A.leader]??'Participante')+' venceu';
   $('rpz').innerHTML='<small>R$</small>'+fmt(A.prize??0);
   b.hidden=bonus===null;
   if(bonus!==null)b.textContent='+ R$ '+fmt(bonus)+' de bônus';
