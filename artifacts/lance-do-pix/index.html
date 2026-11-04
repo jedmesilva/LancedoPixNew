@@ -3133,12 +3133,15 @@ function paintBonus(){
 function paintSoon(){
   if(A.phase==='none'){
     $('nxs').textContent='—';$('nxa').textContent='Sem disputa ativa';
+    $('nxs').setAttribute('aria-label','Nenhuma disputa ativa');
     $('nxt').querySelector('.nt').textContent='Nenhuma disputa ativa no momento.';
     $('nxt').style.setProperty('--rp',0);
     return;
   }
   if(A.phase!=='soon'&&A.phase!=='ended')return;
-  $('nxs').textContent=A.soon;$('nxa').textContent='Próxima disputa';
+  $('nxs').textContent=formatRemainingBidTime(A.soon);
+  $('nxs').setAttribute('aria-label','Próxima disputa em '+describeRemainingBidTime(A.soon));
+  $('nxa').textContent='Próxima disputa';
   $('nxt').querySelector('.nt').textContent='Uma nova disputa vai começar em breve';
   const progress=TOTAL>0?(1-A.soon/TOTAL)*100:0;
   $('nxt').style.setProperty('--rp',Math.max(0,Math.min(100,progress)));
