@@ -3101,11 +3101,13 @@ function transitionVisibility(element,visible,{animate=true,duration=320,delay=0
   if(active){active.animation.cancel();visibilityTransitions.delete(element)}
   element.inert=!visible;
   if((!element.hidden)===visible)return;
+  const fitPrize=visible&&(element.id==='prz'||element.id==='res');
   if(!animate||reducedMotionPreference.matches||typeof element.animate!=='function'){
     element.hidden=!visible;
+    if(fitPrize)fit();
     return;
   }
-  if(visible)element.hidden=false;
+  if(visible){element.hidden=false;if(fitPrize)fit()}
   const animation=element.animate(
     visible
       ?[{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}]
@@ -3385,7 +3387,6 @@ function render(animateTransitions=true){
   $('pz').innerHTML=A.prize===null?'':'<small>R$</small>'+fmt(A.prize);
   paintBonus();
   if(ended)paintResult();
-  fit();
   paintHistorySection({animateVisibility:animateTransitions});
   paintSoon();paintBid();paintWin(false);paintHow();
   if(animateTransitions&&phaseChanged){
@@ -3395,6 +3396,7 @@ function render(animateTransitions=true){
   }else if(phaseTransitions.resultSettled&&(ended||phaseTransitions.resultInIntermission)){
     paintWin(true);
   }
+  if(!$('prz').hidden||!$('res').hidden)fit();
   if(animateTransitions&&phaseChanged&&(id==='live'||id==='paused')&&!reducedMotionPreference.matches){
     $('lvg').animate(
       [{opacity:.55,transform:'translateY(3px)'},{opacity:1,transform:'translateY(0)'}],
