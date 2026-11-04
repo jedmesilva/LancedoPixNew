@@ -17,3 +17,4 @@
 - [Prize demand cold start](prize-demand-cold-start.md) — When real demand history is insufficient, allow cash-backed disputes so activity can begin; enforce demand forecasts once history is reliable.
 - [No-bid dispute result](no-bid-dispute-result.md) — An ended dispute with no bids is not a zero-value win; show a clear no-bids outcome instead.
 - [Dispute intermission](dispute-intermission.md) — Keep the completed result and next-dispute countdown visible together until the next dispute starts.
+- [Managed workflow dependencies](managed-workflow-dependencies.md) — Sync filtered pnpm dependencies before restarting when a declared package cannot be resolved.

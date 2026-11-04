@@ -3089,12 +3089,14 @@ let victoryOwner=null;
 let lastRenderedPhase=null;
 const reducedMotionPreference=window.matchMedia('(prefers-reduced-motion: reduce)');
 const visibilityTransitions=new WeakMap();
+const phaseTransitions={generation:0,timers:new Set(),resultInIntermission:false,resultSettled:false,resultHasWinner:true};
+const PHASE_MOTION={prizeOut:240,resultIn:280,nextIn:260,intermissionOut:220,prizeIn:280};
 const idx=id=>S.findIndex(s=>s.id===id);
 /* ═══ 2. COMPONENTES · render da disputa ═══
    Cada paint*() é o único lugar que escreve no DOM do seu componente. */
 function transitionVisibility(element,visible,{animate=true,duration=320,delay=0}={}){
   const active=visibilityTransitions.get(element);
-  if(active?.visible===visible)return;
+  if(active?.visible===visible&&animate&&!reducedMotionPreference.matches)return;
   if(active){active.animation.cancel();visibilityTransitions.delete(element)}
   element.inert=!visible;
   if((!element.hidden)===visible)return;
@@ -3120,6 +3122,95 @@ function transitionVisibility(element,visible,{animate=true,duration=320,delay=0
   animation.oncancel=()=>{
     if(visibilityTransitions.get(element)===transition)visibilityTransitions.delete(element);
   };
+}
+function cancelPhaseTransition(){
+  phaseTransitions.generation++;
+  phaseTransitions.timers.forEach(clearTimeout);
+  phaseTransitions.timers.clear();
+  return phaseTransitions.generation;
+}
+function afterPhaseTransition(generation,delay,callback){
+  const timer=setTimeout(()=>{
+    phaseTransitions.timers.delete(timer);
+    if(generation===phaseTransitions.generation)callback();
+  },delay);
+  phaseTransitions.timers.add(timer);
+}
+function settlePhaseVisibility({id,previous,animate,ended,showPrize,showNext}){
+  const active=id==='live'||id==='paused';
+  const animateNow=animate&&!reducedMotionPreference.matches;
+  const generation=cancelPhaseTransition();
+  const res=$('res'),nxt=$('nxt'),prz=$('prz');
+
+  if(!animateNow){
+    phaseTransitions.resultSettled=ended||phaseTransitions.resultInIntermission;
+    transitionVisibility(prz,showPrize,{animate:false});
+    transitionVisibility(res,ended||phaseTransitions.resultInIntermission,{animate:false});
+    transitionVisibility(nxt,showNext,{animate:false});
+    return;
+  }
+
+  if(ended&&previous!=='ended'){
+    phaseTransitions.resultInIntermission=true;
+    phaseTransitions.resultSettled=false;
+    transitionVisibility(prz,false,{duration:PHASE_MOTION.prizeOut});
+    afterPhaseTransition(generation,PHASE_MOTION.prizeOut,()=>{
+      if(A.phase!=='ended')return;
+      transitionVisibility(res,true,{duration:PHASE_MOTION.resultIn});
+      afterPhaseTransition(generation,110,()=>{
+        if(A.phase==='ended'||A.phase==='soon'||A.phase==='none'){
+          transitionVisibility(nxt,true,{duration:PHASE_MOTION.nextIn});
+        }
+      });
+      afterPhaseTransition(generation,PHASE_MOTION.resultIn+110,()=>{
+        if(A.phase==='ended'||phaseTransitions.resultInIntermission){
+          phaseTransitions.resultSettled=true;
+          paintWin(true);
+        }
+      });
+    });
+    return;
+  }
+
+  if(active&&previous!==null&&previous!=='live'&&previous!=='paused'){
+    phaseTransitions.resultInIntermission=false;
+    phaseTransitions.resultSettled=false;
+    transitionVisibility(nxt,false,{duration:PHASE_MOTION.intermissionOut});
+    transitionVisibility(res,false,{duration:PHASE_MOTION.intermissionOut});
+    transitionVisibility(prz,false,{duration:PHASE_MOTION.intermissionOut});
+    afterPhaseTransition(generation,PHASE_MOTION.intermissionOut+24,()=>{
+      if(A.phase==='live'||A.phase==='paused'){
+        transitionVisibility(prz,true,{duration:PHASE_MOTION.prizeIn});
+      }
+    });
+    return;
+  }
+
+  if(ended||phaseTransitions.resultInIntermission){
+    phaseTransitions.resultInIntermission=true;
+    phaseTransitions.resultSettled=false;
+    transitionVisibility(prz,false,{duration:PHASE_MOTION.prizeOut});
+    transitionVisibility(res,true,{duration:PHASE_MOTION.resultIn});
+    transitionVisibility(nxt,true,{duration:PHASE_MOTION.nextIn,delay:110});
+    afterPhaseTransition(generation,PHASE_MOTION.resultIn+110,()=>{
+      if(phaseTransitions.resultInIntermission&&(A.phase==='ended'||A.phase==='soon'||A.phase==='none')){
+        phaseTransitions.resultSettled=true;
+        paintWin(true);
+      }
+    });
+    return;
+  }
+
+  if(active){
+    transitionVisibility(nxt,false,{duration:PHASE_MOTION.intermissionOut});
+    transitionVisibility(res,false,{duration:PHASE_MOTION.intermissionOut});
+    transitionVisibility(prz,true,{duration:PHASE_MOTION.prizeIn});
+    return;
+  }
+
+  transitionVisibility(prz,false,{duration:PHASE_MOTION.prizeOut});
+  transitionVisibility(res,false,{duration:PHASE_MOTION.intermissionOut});
+  transitionVisibility(nxt,showNext,{duration:PHASE_MOTION.nextIn});
 }
 function fit(){
   for(const id of ['pz','rpz']){
@@ -3280,25 +3371,29 @@ function render(animateTransitions=true){
   const id=A.phase,isSoon=id==='soon',ended=id==='ended',none=id==='none';
   const showNext=isSoon||ended||none;
   const phaseChanged=lastRenderedPhase!==null&&lastRenderedPhase!==id;
-  transitionVisibility($('nxt'),showNext,{
-    animate:animateTransitions,
-    duration:340,
-    delay:ended?80:0
-  });
-  transitionVisibility($('res'),ended,{
-    animate:animateTransitions,
-    duration:380
-  });
-  transitionVisibility($('prz'),!isSoon&&!ended&&!none,{
-    animate:animateTransitions,
-    duration:300
-  });
+  const showPrize=!isSoon&&!ended&&!none;
+  const previous=lastRenderedPhase;
+  if(ended){
+    phaseTransitions.resultInIntermission=true;
+    phaseTransitions.resultHasWinner=A.leader>=0;
+  }
+  if(showPrize){
+    phaseTransitions.resultInIntermission=false;
+    phaseTransitions.resultHasWinner=true;
+  }
   $('pz').innerHTML=A.prize===null?'':'<small>R$</small>'+fmt(A.prize);
   paintBonus();
   if(ended)paintResult();
   fit();
   paintHistorySection({animateVisibility:animateTransitions});
-  paintSoon();paintBid();paintWin();paintHow();
+  paintSoon();paintBid();paintWin(false);paintHow();
+  if(animateTransitions&&phaseChanged){
+    settlePhaseVisibility({id,previous,animate:animateTransitions,ended,showPrize,showNext});
+  }else if(!animateTransitions||previous===null){
+    settlePhaseVisibility({id,previous,animate:animateTransitions,ended,showPrize,showNext});
+  }else if(phaseTransitions.resultSettled&&(ended||phaseTransitions.resultInIntermission)){
+    paintWin(true);
+  }
   if(animateTransitions&&phaseChanged&&(id==='live'||id==='paused')&&!reducedMotionPreference.matches){
     $('lvg').animate(
       [{opacity:.55,transform:'translateY(3px)'},{opacity:1,transform:'translateY(0)'}],
@@ -3307,7 +3402,13 @@ function render(animateTransitions=true){
   }
   lastRenderedPhase=id;
 }
-function paintWin(){
+reducedMotionPreference.addEventListener?.('change',event=>{
+  if(event.matches){
+    render(false);
+    if(phaseTransitions.resultInIntermission)paintWin(true);
+  }
+});
+function paintWin(allowNewVictory=false){
   const bids=Server.myBids();
   const owner=U.signedIn?U.email:null;
   if(owner!==victoryOwner){
@@ -3332,7 +3433,7 @@ function paintWin(){
   $('vl').textContent='Lance vencedor '+brl(bid.value);
   $('vok').textContent=bid.redeemed?'Solicitação registrada':'Solicitar resgate';
   $('vok').disabled=bid.redeemed;
-  if(!vm.open&&!shownVictoryBidIds.has(bid.id)){
+  if(allowNewVictory&&(!phaseTransitions.resultInIntermission||phaseTransitions.resultHasWinner)&&!vm.open&&!shownVictoryBidIds.has(bid.id)){
     shownVictoryBidIds.add(bid.id);
     if(hm.open)hm.close();
     vm.showModal();
