@@ -8,6 +8,7 @@
 - [Inactive bid panel](bid-panel-inactive-state.md) — Keep bidding controls visible but disabled outside a live dispute; don't replace them with redemption or notification actions.
 - [Exact recent-bid age](exact-recent-bid-age.md) — Show exact seconds for recent bids; avoid estimates such as “há poucos segundos.”
 - [Auction countdown display](outbid-countdown-display.md) — Share countdown formats and color urgency by whether the current user leads in the final 10 seconds.
+- [Timer expiry feedback](timer-expiry-feedback.md) — Replace zero with an animated circular status until the server confirms the transition; never use skeletons for state changes.
 - [Initial treasury funding](initial-treasury-funding.md) — The planned R$1,000 aporte counts only after receipt; “lance mínimo” means the increment between bids.
 - [Orval Node runtime](orval-node-runtime.md) — Orval v8 Zod code generation requires Node 22+ because it uses `Map.groupBy`.
 - [Test account identity](test-account-identity.md) — Keep test accounts human-readable, uniquely addressable, and clearly non-deliverable.

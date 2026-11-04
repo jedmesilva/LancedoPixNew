@@ -734,6 +734,21 @@ header .cta {
   color: var(--gt);
 }
 
+.rc.lv .wn-tm[data-status="confirming"] {
+  width: min(108px, 30vw);
+  align-items: center;
+  color: var(--mu);
+}
+
+.wn-tm .timer-status:not(.sr) {
+  width: 100%;
+  max-width: 118px;
+  color: var(--mu);
+  font: 600 11px/1.25 var(--font-body);
+  text-align: center;
+  text-wrap: balance;
+}
+
 .rc.lv .wn-rl {
   margin: 12px 0 0;
   color: var(--mu);
@@ -767,6 +782,27 @@ header .cta {
 
 .rc.lv .wn-tm[data-urg-mine] .rf {
   stroke: var(--gr);
+}
+
+.rc.lv .wn-tm[data-status="confirming"] .ring svg,
+#nxt[data-status="starting"] .ring svg {
+  animation: countdown-ring-spin .9s linear infinite;
+}
+
+.rc.lv .wn-tm[data-status="confirming"] .rf,
+#nxt[data-status="starting"] .rf {
+  stroke: var(--gr);
+  stroke-dasharray: 26 74;
+  transition: none;
+}
+
+@keyframes countdown-ring-spin {
+  from {
+    transform: rotate(-90deg);
+  }
+  to {
+    transform: rotate(270deg);
+  }
 }
 
 /* Círculo de confirmação usado no diálogo de vitória. */
@@ -938,6 +974,10 @@ header .cta {
   gap: 16px;
 }
 
+.rg > div {
+  min-width: 0;
+}
+
 .ring {
   position: relative;
   flex: none;
@@ -978,6 +1018,8 @@ header .cta {
 .t2 {
   font-size: 17px;
   font-weight: 800;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 .rg .nt {
   padding-top: 4px;
@@ -2073,6 +2115,8 @@ html:has(dialog[open]) {
   dialog[open],
   #vm .ck,
   .bd::before,
+  .wn-tm[data-status="confirming"] .ring svg,
+  #nxt[data-status="starting"] .ring svg,
   .rot,
   .cta[data-loading]::before,
   .loading-block {
@@ -2934,7 +2978,10 @@ const Server = (() => {
         previousHistorySecond = historySecond;
         if (A.phase === "paused" && A.H.length) emit("historyTick");
       }
-      if (A.phase === "live" && A.left !== previousLeft) emit("tick");
+      if (A.phase === "live" && A.left !== previousLeft) {
+        emit("tick");
+        if (A.left === 0) void refreshFromRealtime();
+      }
       else if (
         (A.phase === "soon" || A.phase === "ended") &&
         A.soon !== previousSoon
@@ -3233,7 +3280,11 @@ function paintBonus(){
   if(!first){b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}
 }
 function paintSoon(){
+  $('nxa').setAttribute('role','status');
+  $('nxa').setAttribute('aria-live','polite');
   if(A.phase==='none'){
+    $('nxt').dataset.status='idle';
+    $('nxs').hidden=false;
     $('nxs').textContent='—';$('nxa').textContent='Sem disputa ativa';
     $('nxs').setAttribute('aria-label','Nenhuma disputa ativa');
     $('nxt').querySelector('.nt').textContent='Nenhuma disputa ativa no momento.';
@@ -3241,10 +3292,19 @@ function paintSoon(){
     return;
   }
   if(A.phase!=='soon'&&A.phase!=='ended')return;
-  $('nxs').textContent=formatRemainingBidTime(A.soon);
-  $('nxs').setAttribute('aria-label','Próxima disputa em '+describeRemainingBidTime(A.soon));
-  $('nxa').textContent='Próxima disputa';
-  $('nxt').querySelector('.nt').textContent='Uma nova disputa vai começar em breve';
+  const starting=A.soon<=0;
+  $('nxt').dataset.status=starting?'starting':'countdown';
+  $('nxs').hidden=starting;
+  $('nxs').textContent=starting?'':formatRemainingBidTime(A.soon);
+  $('nxs').setAttribute('aria-label',starting?'Iniciando próxima disputa':'Próxima disputa em '+describeRemainingBidTime(A.soon));
+  $('nxa').textContent=starting?'Iniciando próxima disputa…':'Próxima disputa';
+  $('nxt').querySelector('.nt').textContent=starting
+    ?'Aguarde um instante enquanto preparamos o próximo prêmio.'
+    :'Uma nova disputa vai começar em breve';
+  if(starting){
+    $('nxt').style.setProperty('--rp',100);
+    return;
+  }
   const progress=TOTAL>0?(1-A.soon/TOTAL)*100:0;
   $('nxt').style.setProperty('--rp',Math.max(0,Math.min(100,progress)));
 }
@@ -3312,15 +3372,23 @@ function paintBid(){
   $('bl').textContent=none?'Status':openingBid?'Lance atual':noLeader?'Primeiro lance':'Lance atual';
   $('bv').textContent=brl(openingBid?Server.minBid():A.value);
   $('whoText').textContent=none?'Nenhuma disputa ativa no momento.':noLeader?'Abertura':n;
-  $('clk').textContent=none?'—':formatRemainingBidTime(A.left);
-  $('clk').setAttribute('aria-label',none?'Nenhuma disputa ativa':timerLabel+': '+describeRemainingBidTime(A.left));
-  $('lvu').textContent=timerLabel;
+  const confirming=live&&A.left<=0;
+  $('clk').hidden=confirming;
+  $('clk').textContent=confirming?'':none?'—':formatRemainingBidTime(A.left);
+  $('clk').setAttribute('aria-label',confirming?'Tempo encerrado. Confirmando resultado.':none?'Nenhuma disputa ativa':timerLabel+': '+describeRemainingBidTime(A.left));
+  const timerStatus=$('lvu');
+  timerStatus.textContent=confirming?'Confirmando resultado…':timerLabel;
+  timerStatus.classList.add('timer-status');
+  timerStatus.classList.toggle('sr',!confirming);
+  timerStatus.setAttribute('role','status');
+  timerStatus.setAttribute('aria-live','polite');
   $('lvc').hidden=!live&&!paused;
+  $('lvc').dataset.status=confirming?'confirming':'countdown';
   $('lvc').style.setProperty('--rp',Math.max(0,Math.min(100,A.left/TOTAL*100)));
   $('lvc').toggleAttribute('data-urg',urg);
   $('lvc').toggleAttribute('data-urg-mine',urg&&mine);
   const note=$('lvr');
-  note.hidden=!live&&!none;
+  note.hidden=(!live&&!none)||confirming;
   const closingWithoutBids=live&&noLeader&&A.left<=10;
   const closingWithLeader=live&&!noLeader&&A.left<=10;
   note.textContent=none
