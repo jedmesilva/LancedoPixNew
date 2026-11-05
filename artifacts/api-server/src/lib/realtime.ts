@@ -87,3 +87,13 @@ export function notifyLanceStateChanged(): void {
     });
   }
 }
+
+export function getLanceActiveConnections(): number {
+  const websocketServer = realtimeServer;
+  if (!websocketServer) return 0;
+  let count = 0;
+  for (const client of websocketServer.clients) {
+    if (client.readyState === WebSocket.OPEN) count += 1;
+  }
+  return count;
+}

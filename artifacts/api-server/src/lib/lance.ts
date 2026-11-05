@@ -63,6 +63,7 @@ import {
   shufflePrizeCandidates,
 } from "./prize-queue";
 import { notifyLanceStateChanged } from "./realtime";
+import { runAutomationTick } from "./admin-automation";
 
 const START = DISPUTE_COUNTDOWN_SECONDS;
 const DISPUTE_ENGINE_INTERVAL_MS = 1_000;
@@ -400,7 +401,10 @@ export function runDisputeEngine(): Promise<void> {
     const createdInitial = await ensureInitialDispute();
     const advanced = await advanceDispute();
     const createdNext = await ensureNextDispute();
-    if (createdInitial || advanced || createdNext) notifyLanceStateChanged();
+    const automatedBid = await runAutomationTick();
+    if (createdInitial || advanced || createdNext || automatedBid) {
+      notifyLanceStateChanged();
+    }
   })();
   currentEngineTick = tick;
 

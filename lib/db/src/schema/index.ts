@@ -38,3 +38,5 @@ export * from "./dispute-alerts";
 export * from "./pix-webhook-events";
 export * from "./treasury-ledger-entries";
 export * from "./dispute-cash-reservations";
+export * from "./automation-config";
+export * from "./automation-events";
