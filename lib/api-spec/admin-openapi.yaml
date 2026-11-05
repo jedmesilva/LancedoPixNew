@@ -202,6 +202,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /automation/accounts:
+    get:
+      operationId: listAutomationAccounts
+      tags: [automation]
+      summary: Listar contas disponíveis para a automação
+      responses:
+        "200":
+          description: Contas com carteira disponíveis para seleção
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationAccountList"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /automation/config:
     get:
       operationId: getAutomationConfig
@@ -467,6 +485,7 @@ components:
       properties:
         enabled: { type: boolean }
         mode: { type: string, enum: [counterbids_only, bids_and_counterbids, bids_only] }
+        botUserId: { type: ["string", "null"], format: uuid }
         botExists: { type: boolean }
         botName: { type: string }
         botWalletBalanceCents: { type: integer }
@@ -484,6 +503,7 @@ components:
       required:
         - enabled
         - mode
+        - botUserId
         - botExists
         - botName
         - botWalletBalanceCents
@@ -501,6 +521,7 @@ components:
       properties:
         enabled: { type: boolean }
         mode: { type: string, enum: [counterbids_only, bids_and_counterbids, bids_only] }
+        botUserId: { type: ["string", "null"], format: uuid }
         maxBidCents: { type: integer, minimum: 0, maximum: 100000000 }
         perDisputeLimitCents: { type: integer, minimum: 0, maximum: 100000000 }
         dailyLimitCents: { type: integer, minimum: 0, maximum: 100000000 }
@@ -510,12 +531,28 @@ components:
       required:
         - enabled
         - mode
+        - botUserId
         - maxBidCents
         - perDisputeLimitCents
         - dailyLimitCents
         - maxBidsPerDispute
         - minimumSecondsRemaining
         - minimumDelaySeconds
+    AutomationAccount:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        publicName: { type: string }
+        testAccount: { type: boolean }
+        walletBalanceCents: { type: integer }
+      required: [id, publicName, testAccount, walletBalanceCents]
+    AutomationAccountList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AutomationAccount" }
+      required: [items]
     AutomationFundingInput:
       type: object
       properties:

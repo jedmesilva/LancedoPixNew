@@ -154,6 +154,8 @@ export const AutomationConfigMode = {
 export interface AutomationConfig {
   enabled: boolean;
   mode: AutomationConfigMode;
+  /** @nullable */
+  botUserId: string | null;
   botExists: boolean;
   botName: string;
   botWalletBalanceCents: number;
@@ -181,6 +183,8 @@ export const AutomationConfigInputMode = {
 export interface AutomationConfigInput {
   enabled: boolean;
   mode: AutomationConfigInputMode;
+  /** @nullable */
+  botUserId: string | null;
   /**
      * @minimum 0
      * @maximum 100000000
@@ -211,6 +215,17 @@ export interface AutomationConfigInput {
      * @maximum 3600
      */
   minimumDelaySeconds: number;
+}
+
+export interface AutomationAccount {
+  id: string;
+  publicName: string;
+  testAccount: boolean;
+  walletBalanceCents: number;
+}
+
+export interface AutomationAccountList {
+  items: AutomationAccount[];
 }
 
 export interface AutomationFundingInput {

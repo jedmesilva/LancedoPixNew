@@ -32,6 +32,7 @@ import type {
   AdminPayoutPage,
   AdminSession,
   ApiError,
+  AutomationAccountList,
   AutomationConfig,
   AutomationConfigInput,
   AutomationEventPage,
@@ -841,6 +842,107 @@ export function useGetAdminTreasury<TData = Awaited<ReturnType<typeof getAdminTr
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetAdminTreasuryQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAutomationAccountsUrl = () => {
+
+
+
+
+  return `/api/admin/automation/accounts`
+}
+
+/**
+ * @summary Listar contas disponíveis para a automação
+ */
+export const listAutomationAccounts = async ( options?: Parameters<typeof customFetch>[1]): Promise<AutomationAccountList> => {
+
+  return customFetch<AutomationAccountList>(getListAutomationAccountsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAutomationAccountsQueryKey = () => {
+    return [
+    `/api/admin/automation/accounts`
+    ] as const;
+    }
+
+
+export const getListAutomationAccountsQueryOptions = <TData = Awaited<ReturnType<typeof listAutomationAccounts>>, TError = ErrorType<ApiError>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAutomationAccounts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAutomationAccountsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAutomationAccounts>>> = ({ signal }) => listAutomationAccounts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAutomationAccounts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAutomationAccountsQueryResult = NonNullable<Awaited<ReturnType<typeof listAutomationAccounts>>>
+export type ListAutomationAccountsQueryError = ErrorType<ApiError>
+
+
+export function useListAutomationAccounts<TData = Awaited<ReturnType<typeof listAutomationAccounts>>, TError = ErrorType<ApiError>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAutomationAccounts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAutomationAccounts>>,
+          TError,
+          Awaited<ReturnType<typeof listAutomationAccounts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAutomationAccounts<TData = Awaited<ReturnType<typeof listAutomationAccounts>>, TError = ErrorType<ApiError>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAutomationAccounts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAutomationAccounts>>,
+          TError,
+          Awaited<ReturnType<typeof listAutomationAccounts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAutomationAccounts<TData = Awaited<ReturnType<typeof listAutomationAccounts>>, TError = ErrorType<ApiError>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAutomationAccounts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Listar contas disponíveis para a automação
+ */
+
+export function useListAutomationAccounts<TData = Awaited<ReturnType<typeof listAutomationAccounts>>, TError = ErrorType<ApiError>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAutomationAccounts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAutomationAccountsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
