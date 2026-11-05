@@ -18,10 +18,11 @@ import { AdminApiError } from './custom-fetch';
 import {
   createAdminSession, endAdminSession, getAdminDashboard, getAdminDispute, getAdminSession,
   getAdminTreasury, getAutomationConfig, listAdminDisputes, listAdminPayouts,
-  listAutomationEvents, updateAutomationConfig, recordAutomationFunding,
+  listAutomationAccounts, listAutomationEvents, updateAutomationConfig, recordAutomationFunding,
 } from './generated/adminApi';
 import type {
-  AdminDashboard, AdminDisputeSummary, AdminPayoutStatus, AutomationConfigInput, AutomationFundingInput,
+  AdminDashboard, AdminDisputeSummary, AdminPayoutStatus, AutomationAccount,
+  AutomationConfigInput, AutomationFundingInput,
 } from './generated/adminApi.schemas';
 import NotFound from '@/pages/not-found';
 
@@ -32,6 +33,7 @@ const SESSION_KEY = ['/api/admin/auth/session'];
 const DASHBOARD_KEY = ['/api/admin/dashboard'];
 const TREASURY_KEY = ['/api/admin/treasury'];
 const CONFIG_KEY = ['/api/admin/automation/config'];
+const AUTOMATION_ACCOUNTS_KEY = ['/api/admin/automation/accounts'];
 const EVENTS_KEY = ['/api/admin/automation/events'];
 const money = (cents: number | null | undefined) => cents == null ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
 const date = (value: string | null | undefined) => value ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
@@ -240,10 +242,11 @@ const automationModes: Array<{
     detail: "Abre disputas sem lance, sem responder a outros participantes.",
   },
 ];
-const defaultConfig: AutomationConfigInput = { enabled: false, mode: "counterbids_only", maxBidCents: 0, perDisputeLimitCents: 0, dailyLimitCents: 0, maxBidsPerDispute: 0, minimumSecondsRemaining: 1, minimumDelaySeconds: 1 };
+const defaultConfig: AutomationConfigInput = { enabled: false, mode: "counterbids_only", botUserId: null, maxBidCents: 0, perDisputeLimitCents: 0, dailyLimitCents: 0, maxBidsPerDispute: 0, minimumSecondsRemaining: 1, minimumDelaySeconds: 1 };
 function AutomationPage() {
   const queryClient = useQueryClient();
   const configQuery = useQuery({ queryKey: CONFIG_KEY, queryFn: getAutomationConfig });
+  const accountsQuery = useQuery({ queryKey: AUTOMATION_ACCOUNTS_KEY, queryFn: listAutomationAccounts });
   const eventsQuery = useQuery({ queryKey: EVENTS_KEY, queryFn: () => listAutomationEvents({ limit: 30, offset: 0 }) });
   const [form, setForm] = useState<AutomationConfigInput>(defaultConfig);
   const [fundingAmount, setFundingAmount] = useState('');
@@ -251,7 +254,7 @@ function AutomationPage() {
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const [fundingResult, setFundingResult] = useState('');
   const [formError, setFormError] = useState('');
-  useEffect(() => { const data = configQuery.data; if (data) setForm({ enabled: data.enabled, mode: data.mode, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds }); }, [configQuery.data]);
+  useEffect(() => { const data = configQuery.data; if (data) setForm({ enabled: data.enabled, mode: data.mode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds }); }, [configQuery.data]);
   const update = useMutation({
     mutationFn: (input: AutomationConfigInput) => updateAutomationConfig(input),
     onSuccess: data => { queryClient.setQueryData(CONFIG_KEY, data); void queryClient.invalidateQueries({ queryKey: EVENTS_KEY }); void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY }); },
@@ -263,6 +266,8 @@ function AutomationPage() {
       setFundingResult(`Crédito registrado: ${money(result.amountCents)} · saldo informado ${money(result.botWalletBalanceCents)}.`);
       setFundingAmount(''); setReceipt(''); setCashConfirmed(false);
       queryClient.setQueryData(CONFIG_KEY, (old: typeof configQuery.data) => old ? { ...old, botWalletBalanceCents: result.botWalletBalanceCents } : old);
+      void queryClient.invalidateQueries({ queryKey: CONFIG_KEY });
+      void queryClient.invalidateQueries({ queryKey: AUTOMATION_ACCOUNTS_KEY });
       void queryClient.invalidateQueries({ queryKey: EVENTS_KEY }); void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
     },
   });
@@ -276,14 +281,47 @@ function AutomationPage() {
     && form.maxBidsPerDispute >= 0 && form.maxBidsPerDispute <= 10000
     && form.minimumSecondsRemaining >= 1 && form.minimumSecondsRemaining <= 60
     && form.minimumDelaySeconds >= 1 && form.minimumDelaySeconds <= 3600;
-  return <><Heading eyebrow="Participante automatizado" title="Automação" description="O bot é um participante automatizado da plataforma, não um operador humano."><span className="bot-identity"><Bot size={16} /> {config.botName}</span></Heading>
+  const selectedAccount = accountsQuery.data?.items.find((account: AutomationAccount) => account.id === form.botUserId);
+  const limitsCanEnable = form.maxBidCents > 0
+    && form.perDisputeLimitCents > 0
+    && form.dailyLimitCents > 0
+    && form.maxBidsPerDispute > 0
+    && form.maxBidCents <= form.perDisputeLimitCents
+    && form.perDisputeLimitCents <= form.dailyLimitCents;
+  const selectedAccountCanEnable = Boolean(
+    selectedAccount
+    && !selectedAccount.testAccount
+    && selectedAccount.walletBalanceCents > 0
+    && limitsCanEnable
+    && configValid,
+  );
+  const selectedBlockedReasons = form.botUserId !== config.botUserId
+    ? [
+        !selectedAccount ? 'Selecione uma conta disponível para a automação.' : '',
+        selectedAccount?.testAccount ? 'Contas de teste não podem ser usadas.' : '',
+        selectedAccount && selectedAccount.walletBalanceCents <= 0 ? 'A conta selecionada precisa ter saldo confirmado.' : '',
+        !limitsCanEnable ? 'Defina limites positivos e mantenha a ordem entre lance, disputa e dia.' : '',
+      ].filter(Boolean)
+    : config.blockedReasons;
+  const displayedWalletBalanceCents = form.botUserId === config.botUserId
+    ? config.botWalletBalanceCents
+    : selectedAccount?.walletBalanceCents ?? 0;
+  const displayedAccountName = selectedAccount?.publicName
+    ?? (form.botUserId === config.botUserId ? config.botName : 'Selecione uma conta');
+  return <><Heading eyebrow="Participante automatizado" title="Automação" description="Configure qual conta fará os lances automaticamente e acompanhe seus limites e saldo."><span className="bot-identity"><Bot size={16} /> {displayedAccountName}</span></Heading>
     {configQuery.isFetching && <div className="refresh-note"><span className="pulse-dot" /> Atualizando dados de automação…</div>}
-    <div className="notice"><CircleAlert size={16} /><span>Este participante automatizado pode aparecer no histórico público de lances. Os controles e limites abaixo são exatamente os valores devolvidos pela API.</span></div>
-    {!config.botExists && <div className="notice notice-error"><CircleAlert size={16} /><span>A API informa que o participante automatizado ainda não existe.</span></div>}
+    <div className="notice"><CircleAlert size={16} /><span>Os lances automáticos usam a conta selecionada e aparecem publicamente com o nome dela. Contas de teste não podem ser selecionadas.</span></div>
+    {selectedAccount?.testAccount && <div className="notice notice-error"><CircleAlert size={16} /><span>Contas de teste não podem ser usadas na automação. Selecione outra conta.</span></div>}
     <div className="grid automation-layout">
       <section className="panel config-panel"><div className="section-head"><div><p className="eyebrow">Parâmetros do participante</p><h2 className="section-title">Controles de automação</h2></div><span className={`state-chip ${config.enabled ? 'state-on' : ''}`}><i />{config.enabled ? 'Ativa' : 'Desativada'}</span></div>
-        <div className="toggle-row"><div><strong>Automação habilitada</strong><small>Estado atual informado pelo serviço</small></div><ToggleSwitch checked={form.enabled} disabled={(!config.canEnable && !form.enabled) || update.isPending} onCheckedChange={(checked: boolean) => setForm(previous => ({ ...previous, enabled: checked }))} data-testid="switch-automation-enabled" /></div>
-        {!config.canEnable && config.blockedReasons.length > 0 && <div className="blocked-list"><strong>Não pode ser habilitada</strong>{config.blockedReasons.map((reason, index) => <div key={`${index}-${reason}`}><CircleAlert size={13} />{reason}</div>)}</div>}
+        <div className="toggle-row"><div><strong>Automação habilitada</strong><small>Estado atual informado pelo serviço</small></div><ToggleSwitch checked={form.enabled} disabled={(!selectedAccountCanEnable && !form.enabled) || update.isPending} onCheckedChange={(checked: boolean) => setForm(previous => ({ ...previous, enabled: checked }))} data-testid="switch-automation-enabled" /></div>
+        <label className="config-field account-field" htmlFor="automation-account"><span>Conta que fará os lances</span><select id="automation-account" className="field full" value={form.botUserId ?? ''} onChange={event => { setForm(previous => ({ ...previous, botUserId: event.target.value || null })); setFormError(''); }} disabled={update.isPending || accountsQuery.isPending} data-testid="select-automation-account">
+          <option value="">Selecione uma conta</option>
+          {accountsQuery.data?.items.map((account: AutomationAccount) => <option key={account.id} value={account.id} disabled={account.testAccount}>{account.publicName}{account.testAccount ? ' · conta de teste indisponível' : ` · saldo ${money(account.walletBalanceCents)}`}</option>)}
+        </select></label>
+        {accountsQuery.isError && <QueryError error={accountsQuery.error} retry={() => void accountsQuery.refetch()} />}
+        {config.enabled && form.botUserId !== config.botUserId && <div className="selection-note">Ao salvar, os próximos lances usarão a conta selecionada.</div>}
+        {!selectedAccountCanEnable && selectedBlockedReasons.length > 0 && <div className="blocked-list"><strong>Não pode ser habilitada</strong>{selectedBlockedReasons.map((reason, index) => <div key={`${index}-${reason}`}><CircleAlert size={13} />{reason}</div>)}</div>}
         <fieldset className="automation-mode-group" disabled={update.isPending}>
           <legend>Quais ações o bot pode fazer?</legend>
           <div className="automation-mode-list">
@@ -303,16 +341,17 @@ function AutomationPage() {
         ] as const).map(([key, label, min, max]) => <label className="config-field" key={key}><span>{label}</span><Input type="number" min={min} max={max} value={form[key]} onChange={event => setNumber(key, event.target.value)} data-testid={`input-${key}`} /></label>)}</div>
         {formError && <div className="inline-error" role="alert">{formError}</div>}
         {!configValid && <div className="inline-error" role="alert">Revise os valores: um ou mais parâmetros estão fora dos limites permitidos.</div>}
-        <div className="config-footer"><span>Atualizado: {date(config.updatedAt)}</span><Button className="btn primary" disabled={update.isPending || !configValid || (form.enabled && !config.canEnable)} onClick={() => { setFormError(''); update.mutate(form); }} data-testid="button-save-automation">{update.isPending ? 'Salvando…' : 'Salvar configuração'} <Check size={14} /></Button></div>
+         <div className="config-footer"><span>Atualizado: {date(config.updatedAt)}</span><Button className="btn primary" disabled={update.isPending || !configValid || (form.enabled && !selectedAccountCanEnable)} onClick={() => { setFormError(''); update.mutate(form); }} data-testid="button-save-automation">{update.isPending ? 'Salvando…' : 'Salvar configuração'} <Check size={14} /></Button></div>
       </section>
       <div className="side-stack">
-        <section className="panel wallet-panel"><div className="section-head"><div><p className="eyebrow">Saldo do participante</p><h2 className="section-title">Carteira automatizada</h2></div><Bot size={18} className="soft-icon" /></div><div className="wallet-balance">{money(config.botWalletBalanceCents)}</div><p>Saldo informado pelo serviço, sem estimativas.</p><div className="funding-divider" /><h3 className="mini-title">Registrar aporte recebido</h3><p className="field-hint">Registre somente após confirmar o recebimento real.</p>
+         <section className="panel wallet-panel"><div className="section-head"><div><p className="eyebrow">Saldo da conta selecionada</p><h2 className="section-title">Carteira automatizada</h2></div><Bot size={18} className="soft-icon" /></div><div className="wallet-balance">{money(displayedWalletBalanceCents)}</div><p>Saldo informado pelo serviço, sem estimativas.</p><div className="funding-divider" /><h3 className="mini-title">Registrar aporte recebido</h3><p className="field-hint">Registre somente após confirmar o recebimento real.</p>
           <label className="input-label" htmlFor="fund-amount">Valor (centavos)</label><Input id="fund-amount" type="number" min="1" max="100000000" value={fundingAmount} onChange={event => setFundingAmount(event.target.value)} data-testid="input-funding-amount" placeholder="Ex.: 5000" />
           <label className="input-label" htmlFor="receipt-reference">Referência do comprovante</label><Input id="receipt-reference" minLength={3} maxLength={120} value={receipt} onChange={event => setReceipt(event.target.value)} data-testid="input-funding-reference" placeholder="Identificador do comprovante" />
           <label className="confirm-row"><input type="checkbox" checked={cashConfirmed} onChange={event => setCashConfirmed(event.target.checked)} data-testid="checkbox-cash-confirmed" /> Confirmo que o valor foi recebido.</label>
           {fundingResult && <p className="success-note"><Check size={14} />{fundingResult}</p>}
           {fund.isError && <div className="inline-error" role="alert">{errorMessage(fund.error)}</div>}
-          <Button className="btn primary full-button" disabled={fund.isPending || !cashConfirmed || Number(fundingAmount) < 1 || receipt.trim().length < 3} onClick={() => fund.mutate({ amountCents: Number(fundingAmount), receiptReference: receipt.trim(), cashReceived: true })} data-testid="button-record-funding">{fund.isPending ? 'Registrando…' : 'Confirmar aporte'} <ArrowRight size={14} /></Button>
+           {form.botUserId !== config.botUserId && <p className="field-hint">Salve a conta selecionada antes de registrar o aporte.</p>}
+           <Button className="btn primary full-button" disabled={fund.isPending || form.botUserId !== config.botUserId || !cashConfirmed || Number(fundingAmount) < 1 || receipt.trim().length < 3} onClick={() => fund.mutate({ amountCents: Number(fundingAmount), receiptReference: receipt.trim(), cashReceived: true })} data-testid="button-record-funding">{fund.isPending ? 'Registrando…' : 'Confirmar aporte'} <ArrowRight size={14} /></Button>
         </section>
       </div>
     </div>

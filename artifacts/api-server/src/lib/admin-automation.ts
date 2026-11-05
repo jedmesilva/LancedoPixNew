@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   and,
+  asc,
   count,
   desc,
   eq,
@@ -30,6 +31,7 @@ const BOT_EMAIL_DOMAIN = "example.invalid";
 const DEFAULT_CONFIG = {
   enabled: false,
   mode: "counterbids_only" as const,
+  botUserId: null,
   maxBidCents: 0n,
   perDisputeLimitCents: 0n,
   dailyLimitCents: 0n,
@@ -41,6 +43,7 @@ const DEFAULT_CONFIG = {
 type AutomationInput = {
   enabled: boolean;
   mode: AutomationMode;
+  botUserId: string | null;
   maxBidCents: number;
   perDisputeLimitCents: number;
   dailyLimitCents: number;
@@ -78,6 +81,26 @@ async function ensureConfigRow(
   return config;
 }
 
+export async function listAutomationAccounts() {
+  const accounts = await db
+    .select({
+      id: usersTable.id,
+      publicName: usersTable.publicName,
+      testAccount: usersTable.testAccount,
+      walletBalanceCents: walletsTable.balanceCents,
+    })
+    .from(usersTable)
+    .innerJoin(walletsTable, eq(walletsTable.userId, usersTable.id))
+    .orderBy(asc(usersTable.publicName));
+
+  return {
+    items: accounts.map((account) => ({
+      ...account,
+      walletBalanceCents: safeNumber(account.walletBalanceCents),
+    })),
+  };
+}
+
 export async function getAutomationConfig() {
   const [config] = await db
     .select()
@@ -108,9 +131,10 @@ export async function getAutomationConfig() {
 
   const values = config ?? DEFAULT_CONFIG;
   const blockedReasons: string[] = [];
-  if (!botExists) blockedReasons.push("A carteira identificada do bot ainda não foi criada.");
+  if (!values.botUserId) blockedReasons.push("Selecione uma conta para a automação.");
+  else if (!botExists) blockedReasons.push("A conta selecionada não está disponível para automação.");
   else if (botWalletBalanceCents <= 0n) {
-    blockedReasons.push("A carteira do bot está sem saldo confirmado.");
+    blockedReasons.push("A carteira da conta selecionada está sem saldo confirmado.");
   }
   if (
     values.maxBidCents <= 0n ||
@@ -130,6 +154,7 @@ export async function getAutomationConfig() {
   return {
     enabled: values.enabled,
     mode: values.mode,
+    botUserId: values.botUserId,
     botExists,
     botName,
     botWalletBalanceCents: safeNumber(botWalletBalanceCents),
@@ -157,12 +182,32 @@ export async function updateAutomationConfig(input: AutomationInput) {
     const current = await ensureConfigRow(transaction);
     if (!current) throw new Error("AUTOMATION_CONFIG_UNAVAILABLE");
 
+    let selectedAccountName = BOT_NAME;
+    if (input.botUserId) {
+      const [account] = await transaction
+        .select({
+          publicName: usersTable.publicName,
+          testAccount: usersTable.testAccount,
+          walletBalanceCents: walletsTable.balanceCents,
+        })
+        .from(usersTable)
+        .leftJoin(walletsTable, eq(walletsTable.userId, usersTable.id))
+        .where(eq(usersTable.id, input.botUserId))
+        .limit(1);
+      if (!account) throw new Error("AUTOMATION_ACCOUNT_NOT_FOUND");
+      if (account.testAccount) throw new Error("AUTOMATION_TEST_ACCOUNT");
+      if (account.walletBalanceCents === null) {
+        throw new Error("AUTOMATION_WALLET_UNAVAILABLE");
+      }
+      selectedAccountName = account.publicName;
+    }
+
     if (input.enabled) {
-      if (!current.botUserId) throw new Error("BOT_NOT_FUNDED");
+      if (!input.botUserId) throw new Error("BOT_NOT_FUNDED");
       const [wallet] = await transaction
         .select({ balanceCents: walletsTable.balanceCents })
         .from(walletsTable)
-        .where(eq(walletsTable.userId, current.botUserId))
+        .where(eq(walletsTable.userId, input.botUserId))
         .for("update");
       if (!wallet || wallet.balanceCents <= 0n) {
         throw new Error("BOT_NOT_FUNDED");
@@ -182,6 +227,7 @@ export async function updateAutomationConfig(input: AutomationInput) {
       .set({
         enabled: input.enabled,
         mode: input.mode,
+        botUserId: input.botUserId,
         maxBidCents: BigInt(input.maxBidCents),
         perDisputeLimitCents: BigInt(input.perDisputeLimitCents),
         dailyLimitCents: BigInt(input.dailyLimitCents),
@@ -195,16 +241,16 @@ export async function updateAutomationConfig(input: AutomationInput) {
     const now = new Date();
     await transaction.insert(automationEventsTable).values({
       eventType: "config_updated",
-      botUserId: current.botUserId,
-      summary: "O modo, as regras e os limites da automação foram atualizados.",
+      botUserId: input.botUserId,
+      summary: `O modo, as regras e os limites da automação foram atualizados para ${selectedAccountName}.`,
       createdAt: now,
     });
     if (current.enabled !== input.enabled) {
       await transaction.insert(automationEventsTable).values({
         eventType: input.enabled ? "enabled" : "disabled",
-        botUserId: current.botUserId,
+        botUserId: input.botUserId,
         summary: input.enabled
-          ? "A automação de lances foi ligada."
+          ? `A automação de lances foi ligada para ${selectedAccountName}.`
           : "A automação de lances foi desligada.",
         createdAt: now,
       });
@@ -258,6 +304,11 @@ export async function recordAutomationFunding(input: FundingInput) {
       .where(eq(walletsTable.userId, botUserId))
       .for("update");
     if (!wallet) throw new Error("BOT_WALLET_UNAVAILABLE");
+    const [fundedAccount] = await transaction
+      .select({ publicName: usersTable.publicName })
+      .from(usersTable)
+      .where(eq(usersTable.id, botUserId))
+      .limit(1);
 
     const newBalance = wallet.balanceCents + amountCents;
     await transaction
@@ -299,7 +350,7 @@ export async function recordAutomationFunding(input: FundingInput) {
       botUserId,
       amountCents,
       receiptReference,
-      summary: `Aporte confirmado de R$ ${(input.amountCents / 100).toFixed(2)} para a carteira pública do bot.`,
+      summary: `Aporte confirmado de R$ ${(input.amountCents / 100).toFixed(2)} para a carteira de ${fundedAccount?.publicName ?? BOT_NAME}.`,
     });
 
     return {
@@ -532,8 +583,8 @@ export async function runAutomationTick(): Promise<boolean> {
       .from(usersTable)
       .where(eq(usersTable.id, config.botUserId))
       .limit(1);
-    if (!bot || bot.testAccount || bot.publicName !== BOT_NAME) {
-      return block("a identidade pública do bot não está válida.");
+    if (!bot || bot.testAccount) {
+      return block("a conta selecionada não está disponível para automação.");
     }
 
     const [wallet] = await transaction
@@ -615,8 +666,8 @@ export async function runAutomationTick(): Promise<boolean> {
       triggerBidId: leader?.id ?? null,
       amountCents: bidCents,
       summary: isOpeningBid
-        ? `${BOT_NAME} deu um lance de abertura identificado na disputa ${dispute.number}.`
-        : `${BOT_NAME} deu um contralance identificado na disputa ${dispute.number}.`,
+        ? `${bot.publicName} deu um lance de abertura automatizado na disputa ${dispute.number}.`
+        : `${bot.publicName} deu um contralance automatizado na disputa ${dispute.number}.`,
     });
     return true;
   });

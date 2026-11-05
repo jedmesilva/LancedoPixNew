@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { ApiErrorBody } from "@workspace/api-zod";
 import {
   GetAutomationConfigResponse,
+  ListAutomationAccountsResponse,
   ListAutomationEventsQueryParams,
   ListAutomationEventsResponse,
   RecordAutomationFundingBody,
@@ -11,12 +12,18 @@ import {
 } from "./generated";
 import {
   getAutomationConfig,
+  listAutomationAccounts,
   listAutomationEvents,
   recordAutomationFunding,
   updateAutomationConfig,
 } from "../../lib/admin-automation";
 
 const router: IRouter = Router();
+
+router.get("/automation/accounts", async (_req, res): Promise<void> => {
+  const accounts = await listAutomationAccounts();
+  res.json(ListAutomationAccountsResponse.parse(accounts));
+});
 
 router.get("/automation/config", async (_req, res): Promise<void> => {
   const config = await getAutomationConfig();
@@ -40,12 +47,18 @@ router.put("/automation/config", async (req, res): Promise<void> => {
     const status = code === "BOT_NOT_FUNDED" ? 409 : 400;
     const message =
       code === "BOT_NOT_FUNDED"
-        ? "Registre um aporte real confirmado antes de ligar a automação."
-        : code === "LIMIT_ORDER_INVALID"
-          ? "Os limites devem seguir a ordem: lance, disputa e dia."
-          : code === "LIMITS_REQUIRED"
-            ? "Informe limites positivos para ativar a automação."
-            : "Não foi possível salvar as regras da automação.";
+        ? "Selecione uma conta com saldo confirmado antes de ligar a automação."
+        : code === "AUTOMATION_ACCOUNT_NOT_FOUND"
+          ? "A conta selecionada não existe."
+          : code === "AUTOMATION_TEST_ACCOUNT"
+            ? "Contas de teste não podem ser usadas na automação."
+            : code === "AUTOMATION_WALLET_UNAVAILABLE"
+              ? "A conta selecionada não possui uma carteira disponível."
+              : code === "LIMIT_ORDER_INVALID"
+                ? "Os limites devem seguir a ordem: lance, disputa e dia."
+                : code === "LIMITS_REQUIRED"
+                  ? "Informe limites positivos para ativar a automação."
+                  : "Não foi possível salvar as regras da automação.";
     res.status(status).json(ApiErrorBody.parse({ error: message }));
   }
 });
