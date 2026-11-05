@@ -5,9 +5,11 @@ import {
   desc,
   eq,
   gte,
+  isNull,
   sql,
 } from "drizzle-orm";
 import {
+  type AutomationMode,
   automationConfigTable,
   automationEventsTable,
   bidsTable,
@@ -19,6 +21,7 @@ import {
   walletsTable,
 } from "@workspace/db";
 import { getDisputeDeadline, getDisputeCountdownDeadline } from "./dispute-progression";
+import { getAutomationBidAction } from "./automation-mode";
 import { recordBidAllocation, recordLedgerEntry, updatePrizeCoverage } from "./treasury";
 
 const CONFIG_ID = 1;
@@ -26,6 +29,7 @@ const BOT_NAME = "Bot oficial do Lance do Pix";
 const BOT_EMAIL_DOMAIN = "example.invalid";
 const DEFAULT_CONFIG = {
   enabled: false,
+  mode: "counterbids_only" as const,
   maxBidCents: 0n,
   perDisputeLimitCents: 0n,
   dailyLimitCents: 0n,
@@ -36,6 +40,7 @@ const DEFAULT_CONFIG = {
 
 type AutomationInput = {
   enabled: boolean;
+  mode: AutomationMode;
   maxBidCents: number;
   perDisputeLimitCents: number;
   dailyLimitCents: number;
@@ -124,6 +129,7 @@ export async function getAutomationConfig() {
 
   return {
     enabled: values.enabled,
+    mode: values.mode,
     botExists,
     botName,
     botWalletBalanceCents: safeNumber(botWalletBalanceCents),
@@ -175,6 +181,7 @@ export async function updateAutomationConfig(input: AutomationInput) {
       .update(automationConfigTable)
       .set({
         enabled: input.enabled,
+        mode: input.mode,
         maxBidCents: BigInt(input.maxBidCents),
         perDisputeLimitCents: BigInt(input.perDisputeLimitCents),
         dailyLimitCents: BigInt(input.dailyLimitCents),
@@ -189,7 +196,7 @@ export async function updateAutomationConfig(input: AutomationInput) {
     await transaction.insert(automationEventsTable).values({
       eventType: "config_updated",
       botUserId: current.botUserId,
-      summary: "As regras e os limites da automação foram atualizados.",
+      summary: "O modo, as regras e os limites da automação foram atualizados.",
       createdAt: now,
     });
     if (current.enabled !== input.enabled) {
@@ -197,8 +204,8 @@ export async function updateAutomationConfig(input: AutomationInput) {
         eventType: input.enabled ? "enabled" : "disabled",
         botUserId: current.botUserId,
         summary: input.enabled
-          ? "A automação de contralances foi ligada."
-          : "A automação de contralances foi desligada.",
+          ? "A automação de lances foi ligada."
+          : "A automação de lances foi desligada.",
         createdAt: now,
       });
     }
@@ -341,10 +348,38 @@ function recordBlockedEvent(
     botUserId: string;
     disputeId: string;
     disputeNumber: number;
-    triggerBidId: string;
+    triggerBidId: string | null;
     reason: string;
   },
 ) {
+  if (!input.triggerBidId) {
+    return transaction
+      .select({ id: automationEventsTable.id })
+      .from(automationEventsTable)
+      .where(
+        and(
+          eq(automationEventsTable.eventType, "blocked"),
+          eq(automationEventsTable.disputeId, input.disputeId),
+          isNull(automationEventsTable.triggerBidId),
+        ),
+      )
+      .limit(1)
+      .then(([existing]) => {
+        if (existing) return;
+        return transaction
+          .insert(automationEventsTable)
+          .values({
+            eventType: "blocked",
+            botUserId: input.botUserId,
+            disputeId: input.disputeId,
+            disputeNumber: input.disputeNumber,
+            triggerBidId: null,
+            summary: input.reason,
+          })
+          .onConflictDoNothing();
+      });
+  }
+
   return transaction
     .insert(automationEventsTable)
     .values({
@@ -376,25 +411,42 @@ export async function runAutomationTick(): Promise<boolean> {
       .orderBy(desc(disputesTable.number))
       .limit(1)
       .for("update");
-    if (!dispute?.leaderBidId) return false;
+    if (!dispute) return false;
 
-    const [leader] = await transaction
-      .select()
-      .from(bidsTable)
-      .where(eq(bidsTable.id, dispute.leaderBidId))
-      .limit(1)
-      .for("update");
-    if (!leader || leader.userId === config.botUserId) return false;
+    let leader: typeof bidsTable.$inferSelect | null = null;
+    if (dispute.leaderBidId) {
+      const [currentLeader] = await transaction
+        .select()
+        .from(bidsTable)
+        .where(eq(bidsTable.id, dispute.leaderBidId))
+        .limit(1)
+        .for("update");
+      if (!currentLeader) {
+        throw new Error(`Dispute ${dispute.id} is missing its leader bid.`);
+      }
+      leader = currentLeader;
+    }
 
-    const [previousAttempt] = await transaction
-      .select({ id: automationEventsTable.id })
-      .from(automationEventsTable)
-      .where(eq(automationEventsTable.triggerBidId, leader.id))
-      .limit(1);
-    if (previousAttempt) return false;
+    const action = getAutomationBidAction(
+      config.mode,
+      leader !== null,
+      leader?.userId === config.botUserId,
+    );
+    if (!action) return false;
+    const isOpeningBid = action === "opening_bid";
 
+    if (leader) {
+      const [previousAttempt] = await transaction
+        .select({ id: automationEventsTable.id })
+        .from(automationEventsTable)
+        .where(eq(automationEventsTable.triggerBidId, leader.id))
+        .limit(1);
+      if (previousAttempt) return false;
+    }
+
+    const actionStartedAt = leader?.createdAt ?? dispute.startedAt ?? dispute.startsAt;
     if (
-      leader.createdAt.getTime() + config.minimumDelaySeconds * 1_000 >
+      actionStartedAt.getTime() + config.minimumDelaySeconds * 1_000 >
       now.getTime()
     ) {
       return false;
@@ -403,33 +455,34 @@ export async function runAutomationTick(): Promise<boolean> {
     const deadline = getDisputeDeadline(
       dispute.startedAt,
       dispute.startsAt,
-      leader.expiresAt,
+      leader?.expiresAt ?? null,
     );
     const secondsRemaining = Math.max(
       0,
       Math.ceil((deadline.getTime() - now.getTime()) / 1_000),
     );
+    const actionLabel = isOpeningBid ? "Lance de abertura" : "Contralance";
     const block = async (reason: string) => {
       await recordBlockedEvent(transaction, {
         botUserId: config.botUserId!,
         disputeId: dispute.id,
         disputeNumber: dispute.number,
-        triggerBidId: leader.id,
-        reason,
+        triggerBidId: leader?.id ?? null,
+        reason: `${actionLabel} bloqueado: ${reason}`,
       });
       return false;
     };
 
     if (dispute.simulated) {
-      return block("Contralance bloqueado: a disputa está marcada como simulada.");
+      return block("a disputa está marcada como simulada.");
     }
     if (secondsRemaining < config.minimumSecondsRemaining) {
-      return block("Contralance bloqueado: resta menos tempo que o mínimo configurado.");
+      return block("resta menos tempo que o mínimo configurado.");
     }
 
-    const bidCents = leader.valueCents + dispute.stepCents;
+    const bidCents = (leader?.valueCents ?? dispute.startingValueCents) + dispute.stepCents;
     if (bidCents > config.maxBidCents) {
-      return block("Contralance bloqueado: o valor supera o limite por lance.");
+      return block("o valor supera o limite por lance.");
     }
 
     const disputeEvents = await transaction
@@ -449,7 +502,7 @@ export async function runAutomationTick(): Promise<boolean> {
       disputeEvents.length >= config.maxBidsPerDispute ||
       disputeSpent + bidCents > config.perDisputeLimitCents
     ) {
-      return block("Contralance bloqueado: o limite desta disputa foi atingido.");
+      return block("o limite desta disputa foi atingido.");
     }
 
     const utcDayStart = new Date(now);
@@ -468,7 +521,7 @@ export async function runAutomationTick(): Promise<boolean> {
       0n,
     );
     if (dailySpent + bidCents > config.dailyLimitCents) {
-      return block("Contralance bloqueado: o limite diário foi atingido.");
+      return block("o limite diário foi atingido.");
     }
 
     const [bot] = await transaction
@@ -480,7 +533,7 @@ export async function runAutomationTick(): Promise<boolean> {
       .where(eq(usersTable.id, config.botUserId))
       .limit(1);
     if (!bot || bot.testAccount || bot.publicName !== BOT_NAME) {
-      return block("Contralance bloqueado: a identidade pública do bot não está válida.");
+      return block("a identidade pública do bot não está válida.");
     }
 
     const [wallet] = await transaction
@@ -490,7 +543,7 @@ export async function runAutomationTick(): Promise<boolean> {
       .limit(1)
       .for("update");
     if (!wallet || wallet.balanceCents < bidCents) {
-      return block("Contralance bloqueado: saldo confirmado insuficiente.");
+      return block("saldo confirmado insuficiente.");
     }
 
     const newBalance = wallet.balanceCents - bidCents;
@@ -559,9 +612,11 @@ export async function runAutomationTick(): Promise<boolean> {
       botUserId: config.botUserId,
       disputeId: dispute.id,
       disputeNumber: dispute.number,
-      triggerBidId: leader.id,
+      triggerBidId: leader?.id ?? null,
       amountCents: bidCents,
-      summary: `${BOT_NAME} deu um contralance identificado na disputa ${dispute.number}.`,
+      summary: isOpeningBid
+        ? `${BOT_NAME} deu um lance de abertura identificado na disputa ${dispute.number}.`
+        : `${BOT_NAME} deu um contralance identificado na disputa ${dispute.number}.`,
     });
     return true;
   });

@@ -151,6 +151,15 @@ body { background:#f5f2e9; }
 .config-grid { grid-template-columns:1fr 1fr;gap:0 13px;margin-top:3px; }
 .config-field { display:flex;flex-direction:column;gap:7px;margin-top:15px;color:#718077;font-size:10px;font-weight:700; }
 .config-field input { font-family:'Space Mono';font-size:11px; }
+.automation-mode-group { min-width:0;margin:17px 0 4px;padding:0;border:0; }
+.automation-mode-group legend { margin-bottom:9px;color:#718077;font-size:10px;font-weight:700; }
+.automation-mode-list { display:grid;gap:7px; }
+.automation-mode-option { display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #e7e3d8;border-radius:8px;background:#fcfbf7;cursor:pointer; }
+.automation-mode-option.selected { border-color:#9eb5a5;background:#f0f5ef; }
+.automation-mode-option input { flex:none;margin:2px 0 0;accent-color:#2d6a52; }
+.automation-mode-option span { display:flex;flex-direction:column;gap:3px; }
+.automation-mode-option strong { color:#42574d;font-size:11px; }
+.automation-mode-option small { color:#929a8d;font-size:10px;line-height:1.45; }
 .config-footer { display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:21px;padding-top:15px;border-top:1px solid #eeeadf; }
 .config-footer>span { color:#949d91;font-size:10px; }
 .side-stack { display:grid;gap:15px; }

@@ -8,16 +8,28 @@ import {
   pgTable,
   smallint,
   timestamp,
+  text,
   uuid,
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+
+export const AUTOMATION_MODES = [
+  "counterbids_only",
+  "bids_and_counterbids",
+  "bids_only",
+] as const;
+export type AutomationMode = (typeof AUTOMATION_MODES)[number];
 
 export const automationConfigTable = pgTable(
   "automation_config",
   {
     id: smallint("id").primaryKey(),
     enabled: boolean("enabled").notNull().default(false),
+    mode: text("mode")
+      .$type<AutomationMode>()
+      .notNull()
+      .default("counterbids_only"),
     botUserId: uuid("bot_user_id").references(() => usersTable.id, {
       onDelete: "restrict",
     }),
@@ -48,6 +60,10 @@ export const automationConfigTable = pgTable(
   },
   (table) => [
     check("automation_config_singleton_check", sql`${table.id} = 1`),
+    check(
+      "automation_config_mode_check",
+      sql`${table.mode} IN ('counterbids_only', 'bids_and_counterbids', 'bids_only')`,
+    ),
     check(
       "automation_config_limits_nonnegative_check",
       sql`${table.maxBidCents} >= 0 AND ${table.perDisputeLimitCents} >= 0 AND ${table.dailyLimitCents} >= 0 AND ${table.maxBidsPerDispute} >= 0`,

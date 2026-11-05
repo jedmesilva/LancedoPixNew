@@ -22,6 +22,8 @@ export * from './adminSession';
 export * from './apiError';
 export * from './automationConfig';
 export * from './automationConfigInput';
+export * from './automationConfigInputMode';
+export * from './automationConfigMode';
 export * from './automationEvent';
 export * from './automationEventEventType';
 export * from './automationEventPage';

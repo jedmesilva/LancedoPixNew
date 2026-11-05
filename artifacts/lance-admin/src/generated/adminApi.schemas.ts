@@ -142,8 +142,18 @@ export interface AdminPayoutPage {
   total: number;
 }
 
+export type AutomationConfigMode = typeof AutomationConfigMode[keyof typeof AutomationConfigMode];
+
+
+export const AutomationConfigMode = {
+  counterbids_only: 'counterbids_only',
+  bids_and_counterbids: 'bids_and_counterbids',
+  bids_only: 'bids_only',
+} as const;
+
 export interface AutomationConfig {
   enabled: boolean;
+  mode: AutomationConfigMode;
   botExists: boolean;
   botName: string;
   botWalletBalanceCents: number;
@@ -159,8 +169,18 @@ export interface AutomationConfig {
   updatedAt: string | null;
 }
 
+export type AutomationConfigInputMode = typeof AutomationConfigInputMode[keyof typeof AutomationConfigInputMode];
+
+
+export const AutomationConfigInputMode = {
+  counterbids_only: 'counterbids_only',
+  bids_and_counterbids: 'bids_and_counterbids',
+  bids_only: 'bids_only',
+} as const;
+
 export interface AutomationConfigInput {
   enabled: boolean;
+  mode: AutomationConfigInputMode;
   /**
      * @minimum 0
      * @maximum 100000000

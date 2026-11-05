@@ -466,6 +466,7 @@ components:
       type: object
       properties:
         enabled: { type: boolean }
+        mode: { type: string, enum: [counterbids_only, bids_and_counterbids, bids_only] }
         botExists: { type: boolean }
         botName: { type: string }
         botWalletBalanceCents: { type: integer }
@@ -482,6 +483,7 @@ components:
         updatedAt: { type: ["string", "null"], format: date-time }
       required:
         - enabled
+        - mode
         - botExists
         - botName
         - botWalletBalanceCents
@@ -498,6 +500,7 @@ components:
       type: object
       properties:
         enabled: { type: boolean }
+        mode: { type: string, enum: [counterbids_only, bids_and_counterbids, bids_only] }
         maxBidCents: { type: integer, minimum: 0, maximum: 100000000 }
         perDisputeLimitCents: { type: integer, minimum: 0, maximum: 100000000 }
         dailyLimitCents: { type: integer, minimum: 0, maximum: 100000000 }
@@ -506,6 +509,7 @@ components:
         minimumDelaySeconds: { type: integer, minimum: 1, maximum: 3600 }
       required:
         - enabled
+        - mode
         - maxBidCents
         - perDisputeLimitCents
         - dailyLimitCents

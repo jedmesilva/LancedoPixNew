@@ -219,7 +219,28 @@ function TreasuryPage() {
 function LedgerRow({ title, detail, value, tone }: { title: string; detail: string; value: number; tone?: string }) {
   return <div className="ledger-row"><div><strong>{title}</strong><small>{detail}</small></div><span className={tone || ''}>{money(value)}</span></div>;
 }
-const defaultConfig: AutomationConfigInput = { enabled: false, maxBidCents: 0, perDisputeLimitCents: 0, dailyLimitCents: 0, maxBidsPerDispute: 0, minimumSecondsRemaining: 1, minimumDelaySeconds: 1 };
+const automationModes: Array<{
+  value: AutomationConfigInput["mode"];
+  label: string;
+  detail: string;
+}> = [
+  {
+    value: "counterbids_only",
+    label: "Só contralances",
+    detail: "Responde aos lances de outros participantes.",
+  },
+  {
+    value: "bids_and_counterbids",
+    label: "Lances e contralances",
+    detail: "Abre disputas sem lance e responde a outros participantes.",
+  },
+  {
+    value: "bids_only",
+    label: "Só lances",
+    detail: "Abre disputas sem lance, sem responder a outros participantes.",
+  },
+];
+const defaultConfig: AutomationConfigInput = { enabled: false, mode: "counterbids_only", maxBidCents: 0, perDisputeLimitCents: 0, dailyLimitCents: 0, maxBidsPerDispute: 0, minimumSecondsRemaining: 1, minimumDelaySeconds: 1 };
 function AutomationPage() {
   const queryClient = useQueryClient();
   const configQuery = useQuery({ queryKey: CONFIG_KEY, queryFn: getAutomationConfig });
@@ -230,7 +251,7 @@ function AutomationPage() {
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const [fundingResult, setFundingResult] = useState('');
   const [formError, setFormError] = useState('');
-  useEffect(() => { const data = configQuery.data; if (data) setForm({ enabled: data.enabled, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds }); }, [configQuery.data]);
+  useEffect(() => { const data = configQuery.data; if (data) setForm({ enabled: data.enabled, mode: data.mode, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds }); }, [configQuery.data]);
   const update = useMutation({
     mutationFn: (input: AutomationConfigInput) => updateAutomationConfig(input),
     onSuccess: data => { queryClient.setQueryData(CONFIG_KEY, data); void queryClient.invalidateQueries({ queryKey: EVENTS_KEY }); void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY }); },
@@ -263,6 +284,15 @@ function AutomationPage() {
       <section className="panel config-panel"><div className="section-head"><div><p className="eyebrow">Parâmetros do participante</p><h2 className="section-title">Controles de automação</h2></div><span className={`state-chip ${config.enabled ? 'state-on' : ''}`}><i />{config.enabled ? 'Ativa' : 'Desativada'}</span></div>
         <div className="toggle-row"><div><strong>Automação habilitada</strong><small>Estado atual informado pelo serviço</small></div><ToggleSwitch checked={form.enabled} disabled={(!config.canEnable && !form.enabled) || update.isPending} onCheckedChange={(checked: boolean) => setForm(previous => ({ ...previous, enabled: checked }))} data-testid="switch-automation-enabled" /></div>
         {!config.canEnable && config.blockedReasons.length > 0 && <div className="blocked-list"><strong>Não pode ser habilitada</strong>{config.blockedReasons.map((reason, index) => <div key={`${index}-${reason}`}><CircleAlert size={13} />{reason}</div>)}</div>}
+        <fieldset className="automation-mode-group" disabled={update.isPending}>
+          <legend>Quais ações o bot pode fazer?</legend>
+          <div className="automation-mode-list">
+            {automationModes.map(mode => <label className={`automation-mode-option ${form.mode === mode.value ? 'selected' : ''}`} key={mode.value}>
+              <input type="radio" name="automation-mode" value={mode.value} checked={form.mode === mode.value} onChange={() => setForm(previous => ({ ...previous, mode: mode.value }))} data-testid={`radio-automation-mode-${mode.value}`} />
+              <span><strong>{mode.label}</strong><small>{mode.detail}</small></span>
+            </label>)}
+          </div>
+        </fieldset>
         <div className="config-grid">{([
           ['maxBidCents', 'Lance máximo (centavos)', 0, 100000000],
           ['perDisputeLimitCents', 'Limite por disputa (centavos)', 0, 100000000],

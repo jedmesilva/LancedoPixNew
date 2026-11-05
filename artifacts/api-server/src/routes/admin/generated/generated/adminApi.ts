@@ -212,6 +212,7 @@ export const GetAdminTreasuryResponse = zod.object({
  */
 export const GetAutomationConfigResponse = zod.object({
   "enabled": zod.boolean(),
+  "mode": zod.enum(['counterbids_only', 'bids_and_counterbids', 'bids_only']),
   "botExists": zod.boolean(),
   "botName": zod.string(),
   "botWalletBalanceCents": zod.number().int(),
@@ -250,6 +251,7 @@ export const updateAutomationConfigBodyMinimumDelaySecondsMax = 3600;
 
 export const UpdateAutomationConfigBody = zod.object({
   "enabled": zod.boolean(),
+  "mode": zod.enum(['counterbids_only', 'bids_and_counterbids', 'bids_only']),
   "maxBidCents": zod.number().int().min(updateAutomationConfigBodyMaxBidCentsMin).max(updateAutomationConfigBodyMaxBidCentsMax),
   "perDisputeLimitCents": zod.number().int().min(updateAutomationConfigBodyPerDisputeLimitCentsMin).max(updateAutomationConfigBodyPerDisputeLimitCentsMax),
   "dailyLimitCents": zod.number().int().min(updateAutomationConfigBodyDailyLimitCentsMin).max(updateAutomationConfigBodyDailyLimitCentsMax),
@@ -260,6 +262,7 @@ export const UpdateAutomationConfigBody = zod.object({
 
 export const UpdateAutomationConfigResponse = zod.object({
   "enabled": zod.boolean(),
+  "mode": zod.enum(['counterbids_only', 'bids_and_counterbids', 'bids_only']),
   "botExists": zod.boolean(),
   "botName": zod.string(),
   "botWalletBalanceCents": zod.number().int(),
