@@ -4,6 +4,7 @@ Aplicação web de disputas por prêmios com usuários, lances, saldos e ativida
 
 ## Run & Operate
 
+- Start the `artifacts/lance-admin: web` workflow to open the admin preview at `/admin/`.
 - Start the `artifacts/lance-do-pix: web` workflow to run the client at `/`.
 - Start the `artifacts/api-server: API Server` workflow to run the API at `/api`.
 - The API requires `DATABASE_URL` and `SESSION_SECRET` in Replit Secrets.
