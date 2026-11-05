@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
+import { ApiErrorBody } from "@workspace/api-zod";
 import {
-  ApiError,
   GetAutomationConfigResponse,
   ListAutomationEventsQueryParams,
   ListAutomationEventsResponse,
@@ -27,7 +27,7 @@ router.put("/automation/config", async (req, res): Promise<void> => {
   const parsed = UpdateAutomationConfigBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json(
-      ApiError.parse({ error: "Confira os limites e regras enviados." }),
+      ApiErrorBody.parse({ error: "Confira os limites e regras enviados." }),
     );
     return;
   }
@@ -46,7 +46,7 @@ router.put("/automation/config", async (req, res): Promise<void> => {
           : code === "LIMITS_REQUIRED"
             ? "Informe limites positivos para ativar a automação."
             : "Não foi possível salvar as regras da automação.";
-    res.status(status).json(ApiError.parse({ error: message }));
+    res.status(status).json(ApiErrorBody.parse({ error: message }));
   }
 });
 
@@ -54,7 +54,7 @@ router.post("/automation/funding", async (req, res): Promise<void> => {
   const parsed = RecordAutomationFundingBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json(
-      ApiError.parse({
+      ApiErrorBody.parse({
         error: "Informe o valor e a referência de um aporte já recebido.",
       }),
     );
@@ -73,7 +73,7 @@ router.post("/automation/funding", async (req, res): Promise<void> => {
       code === "RECEIPT_REFERENCE_USED"
         ? "Essa referência de aporte já foi registrada."
         : "O aporte não foi registrado. Confirme que o dinheiro foi recebido e tente novamente.";
-    res.status(status).json(ApiError.parse({ error: message }));
+    res.status(status).json(ApiErrorBody.parse({ error: message }));
   }
 });
 
@@ -81,7 +81,7 @@ router.get("/automation/events", async (req, res): Promise<void> => {
   const parsed = ListAutomationEventsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json(
-      ApiError.parse({ error: "Os filtros do histórico da automação são inválidos." }),
+      ApiErrorBody.parse({ error: "Os filtros do histórico da automação são inválidos." }),
     );
     return;
   }

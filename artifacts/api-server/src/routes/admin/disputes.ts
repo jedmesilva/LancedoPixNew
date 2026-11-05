@@ -1,5 +1,6 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
+import { ApiErrorBody } from "@workspace/api-zod";
 import {
   automationConfigTable,
   bidsTable,
@@ -8,7 +9,6 @@ import {
   usersTable,
 } from "@workspace/db";
 import {
-  ApiError,
   GetAdminDisputeParams,
   GetAdminDisputeResponse,
   ListAdminDisputesQueryParams,
@@ -26,7 +26,7 @@ const router: IRouter = Router();
 router.get("/disputes", async (req, res): Promise<void> => {
   const parsed = ListAdminDisputesQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json(ApiError.parse({ error: "Os filtros de disputa são inválidos." }));
+    res.status(400).json(ApiErrorBody.parse({ error: "Os filtros de disputa são inválidos." }));
     return;
   }
 
@@ -55,7 +55,7 @@ router.get("/disputes", async (req, res): Promise<void> => {
 router.get("/disputes/:id", async (req, res): Promise<void> => {
   const parsed = GetAdminDisputeParams.safeParse(req.params);
   if (!parsed.success) {
-    res.status(404).json(ApiError.parse({ error: "Disputa não encontrada." }));
+    res.status(404).json(ApiErrorBody.parse({ error: "Disputa não encontrada." }));
     return;
   }
   const id = parsed.data.id;
@@ -63,7 +63,7 @@ router.get("/disputes/:id", async (req, res): Promise<void> => {
     .where(eq(disputesTable.id, id))
     .limit(1);
   if (!dispute) {
-    res.status(404).json(ApiError.parse({ error: "Disputa não encontrada." }));
+    res.status(404).json(ApiErrorBody.parse({ error: "Disputa não encontrada." }));
     return;
   }
 

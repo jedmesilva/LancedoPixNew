@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
-import { ApiError } from "./generated";
+import { ApiErrorBody } from "@workspace/api-zod";
 
 export const ADMIN_SESSION_COOKIE = "lance_admin_session";
 const SESSION_TTL_MS = 8 * 60 * 60 * 1_000;
@@ -21,7 +21,7 @@ export function requireAdminSession(
     next();
     return;
   }
-  res.status(401).json(ApiError.parse({ error: "Autenticação administrativa necessária." }));
+  res.status(401).json(ApiErrorBody.parse({ error: "Autenticação administrativa necessária." }));
 }
 
 export function verifyAdminKey(key: string): "valid" | "invalid" | "unconfigured" {

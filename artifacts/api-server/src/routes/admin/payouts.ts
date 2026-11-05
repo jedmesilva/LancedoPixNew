@@ -1,8 +1,8 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
+import { ApiErrorBody } from "@workspace/api-zod";
 import { db, payoutRequestsTable, usersTable } from "@workspace/db";
 import {
-  ApiError,
   ListAdminPayoutsQueryParams,
   ListAdminPayoutsResponse,
 } from "./generated";
@@ -13,7 +13,7 @@ const router: IRouter = Router();
 router.get("/payouts", async (req, res): Promise<void> => {
   const parsed = ListAdminPayoutsQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json(ApiError.parse({ error: "Os filtros de resgate são inválidos." }));
+    res.status(400).json(ApiErrorBody.parse({ error: "Os filtros de resgate são inválidos." }));
     return;
   }
 

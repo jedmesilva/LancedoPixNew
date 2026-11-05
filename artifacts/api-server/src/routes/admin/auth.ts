@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
+import { ApiErrorBody } from "@workspace/api-zod";
 import {
-  ApiError,
   CreateAdminSessionBody,
   CreateAdminSessionResponse,
   EndAdminSessionResponse,
@@ -27,7 +27,7 @@ router.post("/auth/session", (req, res): void => {
   const parsed = CreateAdminSessionBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json(
-      ApiError.parse({ error: "Informe uma chave administrativa válida." }),
+      ApiErrorBody.parse({ error: "Informe uma chave administrativa válida." }),
     );
     return;
   }
@@ -35,7 +35,7 @@ router.post("/auth/session", (req, res): void => {
   const result = verifyAdminKey(parsed.data.key);
   if (result === "unconfigured") {
     res.status(503).json(
-      ApiError.parse({
+      ApiErrorBody.parse({
         error: "A chave administrativa ainda não foi configurada no ambiente.",
       }),
     );
@@ -43,7 +43,7 @@ router.post("/auth/session", (req, res): void => {
   }
   if (result === "invalid") {
     res.status(401).json(
-      ApiError.parse({ error: "A chave administrativa está incorreta." }),
+      ApiErrorBody.parse({ error: "A chave administrativa está incorreta." }),
     );
     return;
   }

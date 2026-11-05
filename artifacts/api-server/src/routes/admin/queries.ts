@@ -1,4 +1,4 @@
-import { count, inArray, or, sql } from "drizzle-orm";
+import { count, eq, inArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   bidsTable,
