@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/admin/"
+title = "Lance do Pix — Administração"
+description = "Console interno para operadores do Lance do Pix: acompanhar disputas, resgates e caixa, pesquisar histórico e controlar uma automação de lances identificada e limitada."
+version = "1.0.0"
+id = "artifacts/lance-admin"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/admin/" ]
+localPort = 19158
+
+[services.development]
+run = "pnpm --filter @workspace/lance-admin run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/lance-admin", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/lance-admin/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19158"
+BASE_PATH = "/admin/"

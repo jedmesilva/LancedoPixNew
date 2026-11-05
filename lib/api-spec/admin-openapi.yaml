@@ -1,0 +1,546 @@
+openapi: 3.1.0
+info:
+  title: Lance do Pix Admin API
+  version: 1.0.0
+  description: API privada e isolada para operações administrativas do Lance do Pix.
+servers:
+  - url: /api/admin
+    description: Base da API administrativa
+tags:
+  - name: auth
+    description: Acesso privado do painel
+  - name: dashboard
+    description: Resumo operacional
+  - name: disputes
+    description: Busca e histórico de disputas
+  - name: payouts
+    description: Fila de resgates
+  - name: treasury
+    description: Posição de caixa
+  - name: automation
+    description: Configuração, aportes e histórico do bot identificado
+paths:
+  /auth/session:
+    get:
+      operationId: getAdminSession
+      tags: [auth]
+      summary: Consultar sessão administrativa
+      responses:
+        "200":
+          description: Estado da sessão
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+    post:
+      operationId: createAdminSession
+      tags: [auth]
+      summary: Entrar com a chave administrativa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Sessão iniciada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+        "401":
+          description: Chave inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Chave administrativa ainda não configurada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/logout:
+    post:
+      operationId: endAdminSession
+      tags: [auth]
+      summary: Encerrar sessão administrativa
+      responses:
+        "200":
+          description: Sessão encerrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /dashboard:
+    get:
+      operationId: getAdminDashboard
+      tags: [dashboard]
+      summary: Obter resumo das disputas, espectadores, caixa e resgates
+      responses:
+        "200":
+          description: Resumo operacional
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashboard"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /disputes:
+    get:
+      operationId: listAdminDisputes
+      tags: [disputes]
+      summary: Pesquisar disputas e consultar histórico
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema: { type: string, maxLength: 100 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+      responses:
+        "200":
+          description: Página de disputas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDisputePage"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /disputes/{id}:
+    get:
+      operationId: getAdminDispute
+      tags: [disputes]
+      summary: Consultar uma disputa e seus lances
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Detalhes da disputa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDisputeDetail"
+        "404":
+          description: Disputa não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /payouts:
+    get:
+      operationId: listAdminPayouts
+      tags: [payouts]
+      summary: Consultar a fila e o status dos resgates
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [requested, under_review, paid, rejected]
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+      responses:
+        "200":
+          description: Página de resgates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPayoutPage"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /treasury:
+    get:
+      operationId: getAdminTreasury
+      tags: [treasury]
+      summary: Consultar posição de caixa não simulada
+      responses:
+        "200":
+          description: Posição de caixa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TreasurySnapshot"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /automation/config:
+    get:
+      operationId: getAutomationConfig
+      tags: [automation]
+      summary: Consultar regras e estado do bot
+      responses:
+        "200":
+          description: Configuração operacional
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationConfig"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    put:
+      operationId: updateAutomationConfig
+      tags: [automation]
+      summary: Atualizar limites ou ligar e desligar o bot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutomationConfigInput"
+      responses:
+        "200":
+          description: Configuração salva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationConfig"
+        "400":
+          description: Configuração inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Bot sem fundos ou limites suficientes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /automation/funding:
+    post:
+      operationId: recordAutomationFunding
+      tags: [automation]
+      summary: Registrar aporte real confirmado para a carteira do bot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutomationFundingInput"
+      responses:
+        "201":
+          description: Aporte registrado e auditado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationFundingResult"
+        "400":
+          description: Aporte ou confirmação inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Referência de aporte já utilizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /automation/events:
+    get:
+      operationId: listAutomationEvents
+      tags: [automation]
+      summary: Consultar histórico de lances e alterações do bot
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+      responses:
+        "200":
+          description: Eventos da automação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationEventPage"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+components:
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    OkResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+      required: [ok]
+    AdminLoginInput:
+      type: object
+      properties:
+        key: { type: string, minLength: 1, maxLength: 512 }
+      required: [key]
+    AdminSession:
+      type: object
+      properties:
+        authenticated: { type: boolean }
+      required: [authenticated]
+    AdminDisputeSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: integer }
+        status: { type: string, enum: [scheduled, live, paused, ended] }
+        prizeCents: { type: integer }
+        currentValueCents: { type: ["integer", "null"] }
+        stepCents: { type: integer }
+        bidsCount: { type: integer }
+        startedAt: { type: ["string", "null"], format: date-time }
+        endedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        leaderName: { type: ["string", "null"] }
+        winnerName: { type: ["string", "null"] }
+      required:
+        - id
+        - number
+        - status
+        - prizeCents
+        - currentValueCents
+        - stepCents
+        - bidsCount
+        - startedAt
+        - endedAt
+        - createdAt
+        - leaderName
+        - winnerName
+    TreasurySnapshot:
+      type: object
+      properties:
+        settledCashCents: { type: integer }
+        cashOutflowsCents: { type: integer }
+        lockedWalletCents: { type: integer }
+        unpaidPrizeCents: { type: integer }
+        reservedBonusCents: { type: integer }
+        freeCashCents: { type: integer }
+        includesSimulated: { type: boolean, const: false }
+      required:
+        - settledCashCents
+        - cashOutflowsCents
+        - lockedWalletCents
+        - unpaidPrizeCents
+        - reservedBonusCents
+        - freeCashCents
+        - includesSimulated
+    AdminDashboard:
+      type: object
+      properties:
+        currentDispute:
+          anyOf:
+            - $ref: "#/components/schemas/AdminDisputeSummary"
+            - type: "null"
+        activeConnections: { type: integer }
+        pendingPayoutCount: { type: integer }
+        treasury: { $ref: "#/components/schemas/TreasurySnapshot" }
+        recentDisputes:
+          type: array
+          items: { $ref: "#/components/schemas/AdminDisputeSummary" }
+      required:
+        - currentDispute
+        - activeConnections
+        - pendingPayoutCount
+        - treasury
+        - recentDisputes
+    AdminDisputePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminDisputeSummary" }
+        total: { type: integer }
+      required: [items, total]
+    AdminDisputeBid:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        amountCents: { type: integer }
+        costCents: { type: integer }
+        bidderName: { type: string }
+        automated: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        result: { type: ["string", "null"], enum: [won, lost, null] }
+      required: [id, amountCents, costCents, bidderName, automated, createdAt, result]
+    AdminDisputeDetail:
+      type: object
+      properties:
+        dispute: { $ref: "#/components/schemas/AdminDisputeSummary" }
+        bids:
+          type: array
+          items: { $ref: "#/components/schemas/AdminDisputeBid" }
+      required: [dispute, bids]
+    AdminPayout:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [requested, under_review, paid, rejected] }
+        amountCents: { type: integer }
+        prizeCents: { type: integer }
+        bonusCents: { type: integer }
+        userName: { type: string }
+        pixKeyType: { type: string, enum: [cpf, email, phone, random] }
+        requestedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        - id
+        - status
+        - amountCents
+        - prizeCents
+        - bonusCents
+        - userName
+        - pixKeyType
+        - requestedAt
+        - updatedAt
+    AdminPayoutPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminPayout" }
+        total: { type: integer }
+      required: [items, total]
+    AutomationConfig:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        botExists: { type: boolean }
+        botName: { type: string }
+        botWalletBalanceCents: { type: integer }
+        maxBidCents: { type: integer }
+        perDisputeLimitCents: { type: integer }
+        dailyLimitCents: { type: integer }
+        maxBidsPerDispute: { type: integer }
+        minimumSecondsRemaining: { type: integer }
+        minimumDelaySeconds: { type: integer }
+        canEnable: { type: boolean }
+        blockedReasons:
+          type: array
+          items: { type: string }
+        updatedAt: { type: ["string", "null"], format: date-time }
+      required:
+        - enabled
+        - botExists
+        - botName
+        - botWalletBalanceCents
+        - maxBidCents
+        - perDisputeLimitCents
+        - dailyLimitCents
+        - maxBidsPerDispute
+        - minimumSecondsRemaining
+        - minimumDelaySeconds
+        - canEnable
+        - blockedReasons
+        - updatedAt
+    AutomationConfigInput:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        maxBidCents: { type: integer, minimum: 0, maximum: 100000000 }
+        perDisputeLimitCents: { type: integer, minimum: 0, maximum: 100000000 }
+        dailyLimitCents: { type: integer, minimum: 0, maximum: 100000000 }
+        maxBidsPerDispute: { type: integer, minimum: 0, maximum: 10000 }
+        minimumSecondsRemaining: { type: integer, minimum: 1, maximum: 60 }
+        minimumDelaySeconds: { type: integer, minimum: 1, maximum: 3600 }
+      required:
+        - enabled
+        - maxBidCents
+        - perDisputeLimitCents
+        - dailyLimitCents
+        - maxBidsPerDispute
+        - minimumSecondsRemaining
+        - minimumDelaySeconds
+    AutomationFundingInput:
+      type: object
+      properties:
+        amountCents: { type: integer, minimum: 1, maximum: 100000000 }
+        receiptReference: { type: string, minLength: 3, maxLength: 120 }
+        cashReceived: { type: boolean, const: true }
+      required: [amountCents, receiptReference, cashReceived]
+    AutomationFundingResult:
+      type: object
+      properties:
+        botWalletBalanceCents: { type: integer }
+        amountCents: { type: integer }
+        receiptReference: { type: string }
+      required: [botWalletBalanceCents, amountCents, receiptReference]
+    AutomationEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        eventType: { type: string, enum: [bid, funding, config_updated, enabled, disabled, blocked] }
+        disputeNumber: { type: ["integer", "null"] }
+        amountCents: { type: ["integer", "null"] }
+        summary: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, eventType, disputeNumber, amountCents, summary, createdAt]
+    AutomationEventPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AutomationEvent" }
+        total: { type: integer }
+      required: [items, total]
