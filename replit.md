@@ -8,6 +8,7 @@ Aplicação web de disputas por prêmios com usuários, lances, saldos e ativida
 - Start the `artifacts/lance-do-pix: web` workflow to run the client at `/`.
 - Start the `artifacts/api-server: API Server` workflow to run the API at `/api`.
 - The API requires `DATABASE_URL` and `SESSION_SECRET` in Replit Secrets.
+- Admin access uses the raw operator key stored as `ADMIN_ACCESS_KEY`. The existing `ADMIN_ACCESS_KEY_HASH` variable is also accepted for compatibility; despite its name, its value is the raw key.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec

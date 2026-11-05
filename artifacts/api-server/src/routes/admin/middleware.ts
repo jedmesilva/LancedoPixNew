@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { ApiErrorBody } from "@workspace/api-zod";
 
@@ -25,15 +25,13 @@ export function requireAdminSession(
 }
 
 export function verifyAdminKey(key: string): "valid" | "invalid" | "unconfigured" {
-  const configuredHash = process.env.ADMIN_ACCESS_KEY_HASH?.trim().toLowerCase();
-  if (!configuredHash || !/^[a-f0-9]{64}$/.test(configuredHash)) {
-    return "unconfigured";
-  }
-  const actual = Buffer.from(
-    createHash("sha256").update(key, "utf8").digest("hex"),
-    "hex",
-  );
-  const expected = Buffer.from(configuredHash, "hex");
+  const configuredKey =
+    process.env.ADMIN_ACCESS_KEY?.trim() ||
+    process.env.ADMIN_ACCESS_KEY_HASH?.trim();
+  if (!configuredKey) return "unconfigured";
+
+  const actual = Buffer.from(key, "utf8");
+  const expected = Buffer.from(configuredKey, "utf8");
   return actual.length === expected.length && timingSafeEqual(actual, expected)
     ? "valid"
     : "invalid";

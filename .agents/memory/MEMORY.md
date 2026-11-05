@@ -19,3 +19,4 @@
 - [No-bid dispute result](no-bid-dispute-result.md) — An ended dispute with no bids is not a zero-value win; show a clear no-bids outcome instead.
 - [Dispute intermission](dispute-intermission.md) — Keep the completed result and next-dispute countdown visible together until the next dispute starts.
 - [Managed workflow dependencies](managed-workflow-dependencies.md) — Sync filtered pnpm dependencies before restarting when a declared package cannot be resolved.
+- [Admin access key](admin-access-key.md) — Validate the configured operator secret directly; do not require the user to generate a hash.
