@@ -245,11 +245,6 @@ function Overview() {
           <LedgerRow title="Total consumido em lances" detail="Soma das parcelas da plataforma e dos prêmios" value={bidVolume} />
           <LedgerRow title="Prêmios ainda não pagos" detail="Obrigações de prêmio em aberto" value={treasury.unpaidPrizeCents} />
         </div>
-        <div className="prototype-allocation">
-          <span><small>Receita da plataforma</small><strong>{money(dashboard.platformRevenueCents)}</strong></span>
-          <span><small>Cobertura para prêmios</small><strong>{money(dashboard.prizeCoverageCents)}</strong></span>
-        </div>
-        <p className="prototype-note">Os lances são repartidos por disputa; a configuração padrão destina 90% à plataforma e 10% aos prêmios.</p>
       </div>
     </section>
 
