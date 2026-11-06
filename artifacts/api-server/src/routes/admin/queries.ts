@@ -81,6 +81,14 @@ export function buildDisputeSearch(q: string | undefined) {
   return or(
     sql`${disputesTable.id}::text ILIKE ${pattern}`,
     sql`${disputesTable.number}::text ILIKE ${pattern}`,
+    sql`exists (
+      SELECT 1
+      FROM ${bidsTable} AS search_bid
+      INNER JOIN ${usersTable} AS search_user
+        ON search_user.id = search_bid.user_id
+      WHERE search_bid.dispute_id = ${disputesTable.id}
+        AND search_user.public_name ILIKE ${pattern}
+    )`,
   );
 }
 
