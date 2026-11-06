@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { ApiErrorBody } from "@workspace/api-zod";
 import {
@@ -51,12 +51,21 @@ router.get("/payouts", async (req, res): Promise<void> => {
     return;
   }
 
-  const where = parsed.data.status
-    ? and(
-        eq(payoutRequestsTable.status, parsed.data.status),
-        eq(usersTable.testAccount, false),
-      )
-    : eq(usersTable.testAccount, false);
+  const filters = [eq(usersTable.testAccount, false)];
+  if (parsed.data.status) {
+    filters.push(eq(payoutRequestsTable.status, parsed.data.status));
+  }
+  const search = parsed.data.q?.trim();
+  if (search) {
+    const pattern = `%${search}%`;
+    const searchFilter = or(
+      ilike(usersTable.publicName, pattern),
+      ilike(usersTable.email, pattern),
+      sql`${payoutRequestsTable.id}::text ILIKE ${pattern}`,
+    );
+    if (searchFilter) filters.push(searchFilter);
+  }
+  const where = and(...filters);
   const [items, totalRows] = await Promise.all([
     db
       .select({

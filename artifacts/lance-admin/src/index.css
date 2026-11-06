@@ -629,6 +629,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .automation-indicator.is-active i,
 .health-dot { background: var(--lp-green); }
+.automation-indicator.is-paused i { background: #d49a00; }
 .content { padding-top: 12px; }
 .navlink { font-size: 14px; }
 .navlink svg { display: none; }

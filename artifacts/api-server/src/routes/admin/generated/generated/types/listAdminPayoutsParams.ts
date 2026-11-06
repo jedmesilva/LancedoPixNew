@@ -10,6 +10,10 @@ import type { ListAdminPayoutsStatus } from './listAdminPayoutsStatus';
 export type ListAdminPayoutsParams = {
 status?: ListAdminPayoutsStatus;
 /**
+ * @maxLength 100
+ */
+q?: string;
+/**
  * @minimum 1
  * @maximum 100
  */

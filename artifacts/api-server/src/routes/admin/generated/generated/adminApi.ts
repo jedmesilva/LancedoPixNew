@@ -185,6 +185,8 @@ export const GetAdminDisputeResponse = zod.object({
 /**
  * @summary Consultar a fila e o status dos resgates
  */
+export const listAdminPayoutsQueryQMax = 100;
+
 export const listAdminPayoutsQueryLimitDefault = 25;
 export const listAdminPayoutsQueryLimitMax = 100;
 
@@ -196,6 +198,7 @@ export const listAdminPayoutsQueryOffsetMax = 100000;
 
 export const ListAdminPayoutsQueryParams = zod.object({
   "status": zod.enum(['requested', 'under_review', 'paid', 'rejected']).optional(),
+  "q": zod.coerce.string().max(listAdminPayoutsQueryQMax).optional(),
   "limit": zod.coerce.number().int().min(1).max(listAdminPayoutsQueryLimitMax).default(listAdminPayoutsQueryLimitDefault),
   "offset": zod.coerce.number().int().min(listAdminPayoutsQueryOffsetMin).max(listAdminPayoutsQueryOffsetMax).default(listAdminPayoutsQueryOffsetDefault)
 })

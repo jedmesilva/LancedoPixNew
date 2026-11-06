@@ -163,6 +163,10 @@ paths:
           schema:
             type: string
             enum: [requested, under_review, paid, rejected]
+        - name: q
+          in: query
+          required: false
+          schema: { type: string, maxLength: 100 }
         - name: limit
           in: query
           required: false

@@ -166,6 +166,7 @@ const navItems = [
 function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boolean }) {
   const [path] = useLocation();
   const automation = useQuery({ queryKey: CONFIG_KEY, queryFn: getAutomationConfig });
+  const automationStatus = automation.data?.operatorRules.status;
   const activeLabel = navItems.find(item => item.href === (path.startsWith('/disputes') ? '/disputes' : path.startsWith('/automation') ? '/automation' : path))?.label || 'Painel';
   return <div className="shell">
     <header className="topbar">
@@ -175,7 +176,20 @@ function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boo
           <span className="login-tag">ADMIN</span>
         </Link>
         <div className="topbar-right">
-          <span className={`automation-indicator ${automation.data?.enabled ? 'is-active' : ''}`} data-testid="header-automation-status"><i />Automação {automation.data?.enabled ? 'ativa' : automation.isError ? 'indisponível' : 'desativada'}</span>
+          <span
+            className={`automation-indicator ${
+              automationStatus === "ativa"
+                ? "is-active"
+                : automationStatus === "pausada"
+                  ? "is-paused"
+                  : ""
+            }`}
+            data-testid="header-automation-status"
+            aria-live="polite"
+          >
+            <i />
+            Automação {automationStatus ?? (automation.isError ? "indisponível" : "verificando…")}
+          </span>
           <button className="btn logout" onClick={signOut} disabled={signOutBusy} data-testid="button-admin-logout"><LogOut size={15} />{signOutBusy ? 'Saindo…' : 'Sair'}</button>
         </div>
       </div>
@@ -325,14 +339,21 @@ function DisputeDetailPage() {
 }
 function PayoutsPage() {
   const [status, setStatus] = useState('');
+  const [input, setInput] = useState('');
+  const [q, setQ] = useState('');
   const [offset, setOffset] = useState(0);
   const [notice, setNotice] = useState('');
   const limit = 20;
-  const query = useQuery({ queryKey: ['/api/admin/payouts', { status, limit, offset }], queryFn: () => listAdminPayouts({ status: (status || undefined) as AdminPayoutStatus | undefined, limit, offset }) });
+  const query = useQuery({ queryKey: ['/api/admin/payouts', { status, q, limit, offset }], queryFn: () => listAdminPayouts({ status: (status || undefined) as AdminPayoutStatus | undefined, q: q || undefined, limit, offset }) });
   const total = query.data?.total || 0;
   return <>
-    <section className="prototype-section" aria-label="Filtrar resgates por status">
+    <section className="prototype-section" aria-label="Buscar e filtrar resgates">
       <div className="prototype-section-head"><p className="ey">Resgates</p><span className="prototype-note">{total.toLocaleString('pt-BR')} solicitações</span></div>
+      <form className="prototype-search" onSubmit={event => { event.preventDefault(); const search = input.trim(); setInput(search); setOffset(0); setQ(search); }}>
+        <Search size={16} aria-hidden="true" />
+        <Input aria-label="Pesquisar resgates" data-testid="input-payout-search" placeholder="Buscar por nome, e-mail ou ID da solicitação" maxLength={100} value={input} onChange={event => setInput(event.target.value)} />
+        {q && <button type="button" className="prototype-clear" onClick={() => { setInput(''); setQ(''); setOffset(0); }} data-testid="button-clear-payout-search"><X size={15} /> Limpar</button>}
+      </form>
       <div className="prototype-chips" role="group" aria-label="Status dos resgates">
         {[['', 'Todos'], ['requested', 'Solicitado'], ['under_review', 'Em análise'], ['paid', 'Pago'], ['rejected', 'Recusado']].map(([value, label]) =>
           <button key={value || 'all'} type="button" aria-pressed={status === value} onClick={() => { setStatus(value); setOffset(0); }} data-testid={`filter-payout-${value || 'all'}`}>{label}</button>,
@@ -340,7 +361,7 @@ function PayoutsPage() {
       </div>
     </section>
     {notice && <div className="automation-feedback" role="status" data-testid="payout-action-success"><Check size={15} />{notice}</div>}
-    {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><PayoutRows items={query.data.items} onUpdated={setNotice} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <Empty title="Fila vazia" text="A API não retornou solicitações com este filtro." />}
+    {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><PayoutRows items={query.data.items} onUpdated={setNotice} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <Empty title={q ? 'Nenhuma solicitação encontrada' : 'Fila vazia'} text={q ? 'Tente outro nome, e-mail ou ID de solicitação.' : 'A API não retornou solicitações com este filtro.'} />}
   </>;
 }
 function PayoutRows({ items, onUpdated }: { items: AdminPayout[]; onUpdated: (message: string) => void }) {
@@ -618,13 +639,35 @@ function AutomationPage() {
   });
   const changeStatus = useMutation({
     mutationFn: (input: AutomationConfigInput) => updateAutomationConfig(input),
+    onMutate: async input => {
+      await queryClient.cancelQueries({ queryKey: CONFIG_KEY });
+      const previousConfig = queryClient.getQueryData<
+        import("./generated/adminApi.schemas").AutomationConfig
+      >(CONFIG_KEY);
+      if (previousConfig) {
+        queryClient.setQueryData(CONFIG_KEY, {
+          ...previousConfig,
+          enabled: input.operatorRules.status === "ativa",
+          operatorRules: input.operatorRules,
+        });
+      }
+      return { previousConfig };
+    },
     onSuccess: data => {
       queryClient.setQueryData(CONFIG_KEY, data);
       setStatusError("");
       setFeedback(`Status atualizado: ${data.operatorRules.status}.`);
       void queryClient.invalidateQueries({ queryKey: EVENTS_KEY });
     },
-    onError: error => setStatusError(errorMessage(error)),
+    onError: (error, _input, context) => {
+      if (context?.previousConfig) {
+        queryClient.setQueryData(CONFIG_KEY, context.previousConfig);
+      }
+      setStatusError(errorMessage(error));
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: CONFIG_KEY });
+    },
   });
   if (configQuery.isPending) return <><Heading eyebrow="Operação / automação" title="Automação" /><LoadingPanel count={4} /></>;
   if (configQuery.isError || !configQuery.data) return <><Heading eyebrow="Operação / automação" title="Automação" /><QueryError error={configQuery.error} retry={() => void configQuery.refetch()} /></>;
@@ -693,11 +736,26 @@ function AutomationPage() {
     <section className="prototype-section automation-block" data-testid="automation-status">
       <div className="ey">Status da automação</div>
       <div className="automation-state-summary">
-        <div><span className={`automation-state-dot ${statusTone}`} /><strong className="automation-status-value">{statusLabel}</strong><span className="automation-status-caption">{savedStatus === "ativa" ? "Dando lances conforme as regras." : savedStatus === "pausada" ? "Sem dar lances, configuração mantida." : "Automação desligada."}</span></div>
+        <div>
+          <span className={`automation-state-dot ${statusTone}`} />
+          <strong className="automation-status-value" aria-live="polite">{statusLabel}</strong>
+          <span className="automation-status-caption">
+            {statusBusy
+              ? "Atualizando status…"
+              : savedStatus === "ativa"
+                ? "Dando lances conforme as regras."
+                : savedStatus === "pausada"
+                  ? "Sem dar lances, configuração mantida."
+                  : "Automação desligada."}
+          </span>
+        </div>
         <div className="automation-status-actions" role="group" aria-label="Ações da automação">
           {statusActions.map(action => {
             const Icon = action.icon;
-            return <button key={action.id} type="button" className={`btn automation-status-action ${action.style}`} disabled={statusBusy || (action.status === "ativa" && !config.canEnable)} onClick={() => updateStatus(action.status)} data-testid={`automation-action-${action.id}`}><Icon size={17} />{action.label}</button>;
+            const actionPending =
+              statusBusy &&
+              changeStatus.variables?.operatorRules.status === action.status;
+            return <button key={action.id} type="button" className={`btn automation-status-action ${action.style}`} disabled={statusBusy || (action.status === "ativa" && !config.canEnable)} onClick={() => updateStatus(action.status)} data-testid={`automation-action-${action.id}`}><Icon size={17} />{actionPending ? "Atualizando…" : action.label}</button>;
           })}
         </div>
       </div>
