@@ -7,6 +7,7 @@
  */
 import type { AutomationConfigInputBidTriggerMode } from './automationConfigInputBidTriggerMode';
 import type { AutomationConfigInputMode } from './automationConfigInputMode';
+import type { AutomationOperatorRules } from './automationOperatorRules';
 
 export interface AutomationConfigInput {
   enabled: boolean;
@@ -44,4 +45,5 @@ export interface AutomationConfigInput {
      * @maximum 3600
      */
   minimumDelaySeconds: number;
+  operatorRules: AutomationOperatorRules;
 }

@@ -7,6 +7,7 @@
  */
 import type { AutomationConfigBidTriggerMode } from './automationConfigBidTriggerMode';
 import type { AutomationConfigMode } from './automationConfigMode';
+import type { AutomationOperatorRules } from './automationOperatorRules';
 
 export interface AutomationConfig {
   enabled: boolean;
@@ -25,6 +26,7 @@ export interface AutomationConfig {
   minimumDelaySeconds: number;
   canEnable: boolean;
   blockedReasons: string[];
+  operatorRules: AutomationOperatorRules;
   /** @nullable */
   updatedAt: Date | null;
 }

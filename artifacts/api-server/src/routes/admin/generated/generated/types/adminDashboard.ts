@@ -11,7 +11,17 @@ import type { TreasurySnapshot } from './treasurySnapshot';
 export interface AdminDashboard {
   currentDispute: AdminDisputeSummary | null;
   activeConnections: number;
+  totalVisitors: number;
+  visitorsToday: number;
   pendingPayoutCount: number;
+  pendingPayoutAmountCents: number;
+  paidPayoutCount: number;
+  paidPayoutAmountCents: number;
+  liveDisputes: AdminDisputeSummary[];
+  historyDisputeCount: number;
+  historyBidCount: number;
+  platformRevenueCents: number;
+  prizeCoverageCents: number;
   treasury: TreasurySnapshot;
   recentDisputes: AdminDisputeSummary[];
 }

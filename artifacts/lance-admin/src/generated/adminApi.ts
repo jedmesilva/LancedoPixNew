@@ -30,7 +30,12 @@ import type {
   AdminDisputePage,
   AdminLoginInput,
   AdminPayoutPage,
+  AdminPayoutUpdateInput,
+  AdminPayoutUpdateResult,
   AdminSession,
+  AdminTreasuryContributionInput,
+  AdminTreasuryContributionResult,
+  AdminTreasuryMovementPage,
   ApiError,
   AutomationAccountList,
   AutomationConfig,
@@ -40,6 +45,7 @@ import type {
   AutomationFundingResult,
   ListAdminDisputesParams,
   ListAdminPayoutsParams,
+  ListAdminTreasuryMovementsParams,
   ListAutomationEventsParams,
   OkResponse,
   TreasurySnapshot
@@ -753,6 +759,95 @@ export function useListAdminPayouts<TData = Awaited<ReturnType<typeof listAdminP
 
 
 
+export const getUpdateAdminPayoutUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/payouts/${id}`
+}
+
+/**
+ * @summary Atualizar o estado de um resgate
+ */
+export const updateAdminPayout = async (id: string,
+    adminPayoutUpdateInput: AdminPayoutUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminPayoutUpdateResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminPayoutUpdateResult>(getUpdateAdminPayoutUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminPayoutUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminPayoutMutationKey = () => ['updateAdminPayout'] as const;
+
+export const getUpdateAdminPayoutMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminPayout>>, TError,UpdateAdminPayoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminPayout>>, TError,UpdateAdminPayoutMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminPayoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminPayout>>, UpdateAdminPayoutMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminPayout(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminPayoutMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminPayout>>>
+    export type UpdateAdminPayoutMutationBody = BodyType<AdminPayoutUpdateInput>
+    export type UpdateAdminPayoutMutationError = ErrorType<ApiError>
+    export type UpdateAdminPayoutMutationVariables = {id: string;data: BodyType<AdminPayoutUpdateInput>}
+
+    /**
+ * @summary Atualizar o estado de um resgate
+ */
+export const useUpdateAdminPayout = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminPayout>>, TError,UpdateAdminPayoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminPayout>>,
+        TError,
+        UpdateAdminPayoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminPayoutMutationOptions(options), queryClient);
+    }
+
 export const getGetAdminTreasuryUrl = () => {
 
 
@@ -853,6 +948,202 @@ export function useGetAdminTreasury<TData = Awaited<ReturnType<typeof getAdminTr
 
 
 
+
+export const getListAdminTreasuryMovementsUrl = (params?: ListAdminTreasuryMovementsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/treasury/movements?${stringifiedParams}` : `/api/admin/treasury/movements`
+}
+
+/**
+ * @summary Consultar movimentações reais do caixa
+ */
+export const listAdminTreasuryMovements = async (params?: ListAdminTreasuryMovementsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminTreasuryMovementPage> => {
+
+  return customFetch<AdminTreasuryMovementPage>(getListAdminTreasuryMovementsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminTreasuryMovementsQueryKey = (params?: ListAdminTreasuryMovementsParams,) => {
+    return [
+    `/api/admin/treasury/movements`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminTreasuryMovementsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError = ErrorType<ApiError>>(params?: ListAdminTreasuryMovementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminTreasuryMovementsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminTreasuryMovements>>> = ({ signal }) => listAdminTreasuryMovements(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminTreasuryMovementsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminTreasuryMovements>>>
+export type ListAdminTreasuryMovementsQueryError = ErrorType<ApiError>
+
+
+export function useListAdminTreasuryMovements<TData = Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError = ErrorType<ApiError>>(
+ params: undefined |  ListAdminTreasuryMovementsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminTreasuryMovements>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminTreasuryMovements>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminTreasuryMovements<TData = Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError = ErrorType<ApiError>>(
+ params?: ListAdminTreasuryMovementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminTreasuryMovements>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminTreasuryMovements>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminTreasuryMovements<TData = Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError = ErrorType<ApiError>>(
+ params?: ListAdminTreasuryMovementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Consultar movimentações reais do caixa
+ */
+
+export function useListAdminTreasuryMovements<TData = Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError = ErrorType<ApiError>>(
+ params?: ListAdminTreasuryMovementsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminTreasuryMovements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminTreasuryMovementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordAdminTreasuryContributionUrl = () => {
+
+
+
+
+  return `/api/admin/treasury/contributions`
+}
+
+/**
+ * @summary Registrar um aporte de capital já recebido
+ */
+export const recordAdminTreasuryContribution = async (adminTreasuryContributionInput: AdminTreasuryContributionInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminTreasuryContributionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminTreasuryContributionResult>(getRecordAdminTreasuryContributionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminTreasuryContributionInput)
+  }
+);}
+
+
+
+
+
+export const getRecordAdminTreasuryContributionMutationKey = () => ['recordAdminTreasuryContribution'] as const;
+
+export const getRecordAdminTreasuryContributionMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordAdminTreasuryContribution>>, TError,RecordAdminTreasuryContributionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordAdminTreasuryContribution>>, TError,RecordAdminTreasuryContributionMutationVariables, TContext> => {
+
+const mutationKey = getRecordAdminTreasuryContributionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordAdminTreasuryContribution>>, RecordAdminTreasuryContributionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordAdminTreasuryContribution(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordAdminTreasuryContributionMutationResult = NonNullable<Awaited<ReturnType<typeof recordAdminTreasuryContribution>>>
+    export type RecordAdminTreasuryContributionMutationBody = BodyType<AdminTreasuryContributionInput>
+    export type RecordAdminTreasuryContributionMutationError = ErrorType<ApiError>
+    export type RecordAdminTreasuryContributionMutationVariables = {data: BodyType<AdminTreasuryContributionInput>}
+
+    /**
+ * @summary Registrar um aporte de capital já recebido
+ */
+export const useRecordAdminTreasuryContribution = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordAdminTreasuryContribution>>, TError,RecordAdminTreasuryContributionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof recordAdminTreasuryContribution>>,
+        TError,
+        RecordAdminTreasuryContributionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordAdminTreasuryContributionMutationOptions(options), queryClient);
+    }
 
 export const getListAutomationAccountsUrl = () => {
 

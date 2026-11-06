@@ -184,6 +184,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /payouts/{id}:
+    patch:
+      operationId: updateAdminPayout
+      tags: [payouts]
+      summary: Atualizar o estado de um resgate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPayoutUpdateInput"
+      responses:
+        "200":
+          description: Estado atualizado e auditado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPayoutUpdateResult"
+        "400":
+          description: Transição ou dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Resgate não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Transição conflitante ou referência Pix duplicada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /treasury:
     get:
       operationId: getAdminTreasury
@@ -196,6 +243,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TreasurySnapshot"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /treasury/movements:
+    get:
+      operationId: listAdminTreasuryMovements
+      tags: [treasury]
+      summary: Consultar movimentações reais do caixa
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+      responses:
+        "200":
+          description: Movimentações não simuladas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTreasuryMovementPage"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /treasury/contributions:
+    post:
+      operationId: recordAdminTreasuryContribution
+      tags: [treasury]
+      summary: Registrar um aporte de capital já recebido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminTreasuryContributionInput"
+      responses:
+        "201":
+          description: Aporte registrado no livro-caixa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTreasuryContributionResult"
+        "400":
+          description: Valor ou confirmação inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Referência já registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "401":
           description: Autenticação necessária
           content:
@@ -412,7 +522,19 @@ components:
             - $ref: "#/components/schemas/AdminDisputeSummary"
             - type: "null"
         activeConnections: { type: integer }
+        totalVisitors: { type: integer }
+        visitorsToday: { type: integer }
         pendingPayoutCount: { type: integer }
+        pendingPayoutAmountCents: { type: integer }
+        paidPayoutCount: { type: integer }
+        paidPayoutAmountCents: { type: integer }
+        liveDisputes:
+          type: array
+          items: { $ref: "#/components/schemas/AdminDisputeSummary" }
+        historyDisputeCount: { type: integer }
+        historyBidCount: { type: integer }
+        platformRevenueCents: { type: integer }
+        prizeCoverageCents: { type: integer }
         treasury: { $ref: "#/components/schemas/TreasurySnapshot" }
         recentDisputes:
           type: array
@@ -420,7 +542,17 @@ components:
       required:
         - currentDispute
         - activeConnections
+        - totalVisitors
+        - visitorsToday
         - pendingPayoutCount
+        - pendingPayoutAmountCents
+        - paidPayoutCount
+        - paidPayoutAmountCents
+        - liveDisputes
+        - historyDisputeCount
+        - historyBidCount
+        - platformRevenueCents
+        - prizeCoverageCents
         - treasury
         - recentDisputes
     AdminDisputePage:
@@ -480,6 +612,56 @@ components:
           items: { $ref: "#/components/schemas/AdminPayout" }
         total: { type: integer }
       required: [items, total]
+    AdminPayoutUpdateInput:
+      type: object
+      properties:
+        status: { type: string, enum: [requested, under_review, paid, rejected] }
+        pixE2eId: { type: string, minLength: 3, maxLength: 128 }
+        reason: { type: string, minLength: 3, maxLength: 240 }
+      required: [status]
+    AdminPayoutUpdateResult:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [requested, under_review, paid, rejected] }
+        updatedAt: { type: string, format: date-time }
+      required: [id, status, updatedAt]
+    AdminTreasuryMovement:
+      type: object
+      properties:
+        id: { type: string }
+        category: { type: string, enum: [topup, contribution, payout, refund, fee, ad_revenue] }
+        entryType: { type: string }
+        amountCents: { type: integer }
+        userName: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        reference: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        runningBalanceCents: { type: integer }
+      required: [id, category, entryType, amountCents, userName, note, reference, createdAt, runningBalanceCents]
+    AdminTreasuryMovementPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminTreasuryMovement" }
+        total: { type: integer }
+      required: [items, total]
+    AdminTreasuryContributionInput:
+      type: object
+      properties:
+        amountCents: { type: integer, minimum: 1, maximum: 100000000 }
+        receiptReference: { type: string, minLength: 3, maxLength: 120 }
+        note: { type: string, maxLength: 60 }
+        cashReceived: { type: boolean, const: true }
+      required: [amountCents, receiptReference, cashReceived]
+    AdminTreasuryContributionResult:
+      type: object
+      properties:
+        amountCents: { type: integer }
+        receiptReference: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [amountCents, receiptReference, createdAt]
     AutomationConfig:
       type: object
       properties:
@@ -500,6 +682,7 @@ components:
         blockedReasons:
           type: array
           items: { type: string }
+        operatorRules: { $ref: "#/components/schemas/AutomationOperatorRules" }
         updatedAt: { type: ["string", "null"], format: date-time }
       required:
         - enabled
@@ -517,6 +700,7 @@ components:
         - minimumDelaySeconds
         - canEnable
         - blockedReasons
+        - operatorRules
         - updatedAt
     AutomationConfigInput:
       type: object
@@ -531,6 +715,7 @@ components:
         maxBidsPerDispute: { type: integer, minimum: 0, maximum: 10000 }
         minimumSecondsRemaining: { type: integer, minimum: 1, maximum: 60 }
         minimumDelaySeconds: { type: integer, minimum: 1, maximum: 3600 }
+        operatorRules: { $ref: "#/components/schemas/AutomationOperatorRules" }
       required:
         - enabled
         - mode
@@ -542,6 +727,38 @@ components:
         - maxBidsPerDispute
         - minimumSecondsRemaining
         - minimumDelaySeconds
+        - operatorRules
+    AutomationOperatorRules:
+      type: object
+      properties:
+        status: { type: string, enum: [ativa, pausada, desativada] }
+        opening:
+          type: object
+          properties:
+            on: { type: boolean }
+            trigger: { type: string, enum: [immediate, final] }
+            seconds: { type: integer, minimum: 0, maximum: 60 }
+            multiplier: { type: integer, minimum: 1, maximum: 1000 }
+          required: [on, trigger, seconds, multiplier]
+        counter:
+          type: object
+          properties:
+            on: { type: boolean }
+            trigger: { type: string, enum: [immediate, final] }
+            seconds: { type: integer, minimum: 0, maximum: 60 }
+            multiplier: { type: integer, minimum: 1, maximum: 1000 }
+          required: [on, trigger, seconds, multiplier]
+        limits:
+          type: object
+          properties:
+            bidsPerDispute: { type: integer, minimum: 0, maximum: 10000 }
+            bidsPerDay: { type: integer, minimum: 0, maximum: 100000 }
+            disputesPerDay: { type: integer, minimum: 0, maximum: 10000 }
+            maxBidCents: { type: integer, minimum: 0, maximum: 100000000 }
+            perDisputeCents: { type: integer, minimum: 0, maximum: 100000000 }
+            dailySpendCents: { type: integer, minimum: 0, maximum: 100000000 }
+          required: [bidsPerDispute, bidsPerDay, disputesPerDay, maxBidCents, perDisputeCents, dailySpendCents]
+      required: [status, opening, counter, limits]
     AutomationAccount:
       type: object
       properties:

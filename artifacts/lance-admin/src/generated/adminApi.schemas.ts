@@ -68,7 +68,17 @@ export interface TreasurySnapshot {
 export interface AdminDashboard {
   currentDispute: AdminDisputeSummary | null;
   activeConnections: number;
+  totalVisitors: number;
+  visitorsToday: number;
   pendingPayoutCount: number;
+  pendingPayoutAmountCents: number;
+  paidPayoutCount: number;
+  paidPayoutAmountCents: number;
+  liveDisputes: AdminDisputeSummary[];
+  historyDisputeCount: number;
+  historyBidCount: number;
+  platformRevenueCents: number;
+  prizeCoverageCents: number;
   treasury: TreasurySnapshot;
   recentDisputes: AdminDisputeSummary[];
 }
@@ -142,6 +152,100 @@ export interface AdminPayoutPage {
   total: number;
 }
 
+export type AdminPayoutUpdateInputStatus = typeof AdminPayoutUpdateInputStatus[keyof typeof AdminPayoutUpdateInputStatus];
+
+
+export const AdminPayoutUpdateInputStatus = {
+  requested: 'requested',
+  under_review: 'under_review',
+  paid: 'paid',
+  rejected: 'rejected',
+} as const;
+
+export interface AdminPayoutUpdateInput {
+  status: AdminPayoutUpdateInputStatus;
+  /**
+     * @minLength 3
+     * @maxLength 128
+     */
+  pixE2eId?: string;
+  /**
+     * @minLength 3
+     * @maxLength 240
+     */
+  reason?: string;
+}
+
+export type AdminPayoutUpdateResultStatus = typeof AdminPayoutUpdateResultStatus[keyof typeof AdminPayoutUpdateResultStatus];
+
+
+export const AdminPayoutUpdateResultStatus = {
+  requested: 'requested',
+  under_review: 'under_review',
+  paid: 'paid',
+  rejected: 'rejected',
+} as const;
+
+export interface AdminPayoutUpdateResult {
+  id: string;
+  status: AdminPayoutUpdateResultStatus;
+  updatedAt: string;
+}
+
+export type AdminTreasuryMovementCategory = typeof AdminTreasuryMovementCategory[keyof typeof AdminTreasuryMovementCategory];
+
+
+export const AdminTreasuryMovementCategory = {
+  topup: 'topup',
+  contribution: 'contribution',
+  payout: 'payout',
+  refund: 'refund',
+  fee: 'fee',
+  ad_revenue: 'ad_revenue',
+} as const;
+
+export interface AdminTreasuryMovement {
+  id: string;
+  category: AdminTreasuryMovementCategory;
+  entryType: string;
+  amountCents: number;
+  /** @nullable */
+  userName: string | null;
+  /** @nullable */
+  note: string | null;
+  /** @nullable */
+  reference: string | null;
+  createdAt: string;
+  runningBalanceCents: number;
+}
+
+export interface AdminTreasuryMovementPage {
+  items: AdminTreasuryMovement[];
+  total: number;
+}
+
+export interface AdminTreasuryContributionInput {
+  /**
+     * @minimum 1
+     * @maximum 100000000
+     */
+  amountCents: number;
+  /**
+     * @minLength 3
+     * @maxLength 120
+     */
+  receiptReference: string;
+  /** @maxLength 60 */
+  note?: string;
+  cashReceived: true;
+}
+
+export interface AdminTreasuryContributionResult {
+  amountCents: number;
+  receiptReference: string;
+  createdAt: string;
+}
+
 export type AutomationConfigMode = typeof AutomationConfigMode[keyof typeof AutomationConfigMode];
 
 
@@ -158,6 +262,101 @@ export const AutomationConfigBidTriggerMode = {
   on_outbid: 'on_outbid',
   at_fixed_time: 'at_fixed_time',
 } as const;
+
+export type AutomationOperatorRulesStatus = typeof AutomationOperatorRulesStatus[keyof typeof AutomationOperatorRulesStatus];
+
+
+export const AutomationOperatorRulesStatus = {
+  ativa: 'ativa',
+  pausada: 'pausada',
+  desativada: 'desativada',
+} as const;
+
+export type AutomationOperatorRulesOpeningTrigger = typeof AutomationOperatorRulesOpeningTrigger[keyof typeof AutomationOperatorRulesOpeningTrigger];
+
+
+export const AutomationOperatorRulesOpeningTrigger = {
+  immediate: 'immediate',
+  final: 'final',
+} as const;
+
+export type AutomationOperatorRulesCounterTrigger = typeof AutomationOperatorRulesCounterTrigger[keyof typeof AutomationOperatorRulesCounterTrigger];
+
+
+export const AutomationOperatorRulesCounterTrigger = {
+  immediate: 'immediate',
+  final: 'final',
+} as const;
+
+export type AutomationOperatorRulesOpening = {
+  on: boolean;
+  trigger: AutomationOperatorRulesOpeningTrigger;
+  /**
+     * @minimum 0
+     * @maximum 60
+     */
+  seconds: number;
+  /**
+     * @minimum 1
+     * @maximum 1000
+     */
+  multiplier: number;
+};
+
+export type AutomationOperatorRulesCounter = {
+  on: boolean;
+  trigger: AutomationOperatorRulesCounterTrigger;
+  /**
+     * @minimum 0
+     * @maximum 60
+     */
+  seconds: number;
+  /**
+     * @minimum 1
+     * @maximum 1000
+     */
+  multiplier: number;
+};
+
+export type AutomationOperatorRulesLimits = {
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  bidsPerDispute: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  bidsPerDay: number;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  disputesPerDay: number;
+  /**
+     * @minimum 0
+     * @maximum 100000000
+     */
+  maxBidCents: number;
+  /**
+     * @minimum 0
+     * @maximum 100000000
+     */
+  perDisputeCents: number;
+  /**
+     * @minimum 0
+     * @maximum 100000000
+     */
+  dailySpendCents: number;
+};
+
+export interface AutomationOperatorRules {
+  status: AutomationOperatorRulesStatus;
+  opening: AutomationOperatorRulesOpening;
+  counter: AutomationOperatorRulesCounter;
+  limits: AutomationOperatorRulesLimits;
+}
 
 export interface AutomationConfig {
   enabled: boolean;
@@ -176,6 +375,7 @@ export interface AutomationConfig {
   minimumDelaySeconds: number;
   canEnable: boolean;
   blockedReasons: string[];
+  operatorRules: AutomationOperatorRules;
   /** @nullable */
   updatedAt: string | null;
 }
@@ -233,6 +433,7 @@ export interface AutomationConfigInput {
      * @maximum 3600
      */
   minimumDelaySeconds: number;
+  operatorRules: AutomationOperatorRules;
 }
 
 export interface AutomationAccount {
@@ -334,6 +535,19 @@ export const ListAdminPayoutsStatus = {
   paid: 'paid',
   rejected: 'rejected',
 } as const;
+
+export type ListAdminTreasuryMovementsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ * @maximum 100000
+ */
+offset?: number;
+};
 
 export type ListAutomationEventsParams = {
 /**

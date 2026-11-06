@@ -31,7 +31,9 @@ router.get("/disputes", async (req, res): Promise<void> => {
   }
 
   const filter = buildDisputeSearch(parsed.data.q);
-  const where = filter ? and(filter) : undefined;
+  const where = filter
+    ? and(eq(disputesTable.simulated, false), filter)
+    : eq(disputesTable.simulated, false);
   const [items, totalRows] = await Promise.all([
     adminDisputeSummaryQuery()
       .where(where)
@@ -60,7 +62,12 @@ router.get("/disputes/:id", async (req, res): Promise<void> => {
   }
   const id = parsed.data.id;
   const [dispute] = await adminDisputeSummaryQuery()
-    .where(eq(disputesTable.id, id))
+    .where(
+      and(
+        eq(disputesTable.id, id),
+        eq(disputesTable.simulated, false),
+      ),
+    )
     .limit(1);
   if (!dispute) {
     res.status(404).json(ApiErrorBody.parse({ error: "Disputa não encontrada." }));

@@ -59,7 +59,30 @@ export const GetAdminDashboardResponse = zod.object({
   "winnerName": zod.string().nullable()
 }),zod.null()]),
   "activeConnections": zod.number().int(),
+  "totalVisitors": zod.number().int(),
+  "visitorsToday": zod.number().int(),
   "pendingPayoutCount": zod.number().int(),
+  "pendingPayoutAmountCents": zod.number().int(),
+  "paidPayoutCount": zod.number().int(),
+  "paidPayoutAmountCents": zod.number().int(),
+  "liveDisputes": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "number": zod.number().int(),
+  "status": zod.enum(['scheduled', 'live', 'paused', 'ended']),
+  "prizeCents": zod.number().int(),
+  "currentValueCents": zod.number().int().nullable(),
+  "stepCents": zod.number().int(),
+  "bidsCount": zod.number().int(),
+  "startedAt": zod.coerce.date().nullable(),
+  "endedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "leaderName": zod.string().nullable(),
+  "winnerName": zod.string().nullable()
+})),
+  "historyDisputeCount": zod.number().int(),
+  "historyBidCount": zod.number().int(),
+  "platformRevenueCents": zod.number().int(),
+  "prizeCoverageCents": zod.number().int(),
   "treasury": zod.object({
   "settledCashCents": zod.number().int(),
   "cashOutflowsCents": zod.number().int(),
@@ -194,6 +217,34 @@ export const ListAdminPayoutsResponse = zod.object({
 
 
 /**
+ * @summary Atualizar o estado de um resgate
+ */
+export const UpdateAdminPayoutParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateAdminPayoutBodyPixE2eIdMin = 3;
+export const updateAdminPayoutBodyPixE2eIdMax = 128;
+
+export const updateAdminPayoutBodyReasonMin = 3;
+export const updateAdminPayoutBodyReasonMax = 240;
+
+
+
+export const UpdateAdminPayoutBody = zod.object({
+  "status": zod.enum(['requested', 'under_review', 'paid', 'rejected']),
+  "pixE2eId": zod.string().min(updateAdminPayoutBodyPixE2eIdMin).max(updateAdminPayoutBodyPixE2eIdMax).optional(),
+  "reason": zod.string().min(updateAdminPayoutBodyReasonMin).max(updateAdminPayoutBodyReasonMax).optional()
+})
+
+export const UpdateAdminPayoutResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['requested', 'under_review', 'paid', 'rejected']),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Consultar posição de caixa não simulada
  */
 export const GetAdminTreasuryResponse = zod.object({
@@ -204,6 +255,65 @@ export const GetAdminTreasuryResponse = zod.object({
   "reservedBonusCents": zod.number().int(),
   "freeCashCents": zod.number().int(),
   "includesSimulated": zod.literal(false)
+})
+
+
+/**
+ * @summary Consultar movimentações reais do caixa
+ */
+export const listAdminTreasuryMovementsQueryLimitDefault = 50;
+export const listAdminTreasuryMovementsQueryLimitMax = 100;
+
+export const listAdminTreasuryMovementsQueryOffsetDefault = 0;
+export const listAdminTreasuryMovementsQueryOffsetMin = 0;
+export const listAdminTreasuryMovementsQueryOffsetMax = 100000;
+
+
+
+export const ListAdminTreasuryMovementsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listAdminTreasuryMovementsQueryLimitMax).default(listAdminTreasuryMovementsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listAdminTreasuryMovementsQueryOffsetMin).max(listAdminTreasuryMovementsQueryOffsetMax).default(listAdminTreasuryMovementsQueryOffsetDefault)
+})
+
+export const ListAdminTreasuryMovementsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "category": zod.enum(['topup', 'contribution', 'payout', 'refund', 'fee', 'ad_revenue']),
+  "entryType": zod.string(),
+  "amountCents": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "reference": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "runningBalanceCents": zod.number().int()
+})),
+  "total": zod.number().int()
+})
+
+
+/**
+ * @summary Registrar um aporte de capital já recebido
+ */
+export const recordAdminTreasuryContributionBodyAmountCentsMax = 100000000;
+
+export const recordAdminTreasuryContributionBodyReceiptReferenceMin = 3;
+export const recordAdminTreasuryContributionBodyReceiptReferenceMax = 120;
+
+export const recordAdminTreasuryContributionBodyNoteMax = 60;
+
+
+
+export const RecordAdminTreasuryContributionBody = zod.object({
+  "amountCents": zod.number().int().min(1).max(recordAdminTreasuryContributionBodyAmountCentsMax),
+  "receiptReference": zod.string().min(recordAdminTreasuryContributionBodyReceiptReferenceMin).max(recordAdminTreasuryContributionBodyReceiptReferenceMax),
+  "note": zod.string().max(recordAdminTreasuryContributionBodyNoteMax).optional(),
+  "cashReceived": zod.literal(true)
+})
+
+export const RecordAdminTreasuryContributionResponse = zod.object({
+  "amountCents": zod.number().int(),
+  "receiptReference": zod.string(),
+  "createdAt": zod.coerce.date()
 })
 
 
@@ -223,6 +333,36 @@ export const ListAutomationAccountsResponse = zod.object({
 /**
  * @summary Consultar regras e estado do bot
  */
+export const getAutomationConfigResponseOperatorRulesOpeningSecondsMin = 0;
+export const getAutomationConfigResponseOperatorRulesOpeningSecondsMax = 60;
+
+export const getAutomationConfigResponseOperatorRulesOpeningMultiplierMax = 1000;
+
+export const getAutomationConfigResponseOperatorRulesCounterSecondsMin = 0;
+export const getAutomationConfigResponseOperatorRulesCounterSecondsMax = 60;
+
+export const getAutomationConfigResponseOperatorRulesCounterMultiplierMax = 1000;
+
+export const getAutomationConfigResponseOperatorRulesLimitsBidsPerDisputeMin = 0;
+export const getAutomationConfigResponseOperatorRulesLimitsBidsPerDisputeMax = 10000;
+
+export const getAutomationConfigResponseOperatorRulesLimitsBidsPerDayMin = 0;
+export const getAutomationConfigResponseOperatorRulesLimitsBidsPerDayMax = 100000;
+
+export const getAutomationConfigResponseOperatorRulesLimitsDisputesPerDayMin = 0;
+export const getAutomationConfigResponseOperatorRulesLimitsDisputesPerDayMax = 10000;
+
+export const getAutomationConfigResponseOperatorRulesLimitsMaxBidCentsMin = 0;
+export const getAutomationConfigResponseOperatorRulesLimitsMaxBidCentsMax = 100000000;
+
+export const getAutomationConfigResponseOperatorRulesLimitsPerDisputeCentsMin = 0;
+export const getAutomationConfigResponseOperatorRulesLimitsPerDisputeCentsMax = 100000000;
+
+export const getAutomationConfigResponseOperatorRulesLimitsDailySpendCentsMin = 0;
+export const getAutomationConfigResponseOperatorRulesLimitsDailySpendCentsMax = 100000000;
+
+
+
 export const GetAutomationConfigResponse = zod.object({
   "enabled": zod.boolean(),
   "mode": zod.enum(['counterbids_only', 'bids_and_counterbids', 'bids_only']),
@@ -239,6 +379,29 @@ export const GetAutomationConfigResponse = zod.object({
   "minimumDelaySeconds": zod.number().int(),
   "canEnable": zod.boolean(),
   "blockedReasons": zod.array(zod.string()),
+  "operatorRules": zod.object({
+  "status": zod.enum(['ativa', 'pausada', 'desativada']),
+  "opening": zod.object({
+  "on": zod.boolean(),
+  "trigger": zod.enum(['immediate', 'final']),
+  "seconds": zod.number().int().min(getAutomationConfigResponseOperatorRulesOpeningSecondsMin).max(getAutomationConfigResponseOperatorRulesOpeningSecondsMax),
+  "multiplier": zod.number().int().min(1).max(getAutomationConfigResponseOperatorRulesOpeningMultiplierMax)
+}),
+  "counter": zod.object({
+  "on": zod.boolean(),
+  "trigger": zod.enum(['immediate', 'final']),
+  "seconds": zod.number().int().min(getAutomationConfigResponseOperatorRulesCounterSecondsMin).max(getAutomationConfigResponseOperatorRulesCounterSecondsMax),
+  "multiplier": zod.number().int().min(1).max(getAutomationConfigResponseOperatorRulesCounterMultiplierMax)
+}),
+  "limits": zod.object({
+  "bidsPerDispute": zod.number().int().min(getAutomationConfigResponseOperatorRulesLimitsBidsPerDisputeMin).max(getAutomationConfigResponseOperatorRulesLimitsBidsPerDisputeMax),
+  "bidsPerDay": zod.number().int().min(getAutomationConfigResponseOperatorRulesLimitsBidsPerDayMin).max(getAutomationConfigResponseOperatorRulesLimitsBidsPerDayMax),
+  "disputesPerDay": zod.number().int().min(getAutomationConfigResponseOperatorRulesLimitsDisputesPerDayMin).max(getAutomationConfigResponseOperatorRulesLimitsDisputesPerDayMax),
+  "maxBidCents": zod.number().int().min(getAutomationConfigResponseOperatorRulesLimitsMaxBidCentsMin).max(getAutomationConfigResponseOperatorRulesLimitsMaxBidCentsMax),
+  "perDisputeCents": zod.number().int().min(getAutomationConfigResponseOperatorRulesLimitsPerDisputeCentsMin).max(getAutomationConfigResponseOperatorRulesLimitsPerDisputeCentsMax),
+  "dailySpendCents": zod.number().int().min(getAutomationConfigResponseOperatorRulesLimitsDailySpendCentsMin).max(getAutomationConfigResponseOperatorRulesLimitsDailySpendCentsMax)
+})
+}),
   "updatedAt": zod.coerce.date().nullable()
 })
 
@@ -262,6 +425,34 @@ export const updateAutomationConfigBodyMinimumSecondsRemainingMax = 60;
 
 export const updateAutomationConfigBodyMinimumDelaySecondsMax = 3600;
 
+export const updateAutomationConfigBodyOperatorRulesOpeningSecondsMin = 0;
+export const updateAutomationConfigBodyOperatorRulesOpeningSecondsMax = 60;
+
+export const updateAutomationConfigBodyOperatorRulesOpeningMultiplierMax = 1000;
+
+export const updateAutomationConfigBodyOperatorRulesCounterSecondsMin = 0;
+export const updateAutomationConfigBodyOperatorRulesCounterSecondsMax = 60;
+
+export const updateAutomationConfigBodyOperatorRulesCounterMultiplierMax = 1000;
+
+export const updateAutomationConfigBodyOperatorRulesLimitsBidsPerDisputeMin = 0;
+export const updateAutomationConfigBodyOperatorRulesLimitsBidsPerDisputeMax = 10000;
+
+export const updateAutomationConfigBodyOperatorRulesLimitsBidsPerDayMin = 0;
+export const updateAutomationConfigBodyOperatorRulesLimitsBidsPerDayMax = 100000;
+
+export const updateAutomationConfigBodyOperatorRulesLimitsDisputesPerDayMin = 0;
+export const updateAutomationConfigBodyOperatorRulesLimitsDisputesPerDayMax = 10000;
+
+export const updateAutomationConfigBodyOperatorRulesLimitsMaxBidCentsMin = 0;
+export const updateAutomationConfigBodyOperatorRulesLimitsMaxBidCentsMax = 100000000;
+
+export const updateAutomationConfigBodyOperatorRulesLimitsPerDisputeCentsMin = 0;
+export const updateAutomationConfigBodyOperatorRulesLimitsPerDisputeCentsMax = 100000000;
+
+export const updateAutomationConfigBodyOperatorRulesLimitsDailySpendCentsMin = 0;
+export const updateAutomationConfigBodyOperatorRulesLimitsDailySpendCentsMax = 100000000;
+
 
 
 export const UpdateAutomationConfigBody = zod.object({
@@ -274,8 +465,61 @@ export const UpdateAutomationConfigBody = zod.object({
   "dailyLimitCents": zod.number().int().min(updateAutomationConfigBodyDailyLimitCentsMin).max(updateAutomationConfigBodyDailyLimitCentsMax),
   "maxBidsPerDispute": zod.number().int().min(updateAutomationConfigBodyMaxBidsPerDisputeMin).max(updateAutomationConfigBodyMaxBidsPerDisputeMax),
   "minimumSecondsRemaining": zod.number().int().min(1).max(updateAutomationConfigBodyMinimumSecondsRemainingMax),
-  "minimumDelaySeconds": zod.number().int().min(1).max(updateAutomationConfigBodyMinimumDelaySecondsMax)
+  "minimumDelaySeconds": zod.number().int().min(1).max(updateAutomationConfigBodyMinimumDelaySecondsMax),
+  "operatorRules": zod.object({
+  "status": zod.enum(['ativa', 'pausada', 'desativada']),
+  "opening": zod.object({
+  "on": zod.boolean(),
+  "trigger": zod.enum(['immediate', 'final']),
+  "seconds": zod.number().int().min(updateAutomationConfigBodyOperatorRulesOpeningSecondsMin).max(updateAutomationConfigBodyOperatorRulesOpeningSecondsMax),
+  "multiplier": zod.number().int().min(1).max(updateAutomationConfigBodyOperatorRulesOpeningMultiplierMax)
+}),
+  "counter": zod.object({
+  "on": zod.boolean(),
+  "trigger": zod.enum(['immediate', 'final']),
+  "seconds": zod.number().int().min(updateAutomationConfigBodyOperatorRulesCounterSecondsMin).max(updateAutomationConfigBodyOperatorRulesCounterSecondsMax),
+  "multiplier": zod.number().int().min(1).max(updateAutomationConfigBodyOperatorRulesCounterMultiplierMax)
+}),
+  "limits": zod.object({
+  "bidsPerDispute": zod.number().int().min(updateAutomationConfigBodyOperatorRulesLimitsBidsPerDisputeMin).max(updateAutomationConfigBodyOperatorRulesLimitsBidsPerDisputeMax),
+  "bidsPerDay": zod.number().int().min(updateAutomationConfigBodyOperatorRulesLimitsBidsPerDayMin).max(updateAutomationConfigBodyOperatorRulesLimitsBidsPerDayMax),
+  "disputesPerDay": zod.number().int().min(updateAutomationConfigBodyOperatorRulesLimitsDisputesPerDayMin).max(updateAutomationConfigBodyOperatorRulesLimitsDisputesPerDayMax),
+  "maxBidCents": zod.number().int().min(updateAutomationConfigBodyOperatorRulesLimitsMaxBidCentsMin).max(updateAutomationConfigBodyOperatorRulesLimitsMaxBidCentsMax),
+  "perDisputeCents": zod.number().int().min(updateAutomationConfigBodyOperatorRulesLimitsPerDisputeCentsMin).max(updateAutomationConfigBodyOperatorRulesLimitsPerDisputeCentsMax),
+  "dailySpendCents": zod.number().int().min(updateAutomationConfigBodyOperatorRulesLimitsDailySpendCentsMin).max(updateAutomationConfigBodyOperatorRulesLimitsDailySpendCentsMax)
 })
+})
+})
+
+export const updateAutomationConfigResponseOperatorRulesOpeningSecondsMin = 0;
+export const updateAutomationConfigResponseOperatorRulesOpeningSecondsMax = 60;
+
+export const updateAutomationConfigResponseOperatorRulesOpeningMultiplierMax = 1000;
+
+export const updateAutomationConfigResponseOperatorRulesCounterSecondsMin = 0;
+export const updateAutomationConfigResponseOperatorRulesCounterSecondsMax = 60;
+
+export const updateAutomationConfigResponseOperatorRulesCounterMultiplierMax = 1000;
+
+export const updateAutomationConfigResponseOperatorRulesLimitsBidsPerDisputeMin = 0;
+export const updateAutomationConfigResponseOperatorRulesLimitsBidsPerDisputeMax = 10000;
+
+export const updateAutomationConfigResponseOperatorRulesLimitsBidsPerDayMin = 0;
+export const updateAutomationConfigResponseOperatorRulesLimitsBidsPerDayMax = 100000;
+
+export const updateAutomationConfigResponseOperatorRulesLimitsDisputesPerDayMin = 0;
+export const updateAutomationConfigResponseOperatorRulesLimitsDisputesPerDayMax = 10000;
+
+export const updateAutomationConfigResponseOperatorRulesLimitsMaxBidCentsMin = 0;
+export const updateAutomationConfigResponseOperatorRulesLimitsMaxBidCentsMax = 100000000;
+
+export const updateAutomationConfigResponseOperatorRulesLimitsPerDisputeCentsMin = 0;
+export const updateAutomationConfigResponseOperatorRulesLimitsPerDisputeCentsMax = 100000000;
+
+export const updateAutomationConfigResponseOperatorRulesLimitsDailySpendCentsMin = 0;
+export const updateAutomationConfigResponseOperatorRulesLimitsDailySpendCentsMax = 100000000;
+
+
 
 export const UpdateAutomationConfigResponse = zod.object({
   "enabled": zod.boolean(),
@@ -293,6 +537,29 @@ export const UpdateAutomationConfigResponse = zod.object({
   "minimumDelaySeconds": zod.number().int(),
   "canEnable": zod.boolean(),
   "blockedReasons": zod.array(zod.string()),
+  "operatorRules": zod.object({
+  "status": zod.enum(['ativa', 'pausada', 'desativada']),
+  "opening": zod.object({
+  "on": zod.boolean(),
+  "trigger": zod.enum(['immediate', 'final']),
+  "seconds": zod.number().int().min(updateAutomationConfigResponseOperatorRulesOpeningSecondsMin).max(updateAutomationConfigResponseOperatorRulesOpeningSecondsMax),
+  "multiplier": zod.number().int().min(1).max(updateAutomationConfigResponseOperatorRulesOpeningMultiplierMax)
+}),
+  "counter": zod.object({
+  "on": zod.boolean(),
+  "trigger": zod.enum(['immediate', 'final']),
+  "seconds": zod.number().int().min(updateAutomationConfigResponseOperatorRulesCounterSecondsMin).max(updateAutomationConfigResponseOperatorRulesCounterSecondsMax),
+  "multiplier": zod.number().int().min(1).max(updateAutomationConfigResponseOperatorRulesCounterMultiplierMax)
+}),
+  "limits": zod.object({
+  "bidsPerDispute": zod.number().int().min(updateAutomationConfigResponseOperatorRulesLimitsBidsPerDisputeMin).max(updateAutomationConfigResponseOperatorRulesLimitsBidsPerDisputeMax),
+  "bidsPerDay": zod.number().int().min(updateAutomationConfigResponseOperatorRulesLimitsBidsPerDayMin).max(updateAutomationConfigResponseOperatorRulesLimitsBidsPerDayMax),
+  "disputesPerDay": zod.number().int().min(updateAutomationConfigResponseOperatorRulesLimitsDisputesPerDayMin).max(updateAutomationConfigResponseOperatorRulesLimitsDisputesPerDayMax),
+  "maxBidCents": zod.number().int().min(updateAutomationConfigResponseOperatorRulesLimitsMaxBidCentsMin).max(updateAutomationConfigResponseOperatorRulesLimitsMaxBidCentsMax),
+  "perDisputeCents": zod.number().int().min(updateAutomationConfigResponseOperatorRulesLimitsPerDisputeCentsMin).max(updateAutomationConfigResponseOperatorRulesLimitsPerDisputeCentsMax),
+  "dailySpendCents": zod.number().int().min(updateAutomationConfigResponseOperatorRulesLimitsDailySpendCentsMin).max(updateAutomationConfigResponseOperatorRulesLimitsDailySpendCentsMax)
+})
+}),
   "updatedAt": zod.coerce.date().nullable()
 })
 

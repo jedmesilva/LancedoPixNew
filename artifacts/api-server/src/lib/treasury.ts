@@ -192,6 +192,7 @@ export async function recordHouseContribution(
     id: string;
     amountCents: bigint;
     receivedAt: Date;
+    note?: string;
     simulated?: boolean;
   },
 ) {
@@ -199,16 +200,26 @@ export async function recordHouseContribution(
     throw new Error("A house contribution must be greater than zero.");
   }
 
-  await recordLedgerEntry(transaction, {
-    entryType: "house_contribution",
-    amountCents: input.amountCents,
-    sourceType: "house_contribution",
-    sourceId: input.id,
-    idempotencyKey: `house-contribution:${input.id}`,
-    simulated: input.simulated ?? false,
-    metadata: { receivedAt: input.receivedAt.toISOString() },
-    createdAt: input.receivedAt,
-  });
+  const [entry] = await transaction
+    .insert(treasuryLedgerEntriesTable)
+    .values({
+      entryType: "house_contribution",
+      amountCents: input.amountCents,
+      sourceType: "house_contribution",
+      sourceId: input.id,
+      idempotencyKey: `house-contribution:${input.id}`,
+      simulated: input.simulated ?? false,
+      metadata: {
+        receiptReference: input.id,
+        receivedAt: input.receivedAt.toISOString(),
+        ...(input.note ? { note: input.note } : {}),
+      },
+      createdAt: input.receivedAt,
+    })
+    .onConflictDoNothing()
+    .returning({ id: treasuryLedgerEntriesTable.id });
+
+  if (!entry) throw new Error("HOUSE_REFERENCE_USED");
 }
 
 export async function recordDisputeCloseAdjustment(

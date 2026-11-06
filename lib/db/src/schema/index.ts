@@ -40,3 +40,4 @@ export * from "./treasury-ledger-entries";
 export * from "./dispute-cash-reservations";
 export * from "./automation-config";
 export * from "./automation-events";
+export * from "./site-visitor-daily";

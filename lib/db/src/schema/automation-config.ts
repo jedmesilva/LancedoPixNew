@@ -5,6 +5,7 @@ import {
   boolean,
   check,
   integer,
+  jsonb,
   pgTable,
   smallint,
   timestamp,
@@ -13,6 +14,30 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+
+export type AutomationOperatorRules = {
+  status: "ativa" | "pausada" | "desativada";
+  opening: {
+    on: boolean;
+    trigger: "immediate" | "final";
+    seconds: number;
+    multiplier: number;
+  };
+  counter: {
+    on: boolean;
+    trigger: "immediate" | "final";
+    seconds: number;
+    multiplier: number;
+  };
+  limits: {
+    bidsPerDispute: number;
+    bidsPerDay: number;
+    disputesPerDay: number;
+    maxBidCents: number;
+    perDisputeCents: number;
+    dailySpendCents: number;
+  };
+};
 
 export const AUTOMATION_MODES = [
   "counterbids_only",
@@ -64,6 +89,9 @@ export const automationConfigTable = pgTable(
     minimumDelaySeconds: smallint("minimum_delay_seconds")
       .notNull()
       .default(5),
+    operatorRules: jsonb("operator_rules")
+      .$type<AutomationOperatorRules | null>()
+      .default(sql`NULL`),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
