@@ -104,12 +104,11 @@ function AuthGate() {
     mutationFn: endAdminSession,
     onSuccess: () => { queryClient.clear(); queryClient.setQueryData(SESSION_KEY, { authenticated: false }); },
   });
-  const [location] = useLocation();
   const isAuthError = session.error instanceof AdminApiError && (session.error.status === 401 || session.error.status === 403);
   useEffect(() => { if (isAuthError) queryClient.setQueryData(SESSION_KEY, { authenticated: false }); }, [isAuthError, queryClient]);
 
   if (session.isPending) return <main className="auth-loading"><div className="skeleton-card" /><div className="skeleton-card" /><span>Verificando sessão segura…</span></main>;
-  if (session.data?.authenticated) return <Shell location={location} signOut={() => signOut.mutate()} signOutBusy={signOut.isPending} />;
+  if (session.data?.authenticated) return <Shell signOut={() => signOut.mutate()} signOutBusy={signOut.isPending} />;
   if (session.isError && !isAuthError) return <main className="login-page"><section className="login-art"><div className="login-logo"><span className="brand-mark">L</span> Lance do Pix <span className="login-tag">OPERAÇÕES</span></div><div><h1 className="login-headline">A operação,<br /><span>sob controle.</span></h1><p className="login-caption">Console interno de operação e acompanhamento da plataforma.</p></div><p className="login-foot">Acesso restrito a operadores autorizados.</p></section><section className="login-form-side"><div className="login-card"><div className="lock-icon"><ShieldCheck size={20} /></div><p className="eyebrow">Conexão protegida</p><h1>Console indisponível</h1><p>Não foi possível verificar a sessão agora.</p><QueryError error={session.error} retry={() => void session.refetch()} /></div></section></main>;
   return <main className="login-page">
     <section className="login-art"><div className="login-logo"><span className="brand-mark">L</span><span>Lance do Pix <small>OPERAÇÕES</small></span><span className="login-tag">ADMIN</span></div><div className="login-story"><p className="login-overline">AMBIENTE INTERNO · ACESSO RESTRITO</p><h1 className="login-headline">Visão clara.<br /><span>Decisão segura.</span></h1><p className="login-caption">Acompanhe disputas, caixa, resgates e automações num único lugar.</p></div><p className="login-foot">Este console é separado da experiência pública.</p><div className="login-orbit orbit-one" /><div className="login-orbit orbit-two" /></section>
@@ -123,21 +122,35 @@ function AuthGate() {
   </main>;
 }
 const navItems = [
-  { href: '/', label: 'Visão geral', icon: LayoutDashboard },
-  { href: '/disputes', label: 'Disputas', icon: FileSearch },
+  { href: '/', label: 'Painel', icon: LayoutDashboard },
+  { href: '/treasury', label: 'Caixa', icon: Wallet },
   { href: '/payouts', label: 'Resgates', icon: ArrowDownLeft },
-  { href: '/treasury', label: 'Tesouraria', icon: Wallet },
+  { href: '/disputes', label: 'Disputas', icon: FileSearch },
   { href: '/automation', label: 'Automação', icon: Bot },
 ];
-function Shell({ location, signOut, signOutBusy }: { location: string; signOut: () => void; signOutBusy: boolean }) {
+function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boolean }) {
   const [path] = useLocation();
+  const activeLabel = navItems.find(item => item.href === (path.startsWith('/disputes') ? '/disputes' : path.startsWith('/automation') ? '/automation' : path))?.label || 'Painel';
   return <div className="shell">
-    <aside className="sidebar"><div className="brand"><div className="brand-mark">L</div><div><div className="brand-name">Lance do Pix</div><div className="brand-sub">Console de operação</div></div></div>
-      <div className="nav-label">Plataforma</div><nav className="navlist">{navItems.map(item => { const Icon = item.icon; const active = item.href === '/' ? path === '/' : path.startsWith(item.href); return <Link key={item.href} href={item.href} className={`navlink ${active ? 'active' : ''}`} data-testid={`nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}><Icon size={17} />{item.label}</Link>; })}</nav>
-      <div className="sidebar-bottom"><div className="bot-tile"><div className="bot-status"><span className="pulse-dot" /> Ambiente privado</div><div className="bot-note">Dados operacionais atualizados automaticamente.</div></div><button className="logout" onClick={signOut} disabled={signOutBusy} data-testid="button-admin-logout"><LogOut size={15} />{signOutBusy ? 'Encerrando…' : 'Encerrar sessão'}</button></div>
-    </aside>
-     <main className="main"><header className="topbar"><div className="crumb">Lance do Pix <span>/</span> <strong>{navItems.find(item => item.href === (path.startsWith('/disputes') ? '/disputes' : path.startsWith('/automation') ? '/automation' : path))?.label || 'Operação'}</strong></div><div className="topbar-right"><span className="secure"><ShieldCheck size={14} /> Sessão segura</span><span className="operator-dot">OP</span></div></header>
-      <div className="content"><RouteSwitch>
+    <header className="topbar">
+      <div className="topbar-inner">
+        <Link href="/" className="brand" data-testid="link-admin-home">
+          <span className="brand-mark" aria-hidden="true">L</span>
+          <span className="brand-copy"><span className="brand-name">Lance do Pix</span><span className="brand-sub">Console de operação</span></span>
+          <span className="login-tag">ADMIN</span>
+        </Link>
+        <div className="topbar-right"><span className="secure"><ShieldCheck size={14} /> Sessão segura</span><button className="btn logout" onClick={signOut} disabled={signOutBusy} data-testid="button-admin-logout"><LogOut size={15} />{signOutBusy ? 'Saindo…' : 'Sair'}</button></div>
+      </div>
+    </header>
+    <main className="content">
+      <nav className="tabs" aria-label="Navegação principal">
+        {navItems.map(item => {
+          const Icon = item.icon;
+          const active = item.href === '/' ? path === '/' : path.startsWith(item.href);
+          return <Link key={item.href} href={item.href} className={`navlink ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined} data-testid={`nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}><Icon size={16} />{item.label}</Link>;
+        })}
+      </nav>
+      <div className="route-content" data-page={activeLabel}><RouteSwitch>
         <Route path="/" component={Overview} />
         <Route path="/disputes" component={DisputesPage} />
         <Route path="/disputes/:id" component={DisputeDetailPage} />
@@ -165,10 +178,10 @@ function Overview() {
       <Metric label="Caixa liquidado" value={money(treasury.settledCashCents)} note="Valores efetivamente liquidados" icon={Wallet} />
     </div>
     <div className="grid dash-lower">
-      <section className="panel current"><div className="current-label">Disputa em destaque</div>{dashboard.currentDispute ? <><h2 className="current-number">#{dashboard.currentDispute.number}</h2><div className="current-meta"><Status value={dashboard.currentDispute.status} /> <span> · {dashboard.currentDispute.bidsCount} lances</span></div><div className="current-value">{money(dashboard.currentDispute.currentValueCents)}</div><Link href={`/disputes/${encodeURIComponent(dashboard.currentDispute.id)}`} className="current-link">Ver detalhes <ArrowRight size={13} /></Link></> : <div className="current-empty">Nenhuma disputa ativa informada.</div>}</section>
-      <section className="panel quick-panel"><div className="section-head"><h2 className="section-title">Visão de caixa</h2><Link href="/treasury" className="small-link">Detalhes <ArrowRight size={13} /></Link></div><div className="quick-line"><span>Saídas de caixa</span><strong>{money(treasury.cashOutflowsCents)}</strong></div><div className="quick-line"><span>Carteiras bloqueadas</span><strong>{money(treasury.lockedWalletCents)}</strong></div><div className="quick-line"><span>Prêmios não pagos</span><strong>{money(treasury.unpaidPrizeCents)}</strong></div><div className="quick-line"><span>Bônus reservados</span><strong>{money(treasury.reservedBonusCents)}</strong></div><p className="data-footnote">Posição real · sem valores simulados</p></section>
+      <section className="panel current"><div className="current-label">Disputa em destaque</div>{dashboard.currentDispute ? <><h2 className="current-number">#{dashboard.currentDispute.number}</h2><div className="current-meta"><Status value={dashboard.currentDispute.status} /> <span> · {dashboard.currentDispute.bidsCount} lances</span></div><div className="current-value">{money(dashboard.currentDispute.currentValueCents)}</div><Link href={`/disputes/${encodeURIComponent(dashboard.currentDispute.id)}`} className="current-link" data-testid="link-current-dispute">Ver detalhes <ArrowRight size={13} /></Link></> : <div className="current-empty">Nenhuma disputa ativa informada.</div>}</section>
+      <section className="panel quick-panel"><div className="section-head"><h2 className="section-title">Visão de caixa</h2><Link href="/treasury" className="small-link" data-testid="link-treasury-details">Detalhes <ArrowRight size={13} /></Link></div><div className="quick-line"><span>Saídas de caixa</span><strong>{money(treasury.cashOutflowsCents)}</strong></div><div className="quick-line"><span>Carteiras bloqueadas</span><strong>{money(treasury.lockedWalletCents)}</strong></div><div className="quick-line"><span>Prêmios não pagos</span><strong>{money(treasury.unpaidPrizeCents)}</strong></div><div className="quick-line"><span>Bônus reservados</span><strong>{money(treasury.reservedBonusCents)}</strong></div><p className="data-footnote">Posição real · sem valores simulados</p></section>
     </div>
-    <section className="panel section-panel"><div className="section-head"><div><p className="eyebrow">Histórico recente</p><h2 className="section-title">Disputas</h2></div><Link href="/disputes" className="small-link">Pesquisar disputas <ArrowRight size={13} /></Link></div>{dashboard.recentDisputes.length ? <DisputeRows items={dashboard.recentDisputes} /> : <Empty title="Sem disputas recentes" text="A API não retornou disputas para este painel." />}</section>
+    <section className="panel section-panel"><div className="section-head"><div><p className="eyebrow">Histórico recente</p><h2 className="section-title">Disputas</h2></div><Link href="/disputes" className="small-link" data-testid="link-disputes-search">Pesquisar disputas <ArrowRight size={13} /></Link></div>{dashboard.recentDisputes.length ? <DisputeRows items={dashboard.recentDisputes} /> : <Empty title="Sem disputas recentes" text="A API não retornou disputas para este painel." />}</section>
   </div>;
 }
 function DisputesPage() {
@@ -179,7 +192,7 @@ function DisputesPage() {
   const query = useQuery({ queryKey: ['/api/admin/disputes', { q, limit, offset }], queryFn: () => listAdminDisputes({ q: q || undefined, limit, offset }) });
   const total = query.data?.total || 0;
   return <><Heading eyebrow="Pesquisa e histórico" title="Disputas" description="Consulte disputas e seus registros operacionais." />
-    <form className="panel toolbar" onSubmit={event => { event.preventDefault(); setOffset(0); setQ(input.trim()); }}><div className="search-wrap"><Search size={16} /><Input className="search" aria-label="Pesquisar disputas" data-testid="input-dispute-search" placeholder="Buscar por número, ID ou termo" maxLength={100} value={input} onChange={event => setInput(event.target.value)} /></div><Button className="btn primary" type="submit" data-testid="button-search-disputes"><Search size={14} /> Pesquisar</Button>{q && <button type="button" className="btn" onClick={() => { setInput(''); setQ(''); setOffset(0); }}><X size={14} /> Limpar</button>}</form>
+    <form className="panel toolbar" onSubmit={event => { event.preventDefault(); setOffset(0); setQ(input.trim()); }}><div className="search-wrap"><Search size={16} /><Input className="search" aria-label="Pesquisar disputas" data-testid="input-dispute-search" placeholder="Buscar por número, ID ou termo" maxLength={100} value={input} onChange={event => setInput(event.target.value)} /></div><Button className="btn primary" type="submit" data-testid="button-search-disputes"><Search size={14} /> Pesquisar</Button>{q && <button type="button" className="btn" onClick={() => { setInput(''); setQ(''); setOffset(0); }} data-testid="button-clear-dispute-search"><X size={14} /> Limpar</button>}</form>
     {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><section className="panel"><div className="section-head"><h2 className="section-title">Resultados <span className="total-count">{total.toLocaleString('pt-BR')}</span></h2><span className="section-kicker">{offset + 1}–{Math.min(offset + limit, total)} de {total}</span></div><DisputeRows items={query.data.items} /></section><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <section className="panel"><Empty title="Nenhuma disputa encontrada" text={q ? 'Tente outro termo de pesquisa.' : 'Ainda não há disputas disponíveis no histórico.'} /></section>}
   </>;
 }
@@ -190,10 +203,10 @@ function DisputeDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const decoded = decodeURIComponent(id);
   const query = useQuery({ queryKey: ['/api/admin/disputes', decoded], queryFn: () => getAdminDispute(decoded), enabled: !!decoded });
-  if (query.isPending) return <><Link href="/disputes" className="back-link"><ArrowLeft size={14} /> Voltar às disputas</Link><div className="spacer" /><LoadingPanel /></>;
-  if (query.isError || !query.data) return <><Link href="/disputes" className="back-link"><ArrowLeft size={14} /> Voltar às disputas</Link><div className="spacer" /><QueryError error={query.error} retry={() => void query.refetch()} /></>;
+  if (query.isPending) return <><Link href="/disputes" className="back-link" data-testid="link-back-disputes"><ArrowLeft size={14} /> Voltar às disputas</Link><div className="spacer" /><LoadingPanel /></>;
+  if (query.isError || !query.data) return <><Link href="/disputes" className="back-link" data-testid="link-back-disputes"><ArrowLeft size={14} /> Voltar às disputas</Link><div className="spacer" /><QueryError error={query.error} retry={() => void query.refetch()} /></>;
   const dispute = query.data.dispute;
-  return <div className="appear"><Link href="/disputes" className="back-link"><ArrowLeft size={14} /> Voltar às disputas</Link><div className="spacer" /><Heading eyebrow={`Disputa #${dispute.number}`} title="Detalhes da disputa" description={`Criada em ${date(dispute.createdAt)}`}><Status value={dispute.status} /></Heading>
+  return <div className="appear"><Link href="/disputes" className="back-link" data-testid="link-back-disputes"><ArrowLeft size={14} /> Voltar às disputas</Link><div className="spacer" /><Heading eyebrow={`Disputa #${dispute.number}`} title="Detalhes da disputa" description={`Criada em ${date(dispute.createdAt)}`}><Status value={dispute.status} /></Heading>
     <div className="grid detail-grid"><div className="panel detail-metric">Prêmio<strong>{money(dispute.prizeCents)}</strong></div><div className="panel detail-metric">Lance atual<strong>{money(dispute.currentValueCents)}</strong></div><div className="panel detail-metric">Incremento<strong>{money(dispute.stepCents)}</strong></div><div className="panel detail-metric">Total de lances<strong>{dispute.bidsCount.toLocaleString('pt-BR')}</strong></div><div className="panel detail-metric">Início<strong>{date(dispute.startedAt)}</strong></div><div className="panel detail-metric">Encerramento<strong>{date(dispute.endedAt)}</strong></div></div>
     <section className="panel section-panel"><div className="section-head"><div><p className="eyebrow">Histórico público</p><h2 className="section-title">Lances registrados</h2></div><span className="section-kicker">{query.data.bids.length} eventos</span></div>{query.data.bids.length ? <div className="table-wrap"><table className="table"><thead><tr><th>Participante</th><th>Valor</th><th>Custo</th><th>Resultado</th><th>Data</th></tr></thead><tbody>{query.data.bids.map(bid => <tr key={bid.id}><td>{bid.automated ? <span className="bot-name"><Bot size={14} /> {bid.bidderName} <Badge variant="secondary">Participante automatizado da plataforma</Badge></span> : bid.bidderName}</td><td>{money(bid.amountCents)}</td><td>{money(bid.costCents)}</td><td>{bid.result ? <span className={`result-pill ${bid.result}`}>{bid.result === 'won' ? 'Venceu' : 'Não venceu'}</span> : '—'}</td><td>{date(bid.createdAt)}</td></tr>)}</tbody></table></div> : <Empty title="Sem lances registrados" text="A API não retornou lances para esta disputa." />}</section>
   </div>;
@@ -205,16 +218,24 @@ function PayoutsPage() {
   const query = useQuery({ queryKey: ['/api/admin/payouts', { status, limit, offset }], queryFn: () => listAdminPayouts({ status: (status || undefined) as AdminPayoutStatus | undefined, limit, offset }) });
   const total = query.data?.total || 0;
   return <><Heading eyebrow="Solicitações e status" title="Resgates" description="Acompanhe a fila de solicitações e seus estados atuais." />
-    <div className="panel toolbar"><label className="filter-label" htmlFor="payout-status"><SlidersHorizontal size={15} /> Filtrar status</label><select id="payout-status" className="field" value={status} onChange={event => { setStatus(event.target.value); setOffset(0); }} data-testid="select-payout-status"><option value="">Todos os status</option><option value="requested">Solicitado</option><option value="under_review">Em análise</option><option value="paid">Pago</option><option value="rejected">Recusado</option></select><span className="section-kicker">{total.toLocaleString('pt-BR')} solicitações</span></div>
+    <section className="panel payout-filters" aria-label="Filtrar resgates por status">
+      <span className="filter-label"><SlidersHorizontal size={15} /> Status</span>
+      <div className="chips" role="group" aria-label="Status dos resgates">
+        {[['', 'Todos'], ['requested', 'Solicitado'], ['under_review', 'Em análise'], ['paid', 'Pago'], ['rejected', 'Recusado']].map(([value, label]) =>
+          <button key={value || 'all'} type="button" className="filter-chip" aria-pressed={status === value} onClick={() => { setStatus(value); setOffset(0); }} data-testid={`filter-payout-${value || 'all'}`}>{label}</button>,
+        )}
+      </div>
+      <span className="section-kicker">{total.toLocaleString('pt-BR')} solicitações</span>
+    </section>
     {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><section className="panel"><div className="table-wrap"><table className="table"><thead><tr><th>Solicitante</th><th>Status</th><th>Valor</th><th>Prêmio</th><th>Bônus</th><th>Chave Pix</th><th>Solicitado</th><th>Atualizado</th></tr></thead><tbody>{query.data.items.map(payout => <tr key={payout.id}><td>{payout.userName}</td><td><Status value={payout.status} /></td><td>{money(payout.amountCents)}</td><td>{money(payout.prizeCents)}</td><td>{money(payout.bonusCents)}</td><td><span className="key-type">{payout.pixKeyType}</span></td><td>{date(payout.requestedAt)}</td><td>{date(payout.updatedAt)}</td></tr>)}</tbody></table></div></section><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <section className="panel"><Empty title="Fila vazia" text="A API não retornou solicitações com este filtro." /></section>}
   </>;
 }
 function TreasuryPage() {
   const query = useQuery({ queryKey: TREASURY_KEY, queryFn: getAdminTreasury });
-  if (query.isPending) return <><Heading eyebrow="Posição financeira" title="Tesouraria" description="Valores reais de caixa; simulações não são incluídas." /><LoadingPanel /></>;
-  if (query.isError || !query.data) return <><Heading eyebrow="Posição financeira" title="Tesouraria" /><QueryError error={query.error} retry={() => void query.refetch()} /></>;
+  if (query.isPending) return <><Heading eyebrow="Posição financeira" title="Caixa" description="Valores reais de caixa; simulações não são incluídas." /><LoadingPanel /></>;
+  if (query.isError || !query.data) return <><Heading eyebrow="Posição financeira" title="Caixa" /><QueryError error={query.error} retry={() => void query.refetch()} /></>;
   const data = query.data;
-  return <><Heading eyebrow="Posição financeira" title="Tesouraria" description="Posição informada pela API administrativa."><button className="btn" onClick={() => void query.refetch()} data-testid="button-refresh-treasury"><RefreshCw size={14} /> Atualizar posição</button></Heading>
+  return <><Heading eyebrow="Posição financeira" title="Caixa" description="Posição informada pela API administrativa."><button className="btn" onClick={() => void query.refetch()} data-testid="button-refresh-treasury"><RefreshCw size={14} /> Atualizar posição</button></Heading>
     <div className="treasury-banner"><div className="treasury-icon"><Wallet size={20} /></div><div><span>Caixa livre</span><strong>{money(data.freeCashCents)}</strong><small>Liquidez disponível segundo a posição atual</small></div><div className="real-pill"><Check size={13} /> Dados reais</div></div>
     <div className="treasury-columns"><section className="treasury-ledger"><div className="ledger-head"><span>POSIÇÃO DE CAIXA</span><span>VALOR</span></div><LedgerRow title="Caixa liquidado" detail="Valores efetivamente liquidados" value={data.settledCashCents} tone="positive" /><LedgerRow title="Saídas de caixa" detail="Pagamentos e saídas registrados" value={data.cashOutflowsCents} /><LedgerRow title="Carteiras bloqueadas" detail="Saldo retido em carteiras" value={data.lockedWalletCents} /><LedgerRow title="Prêmios não pagos" detail="Obrigações de prêmio em aberto" value={data.unpaidPrizeCents} /><LedgerRow title="Bônus reservados" detail="Bônus comprometidos" value={data.reservedBonusCents} /><div className="ledger-foot"><span>Caixa livre</span><strong>{money(data.freeCashCents)}</strong></div></section><aside className="panel treasury-aside"><div className="aside-emblem"><ShieldCheck size={19} /></div><h2>Sem estimativas</h2><p>A tesouraria exibe apenas os valores retornados pela API. Nenhum saldo foi projetado ou simulado.</p><div className="truth-stamp">INCLUDES SIMULATED <strong>{data.includesSimulated ? 'SIM' : 'NÃO'}</strong></div></aside></div>
   </>;
