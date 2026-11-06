@@ -288,7 +288,7 @@ function DisputesPage() {
   const limit = 20;
   const query = useQuery({ queryKey: ['/api/admin/disputes', { q, limit, offset }], queryFn: () => listAdminDisputes({ q: q || undefined, limit, offset }) });
   const total = query.data?.total || 0;
-  return <>
+  return <div className="disputes-page">
     <section className="prototype-section">
       <div className="prototype-section-head"><p className="ey">Histórico de disputas</p><span className="prototype-note">{total.toLocaleString('pt-BR')} registros</span></div>
       <form className="prototype-search" onSubmit={event => { event.preventDefault(); setOffset(0); setQ(input.trim()); }}>
@@ -298,7 +298,7 @@ function DisputesPage() {
       </form>
     </section>
     {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><DisputeRows items={query.data.items} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <Empty title="Nenhuma disputa encontrada" text={q ? 'Tente outro termo de pesquisa.' : 'Ainda não há disputas disponíveis no histórico.'} />}
-  </>;
+  </div>;
 }
 function Pagination({ offset, limit, total, setOffset }: { offset: number; limit: number; total: number; setOffset: (n: number) => void }) {
   return <div className="pagination"><span>{total.toLocaleString('pt-BR')} registros</span><div><button className="btn" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0} data-testid="button-page-prev"><ArrowLeft size={14} /> Anterior</button><button className="btn" onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total} data-testid="button-page-next">Próxima <ArrowRight size={14} /></button></div></div>;

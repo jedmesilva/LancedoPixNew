@@ -826,6 +826,7 @@ body { font-size: 15px; line-height: 1.4; }
 .prototype-status { display: inline-flex; align-items: center; gap: 7px; }
 .prototype-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--lp-green); }
 .prototype-record-list { display: grid; gap: 10px; }
+.disputes-page { display: grid; gap: 14px; }
 .prototype-live-card,
 .prototype-payout,
 .prototype-movement { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
