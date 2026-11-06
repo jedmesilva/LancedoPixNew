@@ -17,11 +17,13 @@ import { Badge } from '@/components/ui/badge';
 import { AdminApiError } from './custom-fetch';
 import {
   createAdminSession, endAdminSession, getAdminDashboard, getAdminDispute, getAdminSession,
-  getAdminTreasury, getAutomationConfig, listAdminDisputes, listAdminPayouts,
+  getAutomationConfig, listAdminDisputes, listAdminPayouts,
+  listAdminTreasuryMovements,
   listAutomationAccounts, listAutomationEvents, updateAutomationConfig, recordAutomationFunding,
 } from './generated/adminApi';
 import type {
-  AdminDashboard, AdminDisputeSummary, AdminPayout, AdminPayoutStatus, AutomationAccount,
+  AdminDashboard, AdminDisputeSummary, AdminPayout, AdminPayoutStatus,
+  AdminTreasuryMovement, AutomationAccount,
   AutomationConfigInput, AutomationFundingInput,
 } from './generated/adminApi.schemas';
 import NotFound from '@/pages/not-found';
@@ -31,7 +33,6 @@ const queryClient = new QueryClient({
 });
 const SESSION_KEY = ['/api/admin/auth/session'];
 const DASHBOARD_KEY = ['/api/admin/dashboard'];
-const TREASURY_KEY = ['/api/admin/treasury'];
 const CONFIG_KEY = ['/api/admin/automation/config'];
 const AUTOMATION_ACCOUNTS_KEY = ['/api/admin/automation/accounts'];
 const EVENTS_KEY = ['/api/admin/automation/events'];
@@ -69,8 +70,8 @@ function Empty({ title, text }: { title: string; text: string }) {
 function Heading({ eyebrow, title, description, children }: { eyebrow: string; title: string; description?: string; children?: ReactNode }) {
   return <div className="page-heading"><div><p className="eyebrow">{eyebrow}</p><h1 className="page-title">{title}</h1>{description && <p className="page-desc">{description}</p>}</div>{children}</div>;
 }
-function Metric({ label, value, note, icon: Icon }: { label: string; value: string; note: string; icon: typeof Wallet }) {
-  return <article className="panel stat-card"><div className="stat-icon"><Icon size={18} /></div><div className="stat-label">{label}</div><div className="stat-value" data-testid={`metric-${label.toLowerCase().replaceAll(' ', '-')}`}>{value}</div><div className="stat-foot">{note}</div></article>;
+function Metric({ label, value, note }: { label: string; value: ReactNode; note: string }) {
+  return <article className="prototype-kpi"><div className="ey">{label}</div><div className="prototype-kpi-value" data-testid={`metric-${label.toLowerCase().replaceAll(' ', '-')}`}>{value}</div><small>{note}</small></article>;
 }
 function DisputeRows({ items }: { items: AdminDisputeSummary[] }) {
   return <div className="record-list">{items.map(item => <DisputeRow item={item} key={item.id} />)}</div>;
@@ -169,13 +170,11 @@ function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boo
     <header className="topbar">
       <div className="topbar-inner">
         <Link href="/" className="brand" data-testid="link-admin-home">
-          <span className="brand-mark" aria-hidden="true">◆</span>
           <span className="brand-copy"><span className="brand-name">Lance do Pix</span></span>
           <span className="login-tag">ADMIN</span>
         </Link>
         <div className="topbar-right">
           <span className={`automation-indicator ${automation.data?.enabled ? 'is-active' : ''}`} data-testid="header-automation-status"><i />Automação {automation.data?.enabled ? 'ativa' : automation.isError ? 'indisponível' : 'desativada'}</span>
-          <span className="secure"><ShieldCheck size={14} /> Sessão segura</span>
           <button className="btn logout" onClick={signOut} disabled={signOutBusy} data-testid="button-admin-logout"><LogOut size={15} />{signOutBusy ? 'Saindo…' : 'Sair'}</button>
         </div>
       </div>
@@ -183,9 +182,8 @@ function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boo
     <main className="content">
       <nav className="tabs" aria-label="Navegação principal">
         {navItems.map(item => {
-          const Icon = item.icon;
           const active = item.href === '/' ? path === '/' : path.startsWith(item.href);
-          return <Link key={item.href} href={item.href} className={`navlink ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined} data-testid={`nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}><Icon size={16} />{item.label}</Link>;
+          return <Link key={item.href} href={item.href} className={`navlink ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined} data-testid={`nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>{item.label}</Link>;
         })}
       </nav>
       <div className="route-content" data-page={activeLabel}><RouteSwitch>
@@ -204,61 +202,72 @@ function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boo
 function Overview() {
   const query = useQuery({ queryKey: DASHBOARD_KEY, queryFn: getAdminDashboard });
   const dashboard = query.data as AdminDashboard | undefined;
-  if (query.isPending) return <><Heading eyebrow="Painel operacional" title="Visão geral" description="Um retrato atual da operação." /><LoadingPanel /></>;
-  if (query.isError || !dashboard) return <><Heading eyebrow="Painel operacional" title="Visão geral" /><QueryError error={query.error} retry={() => void query.refetch()} /></>;
+  if (query.isPending) return <LoadingPanel />;
+  if (query.isError || !dashboard) return <QueryError error={query.error} retry={() => void query.refetch()} />;
   const treasury = dashboard.treasury;
-  return <div className="appear reference-dashboard">
-    <Heading eyebrow="Painel" title="Painel operacional" description="Acompanhe o estado atual do serviço e das disputas.">
-      <button className="btn" onClick={() => void query.refetch()} data-testid="button-refresh-dashboard"><RefreshCw size={14} /> Atualizar</button>
-    </Heading>
-    <section className="reference-section" data-testid="overview-system">
-      <p className="eyebrow">Sistema</p>
-      <div className="grid overview-system-grid">
-        <article className="panel stat-card system-health-card" data-testid="status-api-health">
-          <div className="stat-label">Servidor</div>
-          <div className="stat-value"><i className="health-dot" />No ar</div>
-          <div className="stat-foot">API respondeu com dados atuais</div>
-        </article>
-        <Metric label="Conexões ativas" value={dashboard.activeConnections.toLocaleString('pt-BR')} note="Conectadas agora" icon={Activity} />
-        <Metric label="Resgates pendentes" value={dashboard.pendingPayoutCount.toLocaleString('pt-BR')} note="Aguardando análise" icon={ArrowDownLeft} />
+  const activeBids = dashboard.liveDisputes.reduce((sum, dispute) => sum + dispute.bidsCount, 0);
+  const livePrizeTotal = dashboard.liveDisputes.reduce((sum, dispute) => sum + dispute.prizeCents, 0);
+  const bidVolume = dashboard.platformRevenueCents + dashboard.prizeCoverageCents;
+  return <div className="prototype-dashboard appear">
+    <section className="prototype-section" data-testid="overview-system">
+      <div className="prototype-section-head"><p className="ey">Sistema</p><button className="prototype-refresh" onClick={() => void query.refetch()} data-testid="button-refresh-dashboard"><RefreshCw size={14} /> Atualizar</button></div>
+      <div className="prototype-kpis">
+        <Metric label="Servidor" value={<span className="prototype-status success"><i />No ar</span>} note="API respondeu com dados atuais" />
+        <Metric label="Online agora" value={dashboard.activeConnections.toLocaleString('pt-BR')} note="Acompanhando as disputas" />
+        <Metric label="Visitantes" value={dashboard.totalVisitors.toLocaleString('pt-BR')} note={`${dashboard.visitorsToday.toLocaleString('pt-BR')} hoje`} />
       </div>
     </section>
 
-    <section className="reference-section" data-testid="overview-current-dispute">
-      <div className="section-head"><div><p className="eyebrow">Agora</p><h2 className="section-title">Disputa em andamento</h2></div></div>
-      {dashboard.currentDispute ? <Link href={`/disputes/${encodeURIComponent(dashboard.currentDispute.id)}`} className="current-dispute-card" data-testid="link-current-dispute">
-        <div className="current-dispute-copy">
-          <span className="current-label">Disputa #{dashboard.currentDispute.number}</span>
-          <div className="current-meta"><Status value={dashboard.currentDispute.status} /><span>{dashboard.currentDispute.bidsCount} lances</span></div>
-          <strong className="current-leader">{dashboard.currentDispute.leaderName || 'Sem lances registrados'}</strong>
-        </div>
-        <div className="current-dispute-prize"><span>Prêmio</span><strong>{money(dashboard.currentDispute.prizeCents)}</strong><small>{dashboard.currentDispute.currentValueCents == null ? 'Lance atual: —' : `Lance atual: ${money(dashboard.currentDispute.currentValueCents)}`}</small></div>
-        <ArrowRight size={17} className="current-dispute-arrow" />
-      </Link> : <section className="panel current-dispute-empty"><Empty title="Nenhuma disputa em andamento" text="A API não informou uma disputa ativa neste momento." /></section>}
+    <section className="prototype-section" data-testid="overview-current-dispute">
+      <p className="ey">Agora</p>
+      <div className="prototype-kpis">
+        <Metric label="Disputas em andamento" value={dashboard.liveDisputes.length.toLocaleString('pt-BR')} note={`Prêmios em disputa: ${money(livePrizeTotal)}`} />
+        <Metric label="Lances em andamento" value={activeBids.toLocaleString('pt-BR')} note="Lances registrados nas disputas ativas" />
+      </div>
+      <div className="prototype-record-list">
+        {dashboard.liveDisputes.map(dispute => <Link key={dispute.id} href={`/disputes/${encodeURIComponent(dispute.id)}`} className="prototype-card prototype-live-card" data-testid={`link-live-dispute-${dispute.id}`}>
+          <div><strong>{money(dispute.prizeCents)}</strong><small>Disputa #{dispute.number} · {dispute.leaderName ? `${money(dispute.currentValueCents)} · ${dispute.leaderName}` : 'Sem lances'} · {dispute.bidsCount} lances</small></div>
+          <Status value={dispute.status} />
+        </Link>)}
+        {!dashboard.liveDisputes.length && <Empty title="Nenhuma disputa em andamento" text="A API não informou uma disputa ativa neste momento." />}
+      </div>
     </section>
 
-    <div className="grid overview-summary-grid">
-      <section className="panel overview-cash-panel">
-        <div className="section-head"><div><p className="eyebrow">Caixa</p><h2 className="section-title">Posição atual</h2></div><Link href="/treasury" className="small-link" data-testid="link-treasury-details">Ver caixa <ArrowRight size={13} /></Link></div>
-        <LedgerRow title="Caixa liquidado" detail="Valores efetivamente liquidados" value={treasury.settledCashCents} tone="positive" />
-        <LedgerRow title="Saídas de caixa" detail="Pagamentos e saídas registrados" value={treasury.cashOutflowsCents} />
-        <LedgerRow title="Carteiras bloqueadas" detail="Saldo retido em carteiras" value={treasury.lockedWalletCents} />
-        <LedgerRow title="Prêmios não pagos" detail="Obrigações de prêmio em aberto" value={treasury.unpaidPrizeCents} />
-        <div className="ledger-foot"><span>Caixa livre</span><strong>{money(treasury.freeCashCents)}</strong></div>
-        <p className="data-footnote">Dados do banco · sem valores simulados</p>
-      </section>
-      <section className="panel overview-payout-panel">
-        <p className="eyebrow">Resgates</p>
-        <h2 className="section-title">Solicitações pendentes</h2>
-        <strong className="pending-payout-count" data-testid="metric-pending-payouts">{dashboard.pendingPayoutCount.toLocaleString('pt-BR')}</strong>
-        <p>Solicitações aguardando análise ou conclusão.</p>
-        <Link href="/payouts" className="small-link" data-testid="link-pending-payouts">Abrir resgates <ArrowRight size={13} /></Link>
-      </section>
-    </div>
+    <section className="prototype-section" data-testid="overview-cash">
+      <div className="prototype-section-head"><p className="ey">Caixa</p><Link href="/treasury" className="prototype-text-link" data-testid="link-treasury-details">Ver movimentações <ArrowRight size={13} /></Link></div>
+      <div className="prototype-card prototype-cash-card">
+        <div className="ey">Entradas brutas confirmadas</div>
+        <strong className="prototype-cash-total" data-testid="metric-gross-cash">{money(treasury.settledCashCents)}</strong>
+        <small className="prototype-note">Recargas, aportes e outras entradas recebidas; sem simulações.</small>
+        <div className="prototype-cash-grid">
+          <LedgerRow title="Caixa livre após obrigações" detail="Disponível depois de saídas, carteiras e valores reservados" value={treasury.freeCashCents} tone="positive" />
+          <LedgerRow title="Créditos ainda nas carteiras" detail="Saldo não usado pelos usuários" value={treasury.lockedWalletCents} />
+          <LedgerRow title="Total consumido em lances" detail="Soma das parcelas da plataforma e dos prêmios" value={bidVolume} />
+          <LedgerRow title="Prêmios ainda não pagos" detail="Obrigações de prêmio em aberto" value={treasury.unpaidPrizeCents} />
+        </div>
+        <div className="prototype-allocation">
+          <span><small>Receita da plataforma</small><strong>{money(dashboard.platformRevenueCents)}</strong></span>
+          <span><small>Cobertura para prêmios</small><strong>{money(dashboard.prizeCoverageCents)}</strong></span>
+        </div>
+        <p className="prototype-note">Os lances são repartidos por disputa; a configuração padrão destina 90% à plataforma e 10% aos prêmios.</p>
+      </div>
+    </section>
 
-    <section className="panel section-panel">
-      <div className="section-head"><div><p className="eyebrow">Histórico</p><h2 className="section-title">Disputas recentes</h2></div><Link href="/disputes" className="small-link" data-testid="link-disputes-search">Ver todas <ArrowRight size={13} /></Link></div>
-      {dashboard.recentDisputes.length ? <DisputeRows items={dashboard.recentDisputes} /> : <Empty title="Sem disputas recentes" text="A API não retornou disputas para este painel." />}
+    <section className="prototype-section" data-testid="overview-payouts">
+      <div className="prototype-section-head"><p className="ey">Resgates</p><Link href="/payouts" className="prototype-text-link" data-testid="link-pending-payouts">Abrir resgates <ArrowRight size={13} /></Link></div>
+      <div className="prototype-kpis">
+        <Metric label="A pagar" value={money(dashboard.pendingPayoutAmountCents)} note={`${dashboard.pendingPayoutCount.toLocaleString('pt-BR')} na fila`} />
+        <Metric label="Pagos" value={money(dashboard.paidPayoutAmountCents)} note={`${dashboard.paidPayoutCount.toLocaleString('pt-BR')} realizados`} />
+      </div>
+    </section>
+
+    <section className="prototype-section" data-testid="overview-history">
+      <div className="prototype-section-head"><p className="ey">Histórico</p><Link href="/disputes" className="prototype-text-link" data-testid="link-disputes-search">Ver disputas <ArrowRight size={13} /></Link></div>
+      <div className="prototype-kpis">
+        <Metric label="Disputas realizadas" value={dashboard.historyDisputeCount.toLocaleString('pt-BR')} note={`${dashboard.historyBidCount.toLocaleString('pt-BR')} lances registrados`} />
+        <Metric label="Receita da plataforma" value={money(dashboard.platformRevenueCents)} note="Parcela registrada nos lances" />
+        <Metric label="Cobertura para prêmios" value={money(dashboard.prizeCoverageCents)} note="Parcela destinada aos prêmios" />
+      </div>
     </section>
   </div>;
 }
@@ -269,9 +278,16 @@ function DisputesPage() {
   const limit = 20;
   const query = useQuery({ queryKey: ['/api/admin/disputes', { q, limit, offset }], queryFn: () => listAdminDisputes({ q: q || undefined, limit, offset }) });
   const total = query.data?.total || 0;
-  return <><Heading eyebrow="Pesquisa e histórico" title="Disputas" description="Consulte disputas e seus registros operacionais." />
-    <form className="panel toolbar" onSubmit={event => { event.preventDefault(); setOffset(0); setQ(input.trim()); }}><div className="search-wrap"><Search size={16} /><Input className="search" aria-label="Pesquisar disputas" data-testid="input-dispute-search" placeholder="Buscar por número, participante ou ID" maxLength={100} value={input} onChange={event => setInput(event.target.value)} /></div><Button className="btn primary" type="submit" data-testid="button-search-disputes"><Search size={14} /> Pesquisar</Button>{q && <button type="button" className="btn" onClick={() => { setInput(''); setQ(''); setOffset(0); }} data-testid="button-clear-dispute-search"><X size={14} /> Limpar</button>}</form>
-    {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><section className="panel"><div className="section-head"><h2 className="section-title">Resultados <span className="total-count">{total.toLocaleString('pt-BR')}</span></h2><span className="section-kicker">{offset + 1}–{Math.min(offset + limit, total)} de {total}</span></div><DisputeRows items={query.data.items} /></section><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <section className="panel"><Empty title="Nenhuma disputa encontrada" text={q ? 'Tente outro termo de pesquisa.' : 'Ainda não há disputas disponíveis no histórico.'} /></section>}
+  return <>
+    <section className="prototype-section">
+      <div className="prototype-section-head"><p className="ey">Histórico de disputas</p><span className="prototype-note">{total.toLocaleString('pt-BR')} registros</span></div>
+      <form className="prototype-search" onSubmit={event => { event.preventDefault(); setOffset(0); setQ(input.trim()); }}>
+        <Search size={16} aria-hidden="true" />
+        <Input aria-label="Pesquisar disputas" data-testid="input-dispute-search" placeholder="Buscar por nº, prêmio, usuário ou bot" maxLength={100} value={input} onChange={event => setInput(event.target.value)} />
+        {q && <button type="button" className="prototype-clear" onClick={() => { setInput(''); setQ(''); setOffset(0); }} data-testid="button-clear-dispute-search"><X size={15} /> Limpar</button>}
+      </form>
+    </section>
+    {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><DisputeRows items={query.data.items} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <Empty title="Nenhuma disputa encontrada" text={q ? 'Tente outro termo de pesquisa.' : 'Ainda não há disputas disponíveis no histórico.'} />}
   </>;
 }
 function Pagination({ offset, limit, total, setOffset }: { offset: number; limit: number; total: number; setOffset: (n: number) => void }) {
@@ -317,44 +333,92 @@ function PayoutsPage() {
   const limit = 20;
   const query = useQuery({ queryKey: ['/api/admin/payouts', { status, limit, offset }], queryFn: () => listAdminPayouts({ status: (status || undefined) as AdminPayoutStatus | undefined, limit, offset }) });
   const total = query.data?.total || 0;
-  return <><Heading eyebrow="Solicitações e status" title="Resgates" description="Acompanhe a fila de solicitações e seus estados atuais." />
-    <section className="panel payout-filters" aria-label="Filtrar resgates por status">
-      <span className="filter-label"><SlidersHorizontal size={15} /> Status</span>
-      <div className="chips" role="group" aria-label="Status dos resgates">
+  return <>
+    <section className="prototype-section" aria-label="Filtrar resgates por status">
+      <div className="prototype-section-head"><p className="ey">Resgates</p><span className="prototype-note">{total.toLocaleString('pt-BR')} solicitações</span></div>
+      <div className="prototype-chips" role="group" aria-label="Status dos resgates">
         {[['', 'Todos'], ['requested', 'Solicitado'], ['under_review', 'Em análise'], ['paid', 'Pago'], ['rejected', 'Recusado']].map(([value, label]) =>
-          <button key={value || 'all'} type="button" className="filter-chip" aria-pressed={status === value} onClick={() => { setStatus(value); setOffset(0); }} data-testid={`filter-payout-${value || 'all'}`}>{label}</button>,
+          <button key={value || 'all'} type="button" aria-pressed={status === value} onClick={() => { setStatus(value); setOffset(0); }} data-testid={`filter-payout-${value || 'all'}`}>{label}</button>,
         )}
       </div>
-      <span className="section-kicker">{total.toLocaleString('pt-BR')} solicitações</span>
     </section>
-    {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><PayoutRows items={query.data.items} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <section className="panel"><Empty title="Fila vazia" text="A API não retornou solicitações com este filtro." /></section>}
+    {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><PayoutRows items={query.data.items} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <Empty title="Fila vazia" text="A API não retornou solicitações com este filtro." />}
   </>;
 }
 function PayoutRows({ items }: { items: AdminPayout[] }) {
   const keyNames: Record<string, string> = { cpf: 'CPF', email: 'E-mail', phone: 'Telefone', random: 'Aleatória' };
-  return <div className="payout-record-list">{items.map(payout => <article className="panel payout-record" key={payout.id} data-testid={`card-payout-${payout.id}`}>
-    <div className="payout-record-top">
-      <div><p className="eyebrow">Solicitante</p><h2>{payout.userName}</h2><small>Solicitado em {date(payout.requestedAt)}</small></div>
+  return <div className="prototype-record-list">{items.map(payout => <article className="prototype-card prototype-payout" key={payout.id} data-testid={`card-payout-${payout.id}`}>
+    <div className="prototype-record-top">
+      <div><strong>{money(payout.amountCents)}</strong><small>{payout.userName} · {date(payout.requestedAt)}</small></div>
       <Status value={payout.status} />
     </div>
-    <div className="payout-record-values">
-      <span><small>Valor do resgate</small><strong>{money(payout.amountCents)}</strong></span>
-      <span><small>Prêmio</small><strong>{money(payout.prizeCents)}</strong></span>
-      <span><small>Bônus</small><strong>{money(payout.bonusCents)}</strong></span>
-      <span><small>Tipo de chave Pix</small><strong>{keyNames[payout.pixKeyType] || payout.pixKeyType}</strong></span>
-    </div>
-    <div className="payout-record-footer"><span>Atualizado {date(payout.updatedAt)}</span><span>Dados reais · consulta</span></div>
+    <div className="prototype-record-detail"><span>Resgate · {keyNames[payout.pixKeyType] || payout.pixKeyType}</span><span>Prêmio {money(payout.prizeCents)} · Bônus {money(payout.bonusCents)}</span></div>
+    <small className="prototype-note">Atualizado {date(payout.updatedAt)}</small>
   </article>)}</div>;
 }
 function TreasuryPage() {
-  const query = useQuery({ queryKey: TREASURY_KEY, queryFn: getAdminTreasury });
-  if (query.isPending) return <><Heading eyebrow="Posição financeira" title="Caixa" description="Valores reais de caixa; simulações não são incluídas." /><LoadingPanel /></>;
-  if (query.isError || !query.data) return <><Heading eyebrow="Posição financeira" title="Caixa" /><QueryError error={query.error} retry={() => void query.refetch()} /></>;
-  const data = query.data;
-  return <><Heading eyebrow="Posição financeira" title="Caixa" description="Posição informada pela API administrativa."><button className="btn" onClick={() => void query.refetch()} data-testid="button-refresh-treasury"><RefreshCw size={14} /> Atualizar posição</button></Heading>
-    <div className="treasury-banner"><div className="treasury-icon"><Wallet size={20} /></div><div><span>Caixa livre</span><strong>{money(data.freeCashCents)}</strong><small>Liquidez disponível segundo a posição atual</small></div><div className="real-pill"><Check size={13} /> Dados reais</div></div>
-    <div className="treasury-columns"><section className="treasury-ledger"><div className="ledger-head"><span>POSIÇÃO DE CAIXA</span><span>VALOR</span></div><LedgerRow title="Caixa liquidado" detail="Valores efetivamente liquidados" value={data.settledCashCents} tone="positive" /><LedgerRow title="Saídas de caixa" detail="Pagamentos e saídas registrados" value={data.cashOutflowsCents} /><LedgerRow title="Carteiras bloqueadas" detail="Saldo retido em carteiras" value={data.lockedWalletCents} /><LedgerRow title="Prêmios não pagos" detail="Obrigações de prêmio em aberto" value={data.unpaidPrizeCents} /><LedgerRow title="Bônus reservados" detail="Bônus comprometidos" value={data.reservedBonusCents} /><div className="ledger-foot"><span>Caixa livre</span><strong>{money(data.freeCashCents)}</strong></div></section><aside className="panel treasury-aside"><div className="aside-emblem"><ShieldCheck size={19} /></div><h2>Sem estimativas</h2><p>A tesouraria exibe apenas os valores retornados pela API. Nenhum saldo foi projetado ou simulado.</p><div className="truth-stamp">INCLUDES SIMULATED <strong>{data.includesSimulated ? 'SIM' : 'NÃO'}</strong></div></aside></div>
-  </>;
+  const [filter, setFilter] = useState<'all' | AdminTreasuryMovement['category']>('all');
+  const dashboardQuery = useQuery({ queryKey: DASHBOARD_KEY, queryFn: getAdminDashboard });
+  const movementQuery = useQuery({
+    queryKey: ['/api/admin/treasury/movements', { limit: 50, offset: 0 }],
+    queryFn: () => listAdminTreasuryMovements({ limit: 50, offset: 0 }),
+  });
+  if (dashboardQuery.isPending || movementQuery.isPending) return <LoadingPanel />;
+  if (dashboardQuery.isError || !dashboardQuery.data) return <QueryError error={dashboardQuery.error} retry={() => void dashboardQuery.refetch()} />;
+  const dashboard = dashboardQuery.data;
+  const data = dashboard.treasury;
+  const bidVolume = dashboard.platformRevenueCents + dashboard.prizeCoverageCents;
+  const categoryLabels: Record<AdminTreasuryMovement['category'], string> = {
+    topup: 'Recarga de créditos',
+    contribution: 'Aporte de capital',
+    payout: 'Prêmio ou resgate pago',
+    refund: 'Reembolso',
+    fee: 'Tarifa de processamento',
+    ad_revenue: 'Receita publicitária',
+  };
+  const filters: Array<{ value: 'all' | AdminTreasuryMovement['category']; label: string }> = [
+    { value: 'all', label: 'Todas' },
+    { value: 'topup', label: 'Recargas' },
+    { value: 'contribution', label: 'Aportes' },
+    { value: 'payout', label: 'Prêmios' },
+    { value: 'refund', label: 'Reembolsos' },
+    { value: 'fee', label: 'Tarifas' },
+    { value: 'ad_revenue', label: 'Publicidade' },
+  ];
+  const movements = (movementQuery.data?.items ?? []).filter(item => filter === 'all' || item.category === filter);
+  return <div className="prototype-dashboard appear">
+    <section className="prototype-section" data-testid="treasury-summary">
+      <div className="prototype-section-head"><p className="ey">Caixa</p><button className="prototype-refresh" onClick={() => { void dashboardQuery.refetch(); void movementQuery.refetch(); }} data-testid="button-refresh-treasury"><RefreshCw size={14} /> Atualizar</button></div>
+      <div className="prototype-card prototype-cash-card">
+        <div className="ey">Entradas brutas confirmadas</div>
+        <strong className="prototype-cash-total">{money(data.settledCashCents)}</strong>
+        <small className="prototype-note">Recargas, aportes e outras entradas recebidas; sem simulações.</small>
+        <div className="prototype-cash-grid">
+          <LedgerRow title="Saldo não utilizado nas carteiras" detail="Créditos que ainda pertencem aos usuários" value={data.lockedWalletCents} />
+          <LedgerRow title="Total consumido em lances" detail="Total dos lances registrados, sem simulações" value={bidVolume} />
+          <LedgerRow title="Receita da plataforma" detail="Parcela da plataforma conforme a divisão registrada" value={dashboard.platformRevenueCents} />
+          <LedgerRow title="Cobertura destinada a prêmios" detail="Parcela dos lances reservada para financiar prêmios" value={dashboard.prizeCoverageCents} />
+          <LedgerRow title="Prêmios ainda não pagos" detail="Obrigações abertas, pelo valor integral dos prêmios" value={data.unpaidPrizeCents} />
+          <LedgerRow title="Saídas de caixa pagas" detail="Resgates, reembolsos e tarifas liquidados" value={data.cashOutflowsCents} />
+          <LedgerRow title="Bônus reservados" detail="Valores já comprometidos com bônus" value={data.reservedBonusCents} />
+        </div>
+        <div className="prototype-ledger-total"><span>Caixa livre após obrigações</span><strong>{money(data.freeCashCents)}</strong></div>
+        <p className="prototype-note">Caixa livre = entradas confirmadas − saídas pagas − saldo em carteiras − prêmios em aberto − bônus reservados.</p>
+      </div>
+    </section>
+    <section className="prototype-section" data-testid="treasury-movements">
+      <div className="prototype-section-head"><p className="ey">Movimentações</p><span className="prototype-note">{movementQuery.data?.total ?? 0} registros · últimos 50</span></div>
+      <div className="prototype-chips" role="group" aria-label="Filtrar movimentações">
+        {filters.map(item => <button key={item.value} type="button" aria-pressed={filter === item.value} onClick={() => setFilter(item.value)} data-testid={`filter-treasury-${item.value}`}>{item.label}</button>)}
+      </div>
+      {movementQuery.isError ? <QueryError error={movementQuery.error} retry={() => void movementQuery.refetch()} />
+        : movements.length ? <div className="prototype-record-list">{movements.map(item => <article className="prototype-card prototype-movement" key={item.id} data-testid={`row-treasury-movement-${item.id}`}>
+          <div><strong>{categoryLabels[item.category]}</strong><small>{item.userName || item.note || item.reference || 'Movimentação registrada'} · {date(item.createdAt)}</small></div>
+          <div className="prototype-movement-value"><strong className={item.amountCents < 0 ? 'negative' : 'positive'}>{item.amountCents < 0 ? '−' : '+'}{money(Math.abs(item.amountCents))}</strong><small>Caixa {money(item.runningBalanceCents)}</small></div>
+        </article>)}</div>
+        : <Empty title="Sem movimentações" text="Não há movimentações para este filtro no período exibido." />}
+    </section>
+  </div>;
 }
 function LedgerRow({ title, detail, value, tone }: { title: string; detail: string; value: number; tone?: string }) {
   return <div className="ledger-row"><div><strong>{title}</strong><small>{detail}</small></div><span className={tone || ''}>{money(value)}</span></div>;
@@ -368,7 +432,65 @@ const bidTriggerModes: Array<{ value: AutomationConfigInput["bidTriggerMode"]; l
   { value: "on_outbid", label: "Quando for superado", detail: "Reage ao lance maior de outro participante após o intervalo definido." },
   { value: "at_fixed_time", label: "Em tempo fixo", detail: "Espera o cronômetro chegar ao tempo escolhido; se o bot não liderar, pode lançar novamente após cada reinício." },
 ];
-const defaultConfig: AutomationConfigInput = { enabled: false, mode: "counterbids_only", bidTriggerMode: "on_outbid", botUserId: null, maxBidCents: 0, perDisputeLimitCents: 0, dailyLimitCents: 0, maxBidsPerDispute: 0, minimumSecondsRemaining: 1, minimumDelaySeconds: 1 };
+const defaultConfig: AutomationConfigInput = {
+  enabled: false,
+  mode: "counterbids_only",
+  bidTriggerMode: "on_outbid",
+  botUserId: null,
+  maxBidCents: 0,
+  perDisputeLimitCents: 0,
+  dailyLimitCents: 0,
+  maxBidsPerDispute: 0,
+  minimumSecondsRemaining: 1,
+  minimumDelaySeconds: 1,
+  operatorRules: {
+    status: "desativada",
+    opening: { on: false, trigger: "immediate", seconds: 1, multiplier: 1 },
+    counter: { on: true, trigger: "immediate", seconds: 1, multiplier: 1 },
+    limits: {
+      bidsPerDispute: 0,
+      bidsPerDay: 0,
+      disputesPerDay: 0,
+      maxBidCents: 0,
+      perDisputeCents: 0,
+      dailySpendCents: 0,
+    },
+  },
+};
+function toAutomationInput(
+  input: AutomationConfigInput,
+  status: AutomationConfigInput["operatorRules"]["status"],
+): AutomationConfigInput {
+  const trigger =
+    input.bidTriggerMode === "at_fixed_time" ? "final" : "immediate";
+  return {
+    ...input,
+    enabled: status === "ativa",
+    operatorRules: {
+      ...input.operatorRules,
+      status,
+      opening: {
+        ...input.operatorRules.opening,
+        on: input.mode !== "counterbids_only",
+        trigger,
+        seconds: input.minimumSecondsRemaining,
+      },
+      counter: {
+        ...input.operatorRules.counter,
+        on: input.mode !== "bids_only",
+        trigger,
+        seconds: input.minimumSecondsRemaining,
+      },
+      limits: {
+        ...input.operatorRules.limits,
+        bidsPerDispute: input.maxBidsPerDispute,
+        maxBidCents: input.maxBidCents,
+        perDisputeCents: input.perDisputeLimitCents,
+        dailySpendCents: input.dailyLimitCents,
+      },
+    },
+  };
+}
 const eventNames: Record<string, string> = { bid: "Lance automático", funding: "Aporte confirmado", config_updated: "Configuração alterada", enabled: "Automação ativada", disabled: "Automação desativada", blocked: "Execução bloqueada" };
 function EventRows({ items, testPrefix = "event" }: { items: import("./generated/adminApi.schemas").AutomationEvent[]; testPrefix?: string }) {
   return <div className="event-list">{items.map(event => {
@@ -459,14 +581,14 @@ function AutomationSettings() {
   useEffect(() => {
     const data = configQuery.data;
     if (data && !dirty) {
-      setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds });
+      setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds, operatorRules: data.operatorRules });
     }
   }, [configQuery.data, dirty]);
   const update = useMutation({
     mutationFn: (input: AutomationConfigInput) => updateAutomationConfig(input),
     onSuccess: data => {
       queryClient.setQueryData(CONFIG_KEY, data);
-      setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds });
+      setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds, operatorRules: data.operatorRules });
       setDirty(false); setFormError(""); setSaveFeedback("Regras salvas. O estado atual da automação foi mantido.");
       void queryClient.invalidateQueries({ queryKey: EVENTS_KEY }); void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
     },
@@ -477,7 +599,7 @@ function AutomationSettings() {
     onSuccess: (data, input) => {
       queryClient.setQueryData(CONFIG_KEY, data);
       if (input.enabled) {
-        setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds });
+        setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds, operatorRules: data.operatorRules });
         setDirty(false);
         setStatusFeedback("Automação ativada com as regras exibidas.");
       } else {
@@ -536,6 +658,7 @@ function AutomationSettings() {
     enabled: false, mode: config.mode, bidTriggerMode: config.bidTriggerMode, botUserId: config.botUserId,
     maxBidCents: config.maxBidCents, perDisputeLimitCents: config.perDisputeLimitCents, dailyLimitCents: config.dailyLimitCents,
     maxBidsPerDispute: config.maxBidsPerDispute, minimumSecondsRemaining: config.minimumSecondsRemaining, minimumDelaySeconds: config.minimumDelaySeconds,
+    operatorRules: config.operatorRules,
   };
   return <div className="automation-page automation-settings-page appear">
     <Link href="/automation" className="back-link" data-testid="link-back-automation"><ArrowLeft size={14} /> Visão geral da automação</Link>
@@ -553,8 +676,8 @@ function AutomationSettings() {
         <div className="toggle-row"><div><strong>{config.enabled ? "Ativa no momento" : "Desativada no momento"}</strong><small>{statusUpdate.isPending ? "Atualizando estado…" : config.enabled ? "Lances podem ser executados agora" : "Nenhum lance será executado"}</small></div>
           <ToggleSwitch checked={config.enabled} disabled={statusUpdate.isPending || (!config.enabled && !canEnable)} onCheckedChange={(checked: boolean) => {
             setStatusError(""); setStatusFeedback(""); setSaveFeedback("");
-            if (checked) statusUpdate.mutate({ ...form, enabled: true });
-            else statusUpdate.mutate(savedInput);
+            if (checked) statusUpdate.mutate(toAutomationInput(form, "ativa"));
+            else statusUpdate.mutate(toAutomationInput(savedInput, "desativada"));
           }} data-testid="switch-automation-enabled" />
         </div>
       </div>
@@ -606,7 +729,7 @@ function AutomationSettings() {
       <div className="config-footer settings-save-footer">
         <span>{dirty ? "Alterações locais ainda não aplicadas." : `Regras salvas · ${date(config.updatedAt)}`}</span>
         <div>{saveFeedback && <span className="save-feedback" data-testid="automation-save-feedback"><Check size={13} />{saveFeedback}</span>}
-          <Button className="btn primary" disabled={savingBusy || saveBlocked || !dirty} onClick={() => { setFormError(""); setSaveFeedback(""); update.mutate({ ...form, enabled: config.enabled }); }} data-testid="button-save-automation">{update.isPending ? "Salvando…" : "Salvar regras"} <Check size={14} /></Button>
+          <Button className="btn primary" disabled={savingBusy || saveBlocked || !dirty} onClick={() => { setFormError(""); setSaveFeedback(""); update.mutate(toAutomationInput(form, config.operatorRules.status)); }} data-testid="button-save-automation">{update.isPending ? "Salvando…" : "Salvar regras"} <Check size={14} /></Button>
         </div>
       </div>
     </section>
