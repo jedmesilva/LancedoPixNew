@@ -320,12 +320,20 @@ export const RecordAdminTreasuryContributionResponse = zod.object({
 /**
  * @summary Listar contas disponíveis para a automação
  */
+export const listAutomationAccountsResponseItemsItemWonDisputeCountMin = 0;
+
+export const listAutomationAccountsResponseItemsItemWonPrizeTotalCentsMin = 0;
+
+
+
 export const ListAutomationAccountsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string().uuid(),
   "publicName": zod.string(),
   "testAccount": zod.boolean(),
-  "walletBalanceCents": zod.number().int()
+  "walletBalanceCents": zod.number().int(),
+  "wonDisputeCount": zod.number().int().min(listAutomationAccountsResponseItemsItemWonDisputeCountMin),
+  "wonPrizeTotalCents": zod.number().int().min(listAutomationAccountsResponseItemsItemWonPrizeTotalCentsMin)
 }))
 })
 

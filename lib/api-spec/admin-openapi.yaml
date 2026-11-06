@@ -766,7 +766,9 @@ components:
         publicName: { type: string }
         testAccount: { type: boolean }
         walletBalanceCents: { type: integer }
-      required: [id, publicName, testAccount, walletBalanceCents]
+        wonDisputeCount: { type: integer, minimum: 0 }
+        wonPrizeTotalCents: { type: integer, minimum: 0 }
+      required: [id, publicName, testAccount, walletBalanceCents, wonDisputeCount, wonPrizeTotalCents]
     AutomationAccountList:
       type: object
       properties:

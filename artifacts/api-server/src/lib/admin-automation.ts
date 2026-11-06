@@ -166,10 +166,41 @@ export async function listAutomationAccounts() {
     .innerJoin(walletsTable, eq(walletsTable.userId, usersTable.id))
     .orderBy(asc(usersTable.publicName));
 
+  const wins = await db
+    .select({
+      winnerId: disputesTable.winnerId,
+      count: count(),
+      prizeTotalCents: sql<string>`COALESCE(SUM(${disputesTable.prizeCents}), 0)::text`,
+    })
+    .from(disputesTable)
+    .where(
+      and(
+        eq(disputesTable.simulated, false),
+        eq(disputesTable.status, "ended"),
+      ),
+    )
+    .groupBy(disputesTable.winnerId);
+  const winsByUser = new Map<
+    string,
+    { count: number; prizeTotalCents: string }
+  >();
+  for (const win of wins) {
+    if (win.winnerId) {
+      winsByUser.set(win.winnerId, {
+        count: win.count,
+        prizeTotalCents: win.prizeTotalCents,
+      });
+    }
+  }
+
   return {
     items: accounts.map((account) => ({
       ...account,
       walletBalanceCents: safeNumber(account.walletBalanceCents),
+      wonDisputeCount: winsByUser.get(account.id)?.count ?? 0,
+      wonPrizeTotalCents: safeNumber(
+        BigInt(winsByUser.get(account.id)?.prizeTotalCents ?? "0"),
+      ),
     })),
   };
 }

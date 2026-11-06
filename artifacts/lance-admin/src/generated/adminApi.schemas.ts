@@ -441,6 +441,10 @@ export interface AutomationAccount {
   publicName: string;
   testAccount: boolean;
   walletBalanceCents: number;
+  /** @minimum 0 */
+  wonDisputeCount: number;
+  /** @minimum 0 */
+  wonPrizeTotalCents: number;
 }
 
 export interface AutomationAccountList {
