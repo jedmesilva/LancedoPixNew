@@ -16,3 +16,5 @@ Do not rely on a config-level `tablesFilter` as a safety boundary for schema pus
 **Why:** The filtered plan was broader and less accurate than the full schema comparison, so applying it could change unrelated tables or sequences.
 
 **How to apply:** Use an unfiltered strict/verbose preview, review every statement, and never use `--force` to bypass unexpected changes.
+
+**Non-interactive preview:** `drizzle-kit push --strict` prints its plan, then fails because the shell has no TTY for its confirmation prompt. Treat that output as a read-only preview; only run the normal verbose push after confirming the database target, reviewing the full plan, and getting any needed authorization.
