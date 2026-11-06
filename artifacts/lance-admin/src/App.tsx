@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Route, Switch as RouteSwitch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import {
@@ -18,13 +18,13 @@ import { AdminApiError } from './custom-fetch';
 import {
   createAdminSession, endAdminSession, getAdminDashboard, getAdminDispute, getAdminSession,
   getAutomationConfig, listAdminDisputes, listAdminPayouts,
-  listAdminTreasuryMovements,
-  listAutomationAccounts, listAutomationEvents, updateAutomationConfig, recordAutomationFunding,
+  listAdminTreasuryMovements, recordAdminTreasuryContribution, updateAdminPayout,
+  listAutomationAccounts, listAutomationEvents, updateAutomationConfig,
 } from './generated/adminApi';
 import type {
   AdminDashboard, AdminDisputeSummary, AdminPayout, AdminPayoutStatus,
-  AdminTreasuryMovement, AutomationAccount,
-  AutomationConfigInput, AutomationFundingInput,
+  AdminPayoutUpdateInput, AdminTreasuryContributionInput, AdminTreasuryMovement,
+  AutomationConfigInput, AutomationAccount,
 } from './generated/adminApi.schemas';
 import NotFound from '@/pages/not-found';
 
@@ -325,6 +325,7 @@ function DisputeDetailPage() {
 function PayoutsPage() {
   const [status, setStatus] = useState('');
   const [offset, setOffset] = useState(0);
+  const [notice, setNotice] = useState('');
   const limit = 20;
   const query = useQuery({ queryKey: ['/api/admin/payouts', { status, limit, offset }], queryFn: () => listAdminPayouts({ status: (status || undefined) as AdminPayoutStatus | undefined, limit, offset }) });
   const total = query.data?.total || 0;
@@ -337,22 +338,87 @@ function PayoutsPage() {
         )}
       </div>
     </section>
-    {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><PayoutRows items={query.data.items} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <Empty title="Fila vazia" text="A API não retornou solicitações com este filtro." />}
+    {notice && <div className="automation-feedback" role="status" data-testid="payout-action-success"><Check size={15} />{notice}</div>}
+    {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><PayoutRows items={query.data.items} onUpdated={setNotice} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <Empty title="Fila vazia" text="A API não retornou solicitações com este filtro." />}
   </>;
 }
-function PayoutRows({ items }: { items: AdminPayout[] }) {
+function PayoutRows({ items, onUpdated }: { items: AdminPayout[]; onUpdated: (message: string) => void }) {
   const keyNames: Record<string, string> = { cpf: 'CPF', email: 'E-mail', phone: 'Telefone', random: 'Aleatória' };
-  return <div className="prototype-record-list">{items.map(payout => <article className="prototype-card prototype-payout" key={payout.id} data-testid={`card-payout-${payout.id}`}>
+  return <div className="prototype-record-list">{items.map(payout =>
+    <PayoutRow key={payout.id} payout={payout} keyName={keyNames[payout.pixKeyType] || payout.pixKeyType} onUpdated={onUpdated} />,
+  )}</div>;
+}
+function PayoutRow({ payout, keyName, onUpdated }: { payout: AdminPayout; keyName: string; onUpdated: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const [action, setAction] = useState<'paid' | 'rejected' | null>(null);
+  const [pixE2eId, setPixE2eId] = useState('');
+  const [reason, setReason] = useState('');
+  const update = useMutation({
+    mutationFn: (input: AdminPayoutUpdateInput) => updateAdminPayout(payout.id, input),
+    onSuccess: result => {
+      const labels: Record<AdminPayout['status'], string> = {
+        requested: 'reenfileirado', under_review: 'encaminhado para análise', paid: 'marcado como pago', rejected: 'recusado',
+      };
+      onUpdated(`Resgate de ${payout.userName} ${labels[result.status]}.`);
+      setAction(null);
+      setPixE2eId('');
+      setReason('');
+      void queryClient.invalidateQueries({ queryKey: ['/api/admin/payouts'] });
+      void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
+      void queryClient.invalidateQueries({ queryKey: ['/api/admin/treasury/movements'] });
+    },
+  });
+  const submitAction = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (action === 'paid') {
+      const reference = pixE2eId.trim();
+      if (reference.length < 3) return;
+      update.mutate({ status: 'paid', pixE2eId: reference });
+    } else if (action === 'rejected') {
+      const rejection = reason.trim();
+      if (rejection.length < 3) return;
+      update.mutate({ status: 'rejected', reason: rejection });
+    }
+  };
+  const updateDirectly = (status: AdminPayoutUpdateInput['status']) => update.mutate({ status });
+  return <article className="prototype-card prototype-payout" data-testid={`card-payout-${payout.id}`}>
     <div className="prototype-record-top">
       <div><strong>{money(payout.amountCents)}</strong><small>{payout.userName} · {date(payout.requestedAt)}</small></div>
       <Status value={payout.status} />
     </div>
-    <div className="prototype-record-detail"><span>Resgate · {keyNames[payout.pixKeyType] || payout.pixKeyType}</span><span>Prêmio {money(payout.prizeCents)} · Bônus {money(payout.bonusCents)}</span></div>
+    <div className="prototype-record-detail"><span>Resgate · {keyName}</span><span>Prêmio {money(payout.prizeCents)} · Bônus {money(payout.bonusCents)}</span></div>
     <small className="prototype-note">Atualizado {date(payout.updatedAt)}</small>
-  </article>)}</div>;
+    {update.isError && <div className="inline-error" role="alert" data-testid={`error-payout-${payout.id}`}>{errorMessage(update.error)}</div>}
+    {payout.status === 'requested' && <div className="payout-actions">
+      <Button className="btn primary" disabled={update.isPending} onClick={() => updateDirectly('under_review')} data-testid={`button-payout-review-${payout.id}`}>{update.isPending ? 'Atualizando…' : 'Iniciar análise'} <ArrowRight size={14} /></Button>
+    </div>}
+    {payout.status === 'under_review' && !action && <div className="payout-actions">
+      <Button className="btn primary" disabled={update.isPending} onClick={() => setAction('paid')} data-testid={`button-payout-pay-${payout.id}`}>Registrar pagamento</Button>
+      <Button className="btn payout-reject-button" disabled={update.isPending} onClick={() => setAction('rejected')} data-testid={`button-payout-reject-${payout.id}`}>Recusar resgate</Button>
+    </div>}
+    {payout.status === 'rejected' && <div className="payout-actions">
+      <Button className="btn" disabled={update.isPending} onClick={() => updateDirectly('requested')} data-testid={`button-payout-requeue-${payout.id}`}>{update.isPending ? 'Atualizando…' : 'Reenfileirar'} <RefreshCw size={13} /></Button>
+    </div>}
+    {action && <form className="payout-action-form" onSubmit={submitAction} data-testid={`form-payout-${action}-${payout.id}`}>
+      {action === 'paid' ? <>
+        <div className="payout-action-warning"><CircleAlert size={15} /><span>Confirme somente depois de concluir a transferência Pix. O identificador E2E será registrado no histórico.</span></div>
+        <label className="input-label" htmlFor={`payout-e2e-${payout.id}`}>Identificador E2E do Pix</label>
+        <Input id={`payout-e2e-${payout.id}`} data-testid={`input-payout-e2e-${payout.id}`} value={pixE2eId} minLength={3} maxLength={128} required disabled={update.isPending} onChange={event => setPixE2eId(event.target.value)} placeholder="Cole o identificador da transferência" />
+      </> : <>
+        <label className="input-label" htmlFor={`payout-reason-${payout.id}`}>Motivo da recusa</label>
+        <Input id={`payout-reason-${payout.id}`} data-testid={`input-payout-reason-${payout.id}`} value={reason} minLength={3} maxLength={240} required disabled={update.isPending} onChange={event => setReason(event.target.value)} placeholder="Explique o motivo ao usuário" />
+      </>}
+      <div className="payout-actions">
+        <Button className="btn primary" type="submit" disabled={update.isPending || (action === 'paid' ? pixE2eId.trim().length < 3 : reason.trim().length < 3)} data-testid={`button-payout-confirm-${payout.id}`}>{update.isPending ? 'Salvando…' : action === 'paid' ? 'Confirmar pagamento' : 'Confirmar recusa'} <Check size={14} /></Button>
+        <Button className="btn" type="button" disabled={update.isPending} onClick={() => { setAction(null); setPixE2eId(''); setReason(''); }} data-testid={`button-payout-cancel-${payout.id}`}>Cancelar</Button>
+      </div>
+    </form>}
+  </article>;
 }
 function TreasuryPage() {
   const [filter, setFilter] = useState<'all' | AdminTreasuryMovement['category']>('all');
+  const [contributionOpen, setContributionOpen] = useState(false);
+  const [contributionNotice, setContributionNotice] = useState('');
   const dashboardQuery = useQuery({ queryKey: DASHBOARD_KEY, queryFn: getAdminDashboard });
   const movementQuery = useQuery({
     queryKey: ['/api/admin/treasury/movements', { limit: 50, offset: 0 }],
@@ -383,7 +449,12 @@ function TreasuryPage() {
   const movements = (movementQuery.data?.items ?? []).filter(item => filter === 'all' || item.category === filter);
   return <div className="prototype-dashboard appear">
     <section className="prototype-section" data-testid="treasury-summary">
-      <div className="prototype-section-head"><p className="ey">Caixa</p><button className="prototype-refresh" onClick={() => { void dashboardQuery.refetch(); void movementQuery.refetch(); }} data-testid="button-refresh-treasury"><RefreshCw size={14} /> Atualizar</button></div>
+      <div className="prototype-section-head"><p className="ey">Caixa</p><div className="treasury-actions">
+        <button className="prototype-refresh" onClick={() => { void dashboardQuery.refetch(); void movementQuery.refetch(); }} data-testid="button-refresh-treasury"><RefreshCw size={14} /> Atualizar</button>
+        {!contributionOpen && <Button className="btn primary" onClick={() => { setContributionNotice(''); setContributionOpen(true); }} data-testid="button-open-treasury-contribution"><CircleDollarSign size={14} /> Registrar aporte</Button>}
+      </div></div>
+      {contributionNotice && <div className="automation-feedback" role="status" data-testid="treasury-contribution-success"><Check size={15} />{contributionNotice}</div>}
+      {contributionOpen && <TreasuryContributionForm onCancel={() => setContributionOpen(false)} onSaved={message => { setContributionNotice(message); setContributionOpen(false); }} />}
       <div className="prototype-card prototype-cash-card">
         <div className="ey">Entradas brutas confirmadas</div>
         <strong className="prototype-cash-total">{money(data.settledCashCents)}</strong>
@@ -414,6 +485,55 @@ function TreasuryPage() {
         : <Empty title="Sem movimentações" text="Não há movimentações para este filtro no período exibido." />}
     </section>
   </div>;
+}
+function TreasuryContributionForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const [amount, setAmount] = useState('');
+  const [receiptReference, setReceiptReference] = useState('');
+  const [note, setNote] = useState('');
+  const [cashReceived, setCashReceived] = useState(false);
+  const contribution = useMutation({
+    mutationFn: (input: AdminTreasuryContributionInput) => recordAdminTreasuryContribution(input),
+    onSuccess: result => {
+      onSaved(`Aporte de ${money(result.amountCents)} registrado.`);
+      void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
+      void queryClient.invalidateQueries({ queryKey: ['/api/admin/treasury/movements'] });
+    },
+  });
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const amountCents = Math.round(Number(amount) * 100);
+    if (!Number.isSafeInteger(amountCents) || amountCents < 1 || amountCents > 100_000_000) return;
+    const reference = receiptReference.trim();
+    if (reference.length < 3 || !cashReceived) return;
+    contribution.mutate({
+      amountCents,
+      receiptReference: reference,
+      ...(note.trim() ? { note: note.trim() } : {}),
+      cashReceived: true,
+    });
+  };
+  return <form className="treasury-contribution-form" onSubmit={submit} data-testid="form-treasury-contribution">
+    <div className="treasury-contribution-heading"><div><strong>Registrar aporte recebido</strong><small>O registro altera o caixa e não pode ser desfeito por este formulário.</small></div><button className="prototype-clear" type="button" onClick={onCancel} disabled={contribution.isPending} data-testid="button-close-treasury-contribution"><X size={14} /> Fechar</button></div>
+    <div className="treasury-contribution-fields">
+      <label className="treasury-field" htmlFor="treasury-contribution-amount"><span className="input-label">Valor em reais</span>
+        <Input id="treasury-contribution-amount" data-testid="input-treasury-contribution-amount" type="number" min="0.01" max="1000000" step="0.01" required value={amount} disabled={contribution.isPending} onChange={event => setAmount(event.target.value)} placeholder="0,00" />
+      </label>
+      <label className="treasury-field" htmlFor="treasury-contribution-reference"><span className="input-label">Referência do comprovante</span>
+        <Input id="treasury-contribution-reference" data-testid="input-treasury-contribution-reference" minLength={3} maxLength={120} required value={receiptReference} disabled={contribution.isPending} onChange={event => setReceiptReference(event.target.value)} placeholder="Identificador único do recebimento" />
+      </label>
+      <label className="treasury-field treasury-note-label" htmlFor="treasury-contribution-note"><span className="input-label">Observação (opcional)</span>
+        <Input id="treasury-contribution-note" data-testid="input-treasury-contribution-note" maxLength={60} value={note} disabled={contribution.isPending} onChange={event => setNote(event.target.value)} placeholder="Até 60 caracteres" />
+      </label>
+    </div>
+    <label className="treasury-confirm-row"><input type="checkbox" data-testid="checkbox-treasury-cash-received" checked={cashReceived} disabled={contribution.isPending} onChange={event => setCashReceived(event.target.checked)} /><span>Confirmo que o valor foi recebido e que a referência corresponde ao comprovante.</span></label>
+    {contribution.isError && <div className="inline-error" role="alert" data-testid="treasury-contribution-error">{errorMessage(contribution.error)}</div>}
+    <div className="treasury-contribution-footer">
+      <Button className="btn" type="button" disabled={contribution.isPending} onClick={onCancel} data-testid="button-cancel-treasury-contribution">Cancelar</Button>
+      <Button className="btn primary" type="submit" disabled={contribution.isPending || !cashReceived || !receiptReference.trim() || Number(amount) <= 0} data-testid="button-submit-treasury-contribution">{contribution.isPending ? 'Registrando…' : 'Confirmar aporte'} <Check size={14} /></Button>
+    </div>
+    <small className="prototype-note">Referências já utilizadas não podem ser registradas novamente.</small>
+  </form>;
 }
 function LedgerRow({ title, detail, value, tone }: { title: string; detail: string; value: number; tone?: string }) {
   return <div className="ledger-row"><div><strong>{title}</strong><small>{detail}</small></div><span className={tone || ''}>{money(value)}</span></div>;
@@ -474,7 +594,7 @@ function AutomationPage() {
   const [customMultiplier, setCustomMultiplier] = useState<Record<AutomationRuleKey, boolean>>({ opening: false, counter: false });
   const initialized = useRef(false);
   useEffect(() => {
-    if (configQuery.data && !initialized.current) {
+    if (configQuery.data && (!initialized.current || !dirty)) {
       setForm(makeInput(configQuery.data));
       setCustomMultiplier({
         opening: !multipliers.includes(configQuery.data.operatorRules.opening.multiplier as typeof multipliers[number]),
@@ -482,7 +602,7 @@ function AutomationPage() {
       });
       initialized.current = true;
     }
-  }, [configQuery.data]);
+  }, [configQuery.data, dirty]);
   const save = useMutation({
     mutationFn: (input: AutomationConfigInput) => updateAutomationConfig(input),
     onSuccess: data => {

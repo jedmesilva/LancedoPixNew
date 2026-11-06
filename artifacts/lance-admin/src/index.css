@@ -912,3 +912,65 @@ body { font-size: 15px; line-height: 1.4; }
   .prototype-search { gap: 7px; padding-inline: 11px; }
   .prototype-search input { font-size: 14px; }
 }
+
+/* Complete the prototype's operational actions using the persisted admin APIs. */
+.treasury-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.treasury-contribution-form {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid var(--lp-green);
+  border-radius: var(--lp-r-card);
+  background: var(--lp-surface);
+}
+.treasury-contribution-heading,
+.treasury-contribution-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.treasury-contribution-heading > div { display: grid; gap: 4px; }
+.treasury-contribution-heading strong { color: var(--lp-ink); font: 700 15px var(--lp-display); }
+.treasury-contribution-heading small { color: var(--lp-muted); font-size: 11px; line-height: 1.45; }
+.treasury-contribution-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.treasury-field { display: grid; gap: 6px; min-width: 0; }
+.treasury-field .input-label { margin: 0; }
+.treasury-note-label { grid-column: 1 / -1; }
+.treasury-confirm-row { display: flex; align-items: flex-start; gap: 9px; color: var(--lp-muted); font-size: 11px; line-height: 1.5; }
+.treasury-confirm-row input { width: 17px; height: 17px; flex: none; margin: 0; accent-color: var(--lp-green); }
+.treasury-contribution-footer { justify-content: flex-end; }
+.prototype-payout { flex-direction: column; }
+.prototype-payout > .prototype-record-top { display: flex; width: 100%; }
+.payout-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 11px; }
+.payout-reject-button { border-color: color-mix(in srgb, var(--lp-danger) 35%, var(--lp-line)); color: var(--lp-danger); }
+.payout-action-form {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 11px;
+  padding: 12px;
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-r-small);
+  background: var(--lp-bg);
+}
+.payout-action-form .input-label { margin: 0; }
+.payout-action-warning { display: flex; align-items: flex-start; gap: 8px; color: var(--lp-muted); font-size: 11px; line-height: 1.5; }
+.payout-action-warning svg { flex: none; margin-top: 1px; color: var(--lp-danger); }
+.payout-action-form .payout-actions { margin-top: 3px; }
+
+@media (max-width: 480px) {
+  .treasury-actions { align-items: flex-start; justify-content: space-between; width: 100%; }
+  .treasury-contribution-fields { grid-template-columns: minmax(0, 1fr); }
+  .treasury-note-label { grid-column: auto; }
+  .treasury-contribution-heading,
+  .treasury-contribution-footer { align-items: flex-start; flex-direction: column; }
+  .treasury-contribution-footer > button { width: 100%; }
+  .payout-actions > button { flex: 1 1 100%; }
+}
