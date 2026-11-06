@@ -1061,21 +1061,34 @@ body { font-size: 15px; line-height: 1.4; }
   line-height: 1.45;
 }
 .automation-status-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 7px;
+  width: min(100%, 420px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
 }
-.automation-status-button {
-  min-height: 37px;
-  padding: 0 13px;
-  border-radius: var(--lp-r-pill);
-  font-size: 11px;
+.automation-status-action {
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--lp-r-control);
+  font-size: 14px;
 }
-.automation-status-button.selected {
-  border-color: var(--lp-ink);
-  background: var(--lp-ink);
-  color: var(--lp-bg);
+.automation-status-action.secondary {
+  border-color: var(--lp-line);
+  background: transparent;
+  color: var(--lp-ink);
+}
+.automation-status-action.secondary:hover:not(:disabled) {
+  border-color: var(--lp-muted);
+  background: var(--lp-soft);
+}
+.automation-status-action.danger {
+  border-color: color-mix(in srgb, var(--lp-danger) 30%, var(--lp-line));
+  background: transparent;
+  color: var(--lp-danger);
+}
+.automation-status-action.danger:hover:not(:disabled) {
+  border-color: var(--lp-danger);
+  background: color-mix(in srgb, var(--lp-danger) 8%, var(--lp-surface));
 }
 .automation-blocked {
   padding: 10px 12px;
@@ -1263,10 +1276,59 @@ body { font-size: 15px; line-height: 1.4; }
 .automation-bid-history .event-list { display: grid; }
 .automation-bid-history .event-row { min-width: 0; }
 .automation-account-loading { min-height: 44px; }
+.automation-select-trigger {
+  height: auto;
+  min-height: 44px;
+  padding: 0 13px;
+  border-color: var(--lp-line);
+  border-radius: var(--lp-r-control);
+  background: var(--lp-bg);
+  color: var(--lp-ink);
+  font: 600 12px/1.4 var(--lp-body);
+  text-align: left;
+  box-shadow: none;
+}
+.automation-select-trigger:hover,
+.automation-select-trigger[data-state='open'] {
+  border-color: var(--lp-green);
+  background: var(--lp-surface);
+}
+.automation-select-trigger:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--lp-green) 25%, transparent);
+  outline-offset: 2px;
+}
+.automation-select-trigger > svg { width: 17px; height: 17px; color: var(--lp-muted); opacity: 1; }
+.automation-select-content {
+  z-index: 70;
+  width: var(--radix-select-trigger-width);
+  max-height: min(320px, var(--radix-select-content-available-height));
+  padding: 5px;
+  overflow-y: auto;
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-r-control);
+  background: var(--lp-surface);
+  color: var(--lp-ink);
+  box-shadow: 0 12px 32px rgba(15, 18, 8, .16);
+}
+.automation-select-item {
+  min-height: 40px;
+  padding: 8px 34px 8px 11px;
+  border-radius: 10px;
+  color: var(--lp-ink);
+  font: 600 12px/1.4 var(--lp-body);
+  white-space: normal;
+  cursor: pointer;
+}
+.automation-select-item[data-highlighted] {
+  background: var(--lp-soft);
+  color: var(--lp-ink);
+  outline: none;
+}
+.automation-select-item[data-state='checked'] { color: var(--lp-green-deep); font-weight: 800; }
 
 @media (max-width: 680px) {
   .automation-state-summary { align-items: flex-start; flex-direction: column; }
-  .automation-status-actions { justify-content: flex-start; width: 100%; }
+  .automation-status-actions { width: 100%; }
   .automation-rule-controls { grid-template-columns: minmax(0, 1fr); }
   .automation-rule-controls > .config-field:nth-child(3) { grid-column: auto; }
 }
@@ -1278,6 +1340,6 @@ body { font-size: 15px; line-height: 1.4; }
   .automation-limit-footer { align-items: flex-start; flex-direction: column; }
   .automation-save-button,
   .automation-test-button { width: 100%; }
-  .automation-status-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .automation-status-button { min-width: 0; padding-inline: 7px; font-size: 10px; }
+  .automation-status-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .automation-status-action { min-width: 0; min-height: 48px; padding-inline: 8px; font-size: 12px; }
 }

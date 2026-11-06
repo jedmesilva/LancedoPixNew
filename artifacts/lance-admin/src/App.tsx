@@ -5,13 +5,14 @@ import { Link, Route, Switch as RouteSwitch, useLocation, useParams, Router as W
 import {
   Activity, ArrowDownLeft, ArrowLeft, ArrowRight, Bot, Check, ChevronDown,
   CircleAlert, CircleCheck, CircleDollarSign, CircleX, FileSearch, KeyRound, LayoutDashboard,
-  LogOut, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Wallet, X,
+  LogOut, Pause, Play, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Square, Wallet, X,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch as ToggleSwitch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { AdminApiError } from './custom-fetch';
@@ -666,6 +667,23 @@ function AutomationPage() {
   const winCount = selected?.wonDisputeCount ?? 0;
   const wonTotal = selected?.wonPrizeTotalCents ?? 0;
   const statusBusy = changeStatus.isPending;
+  const statusActions: Array<{
+    id: "start" | "resume" | "pause" | "stop";
+    status: AutomationStatus;
+    label: string;
+    icon: typeof Play;
+    style: "primary" | "secondary" | "danger";
+  }> = savedStatus === "ativa"
+    ? [
+        { id: "pause", status: "pausada", label: "Pausar", icon: Pause, style: "secondary" },
+        { id: "stop", status: "desativada", label: "Parar", icon: Square, style: "danger" },
+      ]
+    : savedStatus === "pausada"
+      ? [
+          { id: "resume", status: "ativa", label: "Retomar", icon: Play, style: "primary" },
+          { id: "stop", status: "desativada", label: "Parar", icon: Square, style: "danger" },
+        ]
+      : [{ id: "start", status: "ativa", label: "Iniciar", icon: Play, style: "primary" }];
   return <div className="automation-page automation-console appear" data-testid="automation-console">
     <Heading eyebrow="Operação / automação" title="Automação" description="Configure regras, valide a conta real e acompanhe os lances do bot." />
     {configQuery.isFetching && <div className="refresh-note"><span className="pulse-dot" /> Atualizando configuração…</div>}
@@ -676,8 +694,11 @@ function AutomationPage() {
       <div className="ey">Status da automação</div>
       <div className="automation-state-summary">
         <div><span className={`automation-state-dot ${statusTone}`} /><strong className="automation-status-value">{statusLabel}</strong><span className="automation-status-caption">{savedStatus === "ativa" ? "Dando lances conforme as regras." : savedStatus === "pausada" ? "Sem dar lances, configuração mantida." : "Automação desligada."}</span></div>
-        <div className="automation-status-actions" role="group" aria-label="Alterar status da automação">
-          {statusOptions.map(option => <button key={option.value} type="button" className={`btn automation-status-button ${savedStatus === option.value ? "selected" : ""}`} aria-pressed={savedStatus === option.value} disabled={statusBusy || (option.value === "ativa" && !config.canEnable)} onClick={() => updateStatus(option.value)} data-testid={`automation-status-${option.value}`}>{option.label}</button>)}
+        <div className="automation-status-actions" role="group" aria-label="Ações da automação">
+          {statusActions.map(action => {
+            const Icon = action.icon;
+            return <button key={action.id} type="button" className={`btn automation-status-action ${action.style}`} disabled={statusBusy || (action.status === "ativa" && !config.canEnable)} onClick={() => updateStatus(action.status)} data-testid={`automation-action-${action.id}`}><Icon size={17} />{action.label}</button>;
+          })}
         </div>
       </div>
       {!config.canEnable && savedStatus !== "ativa" && config.blockedReasons.length > 0 && <div className="automation-blocked" role="note"><strong>Para ativar:</strong> {config.blockedReasons.join(" ")}</div>}
@@ -689,10 +710,14 @@ function AutomationPage() {
       {accountsQuery.isPending ? <div className="skeleton-card automation-account-loading" aria-label="Carregando contas" />
         : accountsQuery.isError ? <QueryError error={accountsQuery.error} retry={() => void accountsQuery.refetch()} />
         : <label className="automation-select-label" htmlFor="automation-account-select">Conta real
-          <select id="automation-account-select" className="field full automation-select" value={draft.botUserId ?? ""} disabled={save.isPending || changeStatus.isPending} onChange={event => setDraft({ ...draft, botUserId: event.target.value || null })} data-testid="select-automation-account">
-            <option value="">Selecione uma conta</option>
-            {accounts.filter(account => !account.testAccount).map(account => <option key={account.id} value={account.id}>{account.publicName} · saldo {money(account.walletBalanceCents)}</option>)}
-          </select>
+          <Select value={draft.botUserId ?? ""} onValueChange={value => setDraft({ ...draft, botUserId: value || null })}>
+            <SelectTrigger id="automation-account-select" className="field full automation-select automation-select-trigger" aria-label="Conta real da automação" disabled={save.isPending || changeStatus.isPending} data-testid="select-automation-account">
+              <SelectValue placeholder="Selecione uma conta" />
+            </SelectTrigger>
+            <SelectContent className="automation-select-content" position="popper">
+              {accounts.filter(account => !account.testAccount).map(account => <SelectItem key={account.id} value={account.id} className="automation-select-item">{account.publicName} · saldo {money(account.walletBalanceCents)}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </label>}
       <div className="automation-account-facts">
         <div className="automation-fact"><span>Saldo da carteira de créditos</span><strong data-testid="automation-wallet-balance">{selected || config.botUserId === draft.botUserId ? money(walletCents) : "—"}</strong><small>{accountName}</small></div>
@@ -712,18 +737,28 @@ function AutomationPage() {
           <ToggleSwitch aria-label={`Ativar ${name}`} checked={rule.on} disabled={save.isPending || changeStatus.isPending} onCheckedChange={checked => patchRule(ruleMeta.key, { on: checked })} data-testid={`switch-automation-${ruleMeta.key}`} />
         </div>
         {rule.on && <div className="automation-rule-controls">
-          <label className="config-field"><span>Gatilho</span><select className="field full" value={rule.trigger} onChange={event => patchRule(ruleMeta.key, { trigger: event.target.value as "immediate" | "final" })} data-testid={`select-trigger-${ruleMeta.key}`}>
-            <option value="immediate">{ruleMeta.key === "opening" ? "Imediato — ao iniciar a disputa" : "Imediato — assim que for superado"}</option>
-            <option value="final">Nos segundos finais</option>
-          </select></label>
+          <label className="config-field"><span>Gatilho</span>
+            <Select value={rule.trigger} onValueChange={value => patchRule(ruleMeta.key, { trigger: value as "immediate" | "final" })}>
+              <SelectTrigger className="field full automation-select-trigger" aria-label={`Gatilho de ${name}`} data-testid={`select-trigger-${ruleMeta.key}`}><SelectValue /></SelectTrigger>
+              <SelectContent className="automation-select-content" position="popper">
+                <SelectItem value="immediate" className="automation-select-item">{ruleMeta.key === "opening" ? "Imediato — ao iniciar a disputa" : "Imediato — assim que for superado"}</SelectItem>
+                <SelectItem value="final" className="automation-select-item">Nos segundos finais</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
           {rule.trigger === "final" && <label className="config-field"><span>Segundos restantes para agir</span><Input type="number" min="0" max="60" step="1" value={rule.seconds} onChange={event => patchRule(ruleMeta.key, { seconds: event.target.value === "" ? 0 : Number(event.target.value) })} data-testid={`input-seconds-${ruleMeta.key}`} /></label>}
-          <label className="config-field"><span>Tamanho do lance (múltiplo do incremento mínimo de cada disputa)</span><select className="field full" value={multipliers.includes(rule.multiplier as typeof multipliers[number]) ? String(rule.multiplier) : "custom"} onChange={event => {
-            if (event.target.value === "custom") { setCustomMultiplier(previous => ({ ...previous, [ruleMeta.key]: true })); patchRule(ruleMeta.key, { multiplier: rule.multiplier }); }
-            else { setCustomMultiplier(previous => ({ ...previous, [ruleMeta.key]: false })); patchRule(ruleMeta.key, { multiplier: Number(event.target.value) }); }
-          }} data-testid={`select-multiplier-${ruleMeta.key}`}>
-            {multipliers.map(value => <option key={value} value={value}>{value === 1 ? "Lance mínimo (1x)" : `${value}x o lance mínimo`}</option>)}
-            <option value="custom">Personalizado</option>
-          </select></label>
+          <label className="config-field"><span>Tamanho do lance (múltiplo do incremento mínimo de cada disputa)</span>
+            <Select value={multipliers.includes(rule.multiplier as typeof multipliers[number]) ? String(rule.multiplier) : "custom"} onValueChange={value => {
+              if (value === "custom") { setCustomMultiplier(previous => ({ ...previous, [ruleMeta.key]: true })); patchRule(ruleMeta.key, { multiplier: rule.multiplier }); }
+              else { setCustomMultiplier(previous => ({ ...previous, [ruleMeta.key]: false })); patchRule(ruleMeta.key, { multiplier: Number(value) }); }
+            }}>
+              <SelectTrigger className="field full automation-select-trigger" aria-label={`Tamanho do lance de ${name}`} data-testid={`select-multiplier-${ruleMeta.key}`}><SelectValue /></SelectTrigger>
+              <SelectContent className="automation-select-content" position="popper">
+                {multipliers.map(value => <SelectItem key={value} value={String(value)} className="automation-select-item">{value === 1 ? "Lance mínimo (1x)" : `${value}x o lance mínimo`}</SelectItem>)}
+                <SelectItem value="custom" className="automation-select-item">Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
           {customMultiplier[ruleMeta.key] && <label className="config-field"><span>Outro múltiplo</span><div className="automation-custom-mult"><Input type="number" min="1" max="1000" step="1" value={rule.multiplier} onChange={event => patchRule(ruleMeta.key, { multiplier: event.target.value === "" ? 1 : Number(event.target.value) })} data-testid={`input-custom-multiplier-${ruleMeta.key}`} /><span>x</span></div></label>}
         </div>}
       </section>;
