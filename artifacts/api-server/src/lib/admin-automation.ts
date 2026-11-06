@@ -10,6 +10,7 @@ import {
   sql,
 } from "drizzle-orm";
 import {
+  type AutomationBidTriggerMode,
   type AutomationMode,
   automationConfigTable,
   automationEventsTable,
@@ -23,6 +24,15 @@ import {
 } from "@workspace/db";
 import { getDisputeDeadline, getDisputeCountdownDeadline } from "./dispute-progression";
 import { getAutomationBidAction } from "./automation-mode";
+import {
+  exceedsAutomationCap,
+  hasInconsistentAutomationCaps,
+  reachedAutomationCountCap,
+} from "./automation-limits";
+import {
+  isPastAutomationBidWindow,
+  shouldWaitForAutomationTrigger,
+} from "./automation-timing";
 import { recordBidAllocation, recordLedgerEntry, updatePrizeCoverage } from "./treasury";
 
 const CONFIG_ID = 1;
@@ -31,6 +41,7 @@ const BOT_EMAIL_DOMAIN = "example.invalid";
 const DEFAULT_CONFIG = {
   enabled: false,
   mode: "counterbids_only" as const,
+  bidTriggerMode: "on_outbid" as const,
   botUserId: null,
   maxBidCents: 0n,
   perDisputeLimitCents: 0n,
@@ -43,6 +54,7 @@ const DEFAULT_CONFIG = {
 type AutomationInput = {
   enabled: boolean;
   mode: AutomationMode;
+  bidTriggerMode: AutomationBidTriggerMode;
   botUserId: string | null;
   maxBidCents: number;
   perDisputeLimitCents: number;
@@ -136,24 +148,16 @@ export async function getAutomationConfig() {
   else if (botWalletBalanceCents <= 0n) {
     blockedReasons.push("A carteira da conta selecionada está sem saldo confirmado.");
   }
-  if (
-    values.maxBidCents <= 0n ||
-    values.perDisputeLimitCents <= 0n ||
-    values.dailyLimitCents <= 0n ||
-    values.maxBidsPerDispute <= 0
-  ) {
-    blockedReasons.push("Defina limites positivos por lance, disputa, dia e quantidade.");
-  }
-  if (
-    values.maxBidCents > values.perDisputeLimitCents ||
-    values.perDisputeLimitCents > values.dailyLimitCents
-  ) {
-    blockedReasons.push("Os limites devem seguir a ordem: lance, disputa e dia.");
+  if (hasInconsistentAutomationCaps(values)) {
+    blockedReasons.push(
+      "Os limites definidos devem seguir a ordem: lance, disputa e dia.",
+    );
   }
 
   return {
     enabled: values.enabled,
     mode: values.mode,
+    bidTriggerMode: values.bidTriggerMode,
     botUserId: values.botUserId,
     botExists,
     botName,
@@ -171,10 +175,7 @@ export async function getAutomationConfig() {
 }
 
 export async function updateAutomationConfig(input: AutomationInput) {
-  if (
-    input.maxBidCents > input.perDisputeLimitCents ||
-    input.perDisputeLimitCents > input.dailyLimitCents
-  ) {
+  if (hasInconsistentAutomationCaps(input)) {
     throw new Error("LIMIT_ORDER_INVALID");
   }
 
@@ -212,14 +213,6 @@ export async function updateAutomationConfig(input: AutomationInput) {
       if (!wallet || wallet.balanceCents <= 0n) {
         throw new Error("BOT_NOT_FUNDED");
       }
-      if (
-        input.maxBidCents <= 0 ||
-        input.perDisputeLimitCents <= 0 ||
-        input.dailyLimitCents <= 0 ||
-        input.maxBidsPerDispute <= 0
-      ) {
-        throw new Error("LIMITS_REQUIRED");
-      }
     }
 
     await transaction
@@ -227,6 +220,7 @@ export async function updateAutomationConfig(input: AutomationInput) {
       .set({
         enabled: input.enabled,
         mode: input.mode,
+        bidTriggerMode: input.bidTriggerMode,
         botUserId: input.botUserId,
         maxBidCents: BigInt(input.maxBidCents),
         perDisputeLimitCents: BigInt(input.perDisputeLimitCents),
@@ -496,9 +490,17 @@ export async function runAutomationTick(): Promise<boolean> {
     }
 
     const actionStartedAt = leader?.createdAt ?? dispute.startedAt ?? dispute.startsAt;
+    const usesFixedTimeTrigger = config.bidTriggerMode === "at_fixed_time";
     if (
-      actionStartedAt.getTime() + config.minimumDelaySeconds * 1_000 >
-      now.getTime()
+      config.bidTriggerMode === "on_outbid" &&
+      shouldWaitForAutomationTrigger({
+        mode: config.bidTriggerMode,
+        secondsRemaining: 0,
+        configuredSeconds: config.minimumSecondsRemaining,
+        actionStartedAt,
+        minimumDelaySeconds: config.minimumDelaySeconds,
+        now,
+      })
     ) {
       return false;
     }
@@ -527,12 +529,25 @@ export async function runAutomationTick(): Promise<boolean> {
     if (dispute.simulated) {
       return block("a disputa está marcada como simulada.");
     }
-    if (secondsRemaining < config.minimumSecondsRemaining) {
+    if (usesFixedTimeTrigger) {
+      if (shouldWaitForAutomationTrigger({
+        mode: config.bidTriggerMode,
+        secondsRemaining,
+        configuredSeconds: config.minimumSecondsRemaining,
+        actionStartedAt,
+        minimumDelaySeconds: config.minimumDelaySeconds,
+        now,
+      })) return false;
+    } else if (isPastAutomationBidWindow({
+      mode: config.bidTriggerMode,
+      secondsRemaining,
+      minimumSecondsRemaining: config.minimumSecondsRemaining,
+    })) {
       return block("resta menos tempo que o mínimo configurado.");
     }
 
     const bidCents = (leader?.valueCents ?? dispute.startingValueCents) + dispute.stepCents;
-    if (bidCents > config.maxBidCents) {
+    if (exceedsAutomationCap(config.maxBidCents, bidCents)) {
       return block("o valor supera o limite por lance.");
     }
 
@@ -550,8 +565,11 @@ export async function runAutomationTick(): Promise<boolean> {
       0n,
     );
     if (
-      disputeEvents.length >= config.maxBidsPerDispute ||
-      disputeSpent + bidCents > config.perDisputeLimitCents
+      reachedAutomationCountCap(config.maxBidsPerDispute, disputeEvents.length) ||
+      exceedsAutomationCap(
+        config.perDisputeLimitCents,
+        disputeSpent + bidCents,
+      )
     ) {
       return block("o limite desta disputa foi atingido.");
     }
@@ -571,7 +589,7 @@ export async function runAutomationTick(): Promise<boolean> {
       (total, event) => total + (event.amountCents ?? 0n),
       0n,
     );
-    if (dailySpent + bidCents > config.dailyLimitCents) {
+    if (exceedsAutomationCap(config.dailyLimitCents, dailySpent + bidCents)) {
       return block("o limite diário foi atingido.");
     }
 

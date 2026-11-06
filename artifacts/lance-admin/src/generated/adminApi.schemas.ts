@@ -151,9 +151,18 @@ export const AutomationConfigMode = {
   bids_only: 'bids_only',
 } as const;
 
+export type AutomationConfigBidTriggerMode = typeof AutomationConfigBidTriggerMode[keyof typeof AutomationConfigBidTriggerMode];
+
+
+export const AutomationConfigBidTriggerMode = {
+  on_outbid: 'on_outbid',
+  at_fixed_time: 'at_fixed_time',
+} as const;
+
 export interface AutomationConfig {
   enabled: boolean;
   mode: AutomationConfigMode;
+  bidTriggerMode: AutomationConfigBidTriggerMode;
   /** @nullable */
   botUserId: string | null;
   botExists: boolean;
@@ -180,9 +189,18 @@ export const AutomationConfigInputMode = {
   bids_only: 'bids_only',
 } as const;
 
+export type AutomationConfigInputBidTriggerMode = typeof AutomationConfigInputBidTriggerMode[keyof typeof AutomationConfigInputBidTriggerMode];
+
+
+export const AutomationConfigInputBidTriggerMode = {
+  on_outbid: 'on_outbid',
+  at_fixed_time: 'at_fixed_time',
+} as const;
+
 export interface AutomationConfigInput {
   enabled: boolean;
   mode: AutomationConfigInputMode;
+  bidTriggerMode: AutomationConfigInputBidTriggerMode;
   /** @nullable */
   botUserId: string | null;
   /**

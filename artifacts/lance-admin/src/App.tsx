@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient
 import { Link, Route, Switch as RouteSwitch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import {
   Activity, ArrowDownLeft, ArrowLeft, ArrowRight, Bot, Check,
-  CircleAlert, CircleDollarSign, FileSearch, KeyRound, LayoutDashboard,
-  LogOut, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Wallet, X,
+  CircleAlert, CircleCheck, CircleDollarSign, CircleX, FileSearch, KeyRound, LayoutDashboard,
+  LogOut, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Wallet, X,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -136,13 +136,14 @@ function Shell({ location, signOut, signOutBusy }: { location: string; signOut: 
       <div className="nav-label">Plataforma</div><nav className="navlist">{navItems.map(item => { const Icon = item.icon; const active = item.href === '/' ? path === '/' : path.startsWith(item.href); return <Link key={item.href} href={item.href} className={`navlink ${active ? 'active' : ''}`} data-testid={`nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}><Icon size={17} />{item.label}</Link>; })}</nav>
       <div className="sidebar-bottom"><div className="bot-tile"><div className="bot-status"><span className="pulse-dot" /> Ambiente privado</div><div className="bot-note">Dados operacionais atualizados automaticamente.</div></div><button className="logout" onClick={signOut} disabled={signOutBusy} data-testid="button-admin-logout"><LogOut size={15} />{signOutBusy ? 'Encerrando…' : 'Encerrar sessão'}</button></div>
     </aside>
-    <main className="main"><header className="topbar"><div className="crumb">Lance do Pix <span>/</span> <strong>{navItems.find(item => item.href === (path.startsWith('/disputes') ? '/disputes' : path))?.label || 'Operação'}</strong></div><div className="topbar-right"><span className="secure"><ShieldCheck size={14} /> Sessão segura</span><span className="operator-dot">OP</span></div></header>
+     <main className="main"><header className="topbar"><div className="crumb">Lance do Pix <span>/</span> <strong>{navItems.find(item => item.href === (path.startsWith('/disputes') ? '/disputes' : path.startsWith('/automation') ? '/automation' : path))?.label || 'Operação'}</strong></div><div className="topbar-right"><span className="secure"><ShieldCheck size={14} /> Sessão segura</span><span className="operator-dot">OP</span></div></header>
       <div className="content"><RouteSwitch>
         <Route path="/" component={Overview} />
         <Route path="/disputes" component={DisputesPage} />
         <Route path="/disputes/:id" component={DisputeDetailPage} />
         <Route path="/payouts" component={PayoutsPage} />
         <Route path="/treasury" component={TreasuryPage} />
+         <Route path="/automation/settings" component={AutomationSettings} />
         <Route path="/automation" component={AutomationPage} />
         <Route component={NotFound} />
       </RouteSwitch></div>
@@ -221,144 +222,275 @@ function TreasuryPage() {
 function LedgerRow({ title, detail, value, tone }: { title: string; detail: string; value: number; tone?: string }) {
   return <div className="ledger-row"><div><strong>{title}</strong><small>{detail}</small></div><span className={tone || ''}>{money(value)}</span></div>;
 }
-const automationModes: Array<{
-  value: AutomationConfigInput["mode"];
-  label: string;
-  detail: string;
-}> = [
-  {
-    value: "counterbids_only",
-    label: "Só contralances",
-    detail: "Responde aos lances de outros participantes.",
-  },
-  {
-    value: "bids_and_counterbids",
-    label: "Lances e contralances",
-    detail: "Abre disputas sem lance e responde a outros participantes.",
-  },
-  {
-    value: "bids_only",
-    label: "Só lances",
-    detail: "Abre disputas sem lance, sem responder a outros participantes.",
-  },
+const automationModes: Array<{ value: AutomationConfigInput["mode"]; label: string; detail: string }> = [
+  { value: "counterbids_only", label: "Só contralances", detail: "Responde aos lances de outros participantes." },
+  { value: "bids_and_counterbids", label: "Lances e contralances", detail: "Abre disputas sem lance e responde a outros participantes." },
+  { value: "bids_only", label: "Só lances", detail: "Abre disputas sem lance, sem responder a outros participantes." },
 ];
-const defaultConfig: AutomationConfigInput = { enabled: false, mode: "counterbids_only", botUserId: null, maxBidCents: 0, perDisputeLimitCents: 0, dailyLimitCents: 0, maxBidsPerDispute: 0, minimumSecondsRemaining: 1, minimumDelaySeconds: 1 };
+const bidTriggerModes: Array<{ value: AutomationConfigInput["bidTriggerMode"]; label: string; detail: string }> = [
+  { value: "on_outbid", label: "Quando for superado", detail: "Reage ao lance maior de outro participante após o intervalo definido." },
+  { value: "at_fixed_time", label: "Em tempo fixo", detail: "Espera o cronômetro chegar ao tempo escolhido; se o bot não liderar, pode lançar novamente após cada reinício." },
+];
+const defaultConfig: AutomationConfigInput = { enabled: false, mode: "counterbids_only", bidTriggerMode: "on_outbid", botUserId: null, maxBidCents: 0, perDisputeLimitCents: 0, dailyLimitCents: 0, maxBidsPerDispute: 0, minimumSecondsRemaining: 1, minimumDelaySeconds: 1 };
+const eventNames: Record<string, string> = { bid: "Lance automático", funding: "Aporte confirmado", config_updated: "Configuração alterada", enabled: "Automação ativada", disabled: "Automação desativada", blocked: "Execução bloqueada" };
+function EventRows({ items, testPrefix = "event" }: { items: import("./generated/adminApi.schemas").AutomationEvent[]; testPrefix?: string }) {
+  return <div className="event-list">{items.map(event => {
+    const isBid = event.eventType === "bid";
+    const Icon = isBid ? CircleCheck : event.eventType === "blocked" ? CircleX : event.eventType === "funding" ? CircleDollarSign : Activity;
+    return <article className={`event-row event-${event.eventType}`} key={event.id} data-testid={`${testPrefix}-row-${event.id}`}>
+      <div className="event-mark"><Icon size={15} /></div><div className="event-body">
+        <div className="event-title"><strong>{event.summary || eventNames[event.eventType]}</strong><span className={`event-type ${event.eventType}`}>{eventNames[event.eventType] || event.eventType}</span></div>
+        <div className="event-text">{event.disputeNumber != null && <span>Disputa #{event.disputeNumber} · </span>}{event.amountCents != null && <span>{money(event.amountCents)} · </span>}<span>{date(event.createdAt)}</span></div>
+      </div>
+      {isBid && <span className="bid-success"><Check size={12} /> Registrado</span>}
+    </article>;
+  })}</div>;
+}
 function AutomationPage() {
+  const [eventsOffset, setEventsOffset] = useState(0);
+  const eventsLimit = 100;
+  const configQuery = useQuery({ queryKey: CONFIG_KEY, queryFn: getAutomationConfig });
+  const accountsQuery = useQuery({ queryKey: AUTOMATION_ACCOUNTS_KEY, queryFn: listAutomationAccounts });
+  const eventsQueryKey = [...EVENTS_KEY, { limit: eventsLimit, offset: eventsOffset }];
+  const eventsQuery = useQuery({ queryKey: eventsQueryKey, queryFn: () => listAutomationEvents({ limit: eventsLimit, offset: eventsOffset }) });
+  if (configQuery.isPending) return <><Heading eyebrow="Participante automatizado" title="Automação" description="Acompanhe os lances e a atividade do participante automatizado." /><LoadingPanel /></>;
+  if (configQuery.isError || !configQuery.data) return <><Heading eyebrow="Participante automatizado" title="Automação" /><QueryError error={configQuery.error} retry={() => void configQuery.refetch()} /></>;
+  const config = configQuery.data;
+  const account = accountsQuery.data?.items.find(item => item.id === config.botUserId);
+  const wallet = account?.walletBalanceCents ?? config.botWalletBalanceCents;
+  const bids = eventsQuery.data?.items.filter(event => event.eventType === "bid") ?? [];
+  const events = eventsQuery.data?.items ?? [];
+  return <div className="automation-page appear">
+    <Heading eyebrow="Participante automatizado" title="Automação" description="Lances registrados e eventos operacionais, em um só lugar.">
+      <Link href="/automation/settings" className="btn primary" data-testid="link-automation-settings"><Settings2 size={15} /> Configurações</Link>
+    </Heading>
+    {configQuery.isFetching && <div className="refresh-note"><span className="pulse-dot" /> Atualizando dados de automação…</div>}
+    <section className={`automation-status-card ${config.enabled ? "is-running" : ""}`} data-testid="automation-status-card">
+      <div className="status-orbit" aria-hidden="true" />
+      <div className="automation-status-main">
+        <div className="automation-status-label"><span className={`status-light ${config.enabled ? "on" : ""}`} /> CONTROLE DO PARTICIPANTE</div>
+        <div className="automation-status-head"><h2>{config.enabled ? "Automação ativa" : "Automação desativada"}</h2><span className={`state-chip ${config.enabled ? "state-on" : ""}`}><i />{config.enabled ? "Em execução" : "Pausada"}</span></div>
+        <p>Os lances são feitos publicamente pela conta selecionada. O saldo dessa carteira é sempre o teto absoluto de gasto.</p>
+      </div>
+      <div className="automation-account">
+        <div className="account-avatar"><Bot size={19} /></div>
+        <div className="account-copy"><span>CONTA E CARTEIRA</span><strong data-testid="automation-account-name">{account?.publicName || config.botName || "Nenhuma conta selecionada"}</strong><small>Saldo real disponível</small></div>
+        <strong className="account-balance" data-testid="automation-wallet-balance">{money(wallet)}</strong>
+      </div>
+      <Link href="/automation/settings" className="status-settings-link" data-testid="link-status-settings">Gerenciar automação <ArrowRight size={15} /></Link>
+    </section>
+    {accountsQuery.isError && <QueryError error={accountsQuery.error} retry={() => void accountsQuery.refetch()} />}
+    <div className="automation-history-grid">
+      <section className="panel history-panel bid-history" data-testid="automated-bid-history">
+        <div className="history-heading"><div><p className="eyebrow">Execuções</p><h2 className="section-title">Lances automáticos</h2><p className="history-subtitle">Apenas eventos de lance registrados.</p></div><span className="history-count">{eventsQuery.data ? bids.length : "—"} <small>nesta página</small></span></div>
+        {eventsQuery.isPending ? <div className="event-skeleton"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div>
+          : eventsQuery.isError ? <QueryError error={eventsQuery.error} retry={() => void eventsQuery.refetch()} />
+          : bids.length ? <EventRows items={bids} testPrefix="bid" />
+          : <Empty title="Nenhum lance automático" text="Os lances aparecerão aqui depois de serem registrados pela automação." />}
+      </section>
+      <section className="panel history-panel activity-history" data-testid="automation-activity-history">
+        <div className="history-heading"><div><p className="eyebrow">Registro operacional</p><h2 className="section-title">Atividade da automação</h2><p className="history-subtitle">Execuções, bloqueios, aportes e alterações.</p></div><span className="history-count">{eventsQuery.data?.total ?? "—"} <small>eventos</small></span></div>
+        {eventsQuery.isPending ? <div className="event-skeleton"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div>
+          : eventsQuery.isError ? <QueryError error={eventsQuery.error} retry={() => void eventsQuery.refetch()} />
+          : events.length ? <EventRows items={events} testPrefix="activity" />
+          : <Empty title="Sem atividade registrada" text="Eventos de status, configuração, financiamento e execução aparecerão neste histórico." />}
+      </section>
+    </div>
+    {eventsQuery.data && <div className="automation-event-pagination" data-testid="automation-event-pagination">
+      <span>{eventsQuery.data.total ? `${eventsOffset + 1}–${eventsOffset + events.length} de ${eventsQuery.data.total} eventos` : "0 eventos"}</span>
+      <div>
+        <button className="btn" disabled={eventsOffset === 0 || eventsQuery.isFetching} onClick={() => setEventsOffset(offset => Math.max(0, offset - eventsLimit))} data-testid="button-events-prev"><ArrowLeft size={14} /> Anterior</button>
+        <button className="btn" disabled={eventsOffset + eventsLimit >= eventsQuery.data.total || eventsQuery.isFetching} onClick={() => setEventsOffset(offset => offset + eventsLimit)} data-testid="button-events-next">Próxima <ArrowRight size={14} /></button>
+      </div>
+    </div>}
+  </div>;
+}
+function AutomationSettings() {
   const queryClient = useQueryClient();
   const configQuery = useQuery({ queryKey: CONFIG_KEY, queryFn: getAutomationConfig });
   const accountsQuery = useQuery({ queryKey: AUTOMATION_ACCOUNTS_KEY, queryFn: listAutomationAccounts });
-  const eventsQuery = useQuery({ queryKey: EVENTS_KEY, queryFn: () => listAutomationEvents({ limit: 30, offset: 0 }) });
   const [form, setForm] = useState<AutomationConfigInput>(defaultConfig);
-  const [fundingAmount, setFundingAmount] = useState('');
-  const [receipt, setReceipt] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [fundingAmount, setFundingAmount] = useState("");
+  const [receipt, setReceipt] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
-  const [fundingResult, setFundingResult] = useState('');
-  const [formError, setFormError] = useState('');
-  useEffect(() => { const data = configQuery.data; if (data) setForm({ enabled: data.enabled, mode: data.mode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds }); }, [configQuery.data]);
+  const [fundingResult, setFundingResult] = useState("");
+  const [formError, setFormError] = useState("");
+  const [statusError, setStatusError] = useState("");
+  const [statusFeedback, setStatusFeedback] = useState("");
+  const [saveFeedback, setSaveFeedback] = useState("");
+  useEffect(() => {
+    const data = configQuery.data;
+    if (data && !dirty) {
+      setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds });
+    }
+  }, [configQuery.data, dirty]);
   const update = useMutation({
     mutationFn: (input: AutomationConfigInput) => updateAutomationConfig(input),
-    onSuccess: data => { queryClient.setQueryData(CONFIG_KEY, data); void queryClient.invalidateQueries({ queryKey: EVENTS_KEY }); void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY }); },
+    onSuccess: data => {
+      queryClient.setQueryData(CONFIG_KEY, data);
+      setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds });
+      setDirty(false); setFormError(""); setSaveFeedback("Regras salvas. O estado atual da automação foi mantido.");
+      void queryClient.invalidateQueries({ queryKey: EVENTS_KEY }); void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
+    },
     onError: error => setFormError(errorMessage(error)),
+  });
+  const statusUpdate = useMutation({
+    mutationFn: (input: AutomationConfigInput) => updateAutomationConfig(input),
+    onSuccess: (data, input) => {
+      queryClient.setQueryData(CONFIG_KEY, data);
+      if (input.enabled) {
+        setForm({ enabled: data.enabled, mode: data.mode, bidTriggerMode: data.bidTriggerMode, botUserId: data.botUserId, maxBidCents: data.maxBidCents, perDisputeLimitCents: data.perDisputeLimitCents, dailyLimitCents: data.dailyLimitCents, maxBidsPerDispute: data.maxBidsPerDispute, minimumSecondsRemaining: data.minimumSecondsRemaining, minimumDelaySeconds: data.minimumDelaySeconds });
+        setDirty(false);
+        setStatusFeedback("Automação ativada com as regras exibidas.");
+      } else {
+        setForm(previous => ({ ...previous, enabled: false }));
+        setStatusFeedback("Automação pausada. Rascunhos não salvos foram mantidos.");
+      }
+      setStatusError(""); setSaveFeedback("");
+      void queryClient.invalidateQueries({ queryKey: EVENTS_KEY }); void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
+    },
+    onError: error => setStatusError(errorMessage(error)),
   });
   const fund = useMutation({
     mutationFn: (input: AutomationFundingInput) => recordAutomationFunding(input),
     onSuccess: result => {
-      setFundingResult(`Crédito registrado: ${money(result.amountCents)} · saldo informado ${money(result.botWalletBalanceCents)}.`);
-      setFundingAmount(''); setReceipt(''); setCashConfirmed(false);
-      queryClient.setQueryData(CONFIG_KEY, (old: typeof configQuery.data) => old ? { ...old, botWalletBalanceCents: result.botWalletBalanceCents } : old);
-      void queryClient.invalidateQueries({ queryKey: CONFIG_KEY });
-      void queryClient.invalidateQueries({ queryKey: AUTOMATION_ACCOUNTS_KEY });
+      setFundingResult(`Aporte registrado: ${money(result.amountCents)} · saldo informado ${money(result.botWalletBalanceCents)}.`);
+      setFundingAmount(""); setReceipt(""); setCashConfirmed(false);
+      queryClient.setQueryData(CONFIG_KEY, (old: import("./generated/adminApi.schemas").AutomationConfig | undefined) => old ? { ...old, botWalletBalanceCents: result.botWalletBalanceCents } : old);
+      void queryClient.invalidateQueries({ queryKey: CONFIG_KEY }); void queryClient.invalidateQueries({ queryKey: AUTOMATION_ACCOUNTS_KEY });
       void queryClient.invalidateQueries({ queryKey: EVENTS_KEY }); void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
     },
   });
-  if (configQuery.isPending) return <><Heading eyebrow="Participante automatizado" title="Automação" description="Configuração e histórico do bot da plataforma." /><LoadingPanel /></>;
-  if (configQuery.isError || !configQuery.data) return <><Heading eyebrow="Participante automatizado" title="Automação" /><QueryError error={configQuery.error} retry={() => void configQuery.refetch()} /></>;
+  if (configQuery.isPending) return <><Heading eyebrow="Operação / automação" title="Configurações" description="Conta, limites e financiamento do participante automatizado." /><LoadingPanel /></>;
+  if (configQuery.isError || !configQuery.data) return <><Heading eyebrow="Operação / automação" title="Configurações" /><QueryError error={configQuery.error} retry={() => void configQuery.refetch()} /></>;
   const config = configQuery.data;
-  const setNumber = (key: keyof AutomationConfigInput, raw: string) => setForm(previous => ({ ...previous, [key]: raw === '' ? 0 : Number(raw) }));
-  const configValid = form.maxBidCents >= 0 && form.maxBidCents <= 100000000
-    && form.perDisputeLimitCents >= 0 && form.perDisputeLimitCents <= 100000000
-    && form.dailyLimitCents >= 0 && form.dailyLimitCents <= 100000000
-    && form.maxBidsPerDispute >= 0 && form.maxBidsPerDispute <= 10000
-    && form.minimumSecondsRemaining >= 1 && form.minimumSecondsRemaining <= 60
-    && form.minimumDelaySeconds >= 1 && form.minimumDelaySeconds <= 3600;
+  const setNumber = (key: keyof AutomationConfigInput, raw: string) => { setDirty(true); setForm(previous => ({ ...previous, [key]: raw === "" ? 0 : Number(raw) })); };
+  const numericValid = Number.isInteger(form.maxBidCents) && form.maxBidCents >= 0 && form.maxBidCents <= 100000000
+    && Number.isInteger(form.perDisputeLimitCents) && form.perDisputeLimitCents >= 0 && form.perDisputeLimitCents <= 100000000
+    && Number.isInteger(form.dailyLimitCents) && form.dailyLimitCents >= 0 && form.dailyLimitCents <= 100000000
+    && Number.isInteger(form.maxBidsPerDispute) && form.maxBidsPerDispute >= 0 && form.maxBidsPerDispute <= 10000
+    && Number.isInteger(form.minimumSecondsRemaining) && form.minimumSecondsRemaining >= 1 && form.minimumSecondsRemaining <= 60
+    && Number.isInteger(form.minimumDelaySeconds) && form.minimumDelaySeconds >= 1 && form.minimumDelaySeconds <= 3600;
   const selectedAccount = accountsQuery.data?.items.find((account: AutomationAccount) => account.id === form.botUserId);
-  const limitsCanEnable = form.maxBidCents > 0
-    && form.perDisputeLimitCents > 0
-    && form.dailyLimitCents > 0
-    && form.maxBidsPerDispute > 0
-    && form.maxBidCents <= form.perDisputeLimitCents
-    && form.perDisputeLimitCents <= form.dailyLimitCents;
-  const selectedAccountCanEnable = Boolean(
-    selectedAccount
-    && !selectedAccount.testAccount
-    && selectedAccount.walletBalanceCents > 0
-    && limitsCanEnable
-    && configValid,
-  );
-  const selectedBlockedReasons = form.botUserId !== config.botUserId
-    ? [
-        !selectedAccount ? 'Selecione uma conta disponível para a automação.' : '',
-        selectedAccount?.testAccount ? 'Contas de teste não podem ser usadas.' : '',
-        selectedAccount && selectedAccount.walletBalanceCents <= 0 ? 'A conta selecionada precisa ter saldo confirmado.' : '',
-        !limitsCanEnable ? 'Defina limites positivos e mantenha a ordem entre lance, disputa e dia.' : '',
-      ].filter(Boolean)
-    : config.blockedReasons;
-  const displayedWalletBalanceCents = form.botUserId === config.botUserId
-    ? config.botWalletBalanceCents
-    : selectedAccount?.walletBalanceCents ?? 0;
-  const displayedAccountName = selectedAccount?.publicName
-    ?? (form.botUserId === config.botUserId ? config.botName : 'Selecione uma conta');
-  return <><Heading eyebrow="Participante automatizado" title="Automação" description="Configure qual conta fará os lances automaticamente e acompanhe seus limites e saldo."><span className="bot-identity"><Bot size={16} /> {displayedAccountName}</span></Heading>
-    {configQuery.isFetching && <div className="refresh-note"><span className="pulse-dot" /> Atualizando dados de automação…</div>}
-    <div className="notice"><CircleAlert size={16} /><span>Os lances automáticos usam a conta selecionada e aparecem publicamente com o nome dela. Contas de teste não podem ser selecionadas.</span></div>
-    {selectedAccount?.testAccount && <div className="notice notice-error"><CircleAlert size={16} /><span>Contas de teste não podem ser usadas na automação. Selecione outra conta.</span></div>}
-    <div className="grid automation-layout">
-      <section className="panel config-panel"><div className="section-head"><div><p className="eyebrow">Parâmetros do participante</p><h2 className="section-title">Controles de automação</h2></div><span className={`state-chip ${config.enabled ? 'state-on' : ''}`}><i />{config.enabled ? 'Ativa' : 'Desativada'}</span></div>
-        <div className="toggle-row"><div><strong>Automação habilitada</strong><small>Estado atual informado pelo serviço</small></div><ToggleSwitch checked={form.enabled} disabled={(!selectedAccountCanEnable && !form.enabled) || update.isPending} onCheckedChange={(checked: boolean) => setForm(previous => ({ ...previous, enabled: checked }))} data-testid="switch-automation-enabled" /></div>
-        <label className="config-field account-field" htmlFor="automation-account"><span>Conta que fará os lances</span><select id="automation-account" className="field full" value={form.botUserId ?? ''} onChange={event => { setForm(previous => ({ ...previous, botUserId: event.target.value || null })); setFormError(''); }} disabled={update.isPending || accountsQuery.isPending} data-testid="select-automation-account">
-          <option value="">Selecione uma conta</option>
-          {accountsQuery.data?.items.map((account: AutomationAccount) => <option key={account.id} value={account.id} disabled={account.testAccount}>{account.publicName}{account.testAccount ? ' · conta de teste indisponível' : ` · saldo ${money(account.walletBalanceCents)}`}</option>)}
-        </select></label>
-        {accountsQuery.isError && <QueryError error={accountsQuery.error} retry={() => void accountsQuery.refetch()} />}
-        {config.enabled && form.botUserId !== config.botUserId && <div className="selection-note">Ao salvar, os próximos lances usarão a conta selecionada.</div>}
-        {!selectedAccountCanEnable && selectedBlockedReasons.length > 0 && <div className="blocked-list"><strong>Não pode ser habilitada</strong>{selectedBlockedReasons.map((reason, index) => <div key={`${index}-${reason}`}><CircleAlert size={13} />{reason}</div>)}</div>}
-        <fieldset className="automation-mode-group" disabled={update.isPending}>
-          <legend>Quais ações o bot pode fazer?</legend>
-          <div className="automation-mode-list">
-            {automationModes.map(mode => <label className={`automation-mode-option ${form.mode === mode.value ? 'selected' : ''}`} key={mode.value}>
-              <input type="radio" name="automation-mode" value={mode.value} checked={form.mode === mode.value} onChange={() => setForm(previous => ({ ...previous, mode: mode.value }))} data-testid={`radio-automation-mode-${mode.value}`} />
-              <span><strong>{mode.label}</strong><small>{mode.detail}</small></span>
-            </label>)}
-          </div>
-        </fieldset>
-        <div className="config-grid">{([
-          ['maxBidCents', 'Lance máximo (centavos)', 0, 100000000],
-          ['perDisputeLimitCents', 'Limite por disputa (centavos)', 0, 100000000],
-          ['dailyLimitCents', 'Limite diário (centavos)', 0, 100000000],
-          ['maxBidsPerDispute', 'Máx. lances por disputa', 0, 10000],
-          ['minimumSecondsRemaining', 'Segundos mínimos restantes', 1, 60],
-          ['minimumDelaySeconds', 'Intervalo mínimo (segundos)', 1, 3600],
-        ] as const).map(([key, label, min, max]) => <label className="config-field" key={key}><span>{label}</span><Input type="number" min={min} max={max} value={form[key]} onChange={event => setNumber(key, event.target.value)} data-testid={`input-${key}`} /></label>)}</div>
-        {formError && <div className="inline-error" role="alert">{formError}</div>}
-        {!configValid && <div className="inline-error" role="alert">Revise os valores: um ou mais parâmetros estão fora dos limites permitidos.</div>}
-         <div className="config-footer"><span>Atualizado: {date(config.updatedAt)}</span><Button className="btn primary" disabled={update.isPending || !configValid || (form.enabled && !selectedAccountCanEnable)} onClick={() => { setFormError(''); update.mutate(form); }} data-testid="button-save-automation">{update.isPending ? 'Salvando…' : 'Salvar configuração'} <Check size={14} /></Button></div>
-      </section>
-      <div className="side-stack">
-         <section className="panel wallet-panel"><div className="section-head"><div><p className="eyebrow">Saldo da conta selecionada</p><h2 className="section-title">Carteira automatizada</h2></div><Bot size={18} className="soft-icon" /></div><div className="wallet-balance">{money(displayedWalletBalanceCents)}</div><p>Saldo informado pelo serviço, sem estimativas.</p><div className="funding-divider" /><h3 className="mini-title">Registrar aporte recebido</h3><p className="field-hint">Registre somente após confirmar o recebimento real.</p>
-          <label className="input-label" htmlFor="fund-amount">Valor (centavos)</label><Input id="fund-amount" type="number" min="1" max="100000000" value={fundingAmount} onChange={event => setFundingAmount(event.target.value)} data-testid="input-funding-amount" placeholder="Ex.: 5000" />
+  const positiveCaps = [form.maxBidCents, form.perDisputeLimitCents, form.dailyLimitCents].filter(value => value > 0);
+  const consistent = positiveCaps.every((value, index) => index === 0 || positiveCaps[index - 1] <= value);
+  const accountReady = Boolean(selectedAccount && !selectedAccount.testAccount && selectedAccount.walletBalanceCents > 0);
+  const draftMatchesSavedConfig = form.mode === config.mode && form.bidTriggerMode === config.bidTriggerMode
+    && form.botUserId === config.botUserId && form.maxBidCents === config.maxBidCents
+    && form.perDisputeLimitCents === config.perDisputeLimitCents && form.dailyLimitCents === config.dailyLimitCents
+    && form.maxBidsPerDispute === config.maxBidsPerDispute && form.minimumSecondsRemaining === config.minimumSecondsRemaining
+    && form.minimumDelaySeconds === config.minimumDelaySeconds;
+  const serverBlocksActivation = draftMatchesSavedConfig && !config.canEnable;
+  const canEnable = Boolean(accountReady && numericValid && consistent && !serverBlocksActivation);
+  const reasons = [
+    !selectedAccount ? "Selecione uma conta." : "",
+    selectedAccount?.testAccount ? "Contas de teste não podem participar." : "",
+    selectedAccount && selectedAccount.walletBalanceCents <= 0 ? "A conta precisa ter saldo confirmado maior que zero." : "",
+    !numericValid ? "Revise os valores permitidos para cada parâmetro." : "",
+    !consistent ? "Os limites de lance, disputa e dia precisam respeitar a ordem definida." : "",
+    ...(serverBlocksActivation ? (config.blockedReasons.length ? config.blockedReasons : ["A configuração salva não pode ser ativada pelo serviço."]) : []),
+  ].filter(Boolean);
+  const wallet = form.botUserId === config.botUserId ? config.botWalletBalanceCents : selectedAccount?.walletBalanceCents ?? 0;
+  const displayedName = selectedAccount?.publicName ?? (form.botUserId === config.botUserId ? config.botName : "Selecione uma conta");
+  const savingBusy = update.isPending || statusUpdate.isPending;
+  const saveBlocked = !numericValid || !consistent || (config.enabled && !canEnable);
+  const savedInput: AutomationConfigInput = {
+    enabled: false, mode: config.mode, bidTriggerMode: config.bidTriggerMode, botUserId: config.botUserId,
+    maxBidCents: config.maxBidCents, perDisputeLimitCents: config.perDisputeLimitCents, dailyLimitCents: config.dailyLimitCents,
+    maxBidsPerDispute: config.maxBidsPerDispute, minimumSecondsRemaining: config.minimumSecondsRemaining, minimumDelaySeconds: config.minimumDelaySeconds,
+  };
+  return <div className="automation-page automation-settings-page appear">
+    <Link href="/automation" className="back-link" data-testid="link-back-automation"><ArrowLeft size={14} /> Visão geral da automação</Link>
+    <div className="spacer" />
+    <Heading eyebrow="Operação / automação" title="Configurações" description="Estado ao vivo separado das regras que você está preparando.">
+      {dirty && <span className="draft-indicator" data-testid="automation-draft-status"><span /> Rascunho não salvo</span>}
+    </Heading>
+    <section className="panel live-control-section" data-testid="automation-live-control">
+      <div className="live-control-copy">
+        <p className="eyebrow">Estado ao vivo</p>
+        <div className="live-control-title"><h2>{config.enabled ? "Automação ativa" : "Automação pausada"}</h2><span className={`state-chip ${config.enabled ? "state-on" : ""}`} data-testid="automation-config-state"><i />{config.enabled ? "Ativa agora" : "Desativada"}</span></div>
+        <p>Este estado é salvo imediatamente. Ativar aplica o rascunho atual e inicia o participante; desativar pausa agora sem descartar alterações não salvas.</p>
+      </div>
+      <div className="live-control-action">
+        <div className="toggle-row"><div><strong>{config.enabled ? "Ativa no momento" : "Desativada no momento"}</strong><small>{statusUpdate.isPending ? "Atualizando estado…" : config.enabled ? "Lances podem ser executados agora" : "Nenhum lance será executado"}</small></div>
+          <ToggleSwitch checked={config.enabled} disabled={statusUpdate.isPending || (!config.enabled && !canEnable)} onCheckedChange={(checked: boolean) => {
+            setStatusError(""); setStatusFeedback(""); setSaveFeedback("");
+            if (checked) statusUpdate.mutate({ ...form, enabled: true });
+            else statusUpdate.mutate(savedInput);
+          }} data-testid="switch-automation-enabled" />
+        </div>
+      </div>
+      {!canEnable && <div className="blocked-list live-blocked" data-testid="automation-blocked-reasons"><strong>Para ativar, resolva:</strong>{reasons.map((reason, index) => <div key={`${index}-${reason}`}><CircleAlert size={13} />{reason}</div>)}</div>}
+      {statusError && <div className="inline-error live-message" role="alert" data-testid="automation-status-error">{statusError}</div>}
+      {statusFeedback && <div className="success-note live-message" data-testid="automation-status-feedback"><Check size={14} />{statusFeedback}</div>}
+    </section>
+
+    <section className="panel settings-section identity-section" data-testid="automation-identity-section">
+      <div className="settings-section-heading"><div><p className="eyebrow">01 / Identidade e estratégia</p><h2>Quem age e quando</h2><p>Escolha a conta real e o comportamento do participante.</p></div><Bot size={19} /></div>
+      <div className="settings-account-banner" data-testid="settings-account-summary"><div className="account-avatar"><Bot size={19} /></div><div><span>CONTA SELECIONADA</span><strong>{displayedName}</strong><small>Saldo real da carteira</small></div><b>{money(wallet)}</b></div>
+      <label className="config-field account-field" htmlFor="automation-account"><span>Conta que fará os lances</span><select id="automation-account" className="field full" value={form.botUserId ?? ""} onChange={event => { setDirty(true); setForm(previous => ({ ...previous, botUserId: event.target.value || null })); setFormError(""); setSaveFeedback(""); }} disabled={savingBusy || accountsQuery.isPending} data-testid="select-automation-account">
+        <option value="">Selecione uma conta</option>{accountsQuery.data?.items.map((account: AutomationAccount) => <option key={account.id} value={account.id} disabled={account.testAccount}>{account.publicName}{account.testAccount ? " · conta de teste indisponível" : ` · saldo ${money(account.walletBalanceCents)}`}</option>)}
+      </select></label>
+      {accountsQuery.isPending && <div className="skeleton account-skeleton" />}
+      {accountsQuery.isError && <QueryError error={accountsQuery.error} retry={() => void accountsQuery.refetch()} />}
+      {selectedAccount?.testAccount && <div className="notice notice-error"><CircleAlert size={15} /> Contas de teste não podem ser usadas na automação.</div>}
+      <div className="strategy-grid">
+        <fieldset className="automation-mode-group" disabled={savingBusy}><legend>Quais ações o bot pode fazer?</legend><div className="automation-mode-list">{automationModes.map(mode => <label className={`automation-mode-option ${form.mode === mode.value ? "selected" : ""}`} key={mode.value}>
+          <input type="radio" name="automation-mode" value={mode.value} checked={form.mode === mode.value} onChange={() => { setDirty(true); setForm(previous => ({ ...previous, mode: mode.value })); setSaveFeedback(""); }} data-testid={`radio-automation-mode-${mode.value}`} />
+          <span><strong>{mode.label}</strong><small>{mode.detail}</small></span>
+        </label>)}</div></fieldset>
+        <fieldset className="automation-mode-group trigger-mode-group" disabled={savingBusy}><legend>Quando o bot deve agir?</legend><div className="automation-mode-list">{bidTriggerModes.map(trigger => <label className={`automation-mode-option ${form.bidTriggerMode === trigger.value ? "selected" : ""}`} key={trigger.value}>
+          <input type="radio" name="automation-trigger-mode" value={trigger.value} checked={form.bidTriggerMode === trigger.value} onChange={() => { setDirty(true); setForm(previous => ({ ...previous, bidTriggerMode: trigger.value })); setSaveFeedback(""); }} data-testid={`radio-automation-trigger-${trigger.value}`} />
+          <span><strong>{trigger.label}</strong><small>{trigger.detail}</small></span>
+        </label>)}</div></fieldset>
+      </div>
+      {form.bidTriggerMode === "at_fixed_time" && <div className="trigger-explainer" data-testid="fixed-time-trigger-note"><Activity size={14} /><span>Em tempo fixo: quando o cronômetro reiniciar, o bot poderá agir novamente se não estiver liderando.</span></div>}
+    </section>
+
+    <section className="panel settings-section finance-section" data-testid="automation-financial-section">
+      <div className="settings-section-heading"><div><p className="eyebrow">02 / Proteção financeira e tempo</p><h2>Regras de gasto</h2><p>Defina limites independentes e o ritmo de execução.</p></div><ShieldCheck size={19} /></div>
+      <div className="notice wallet-ceiling-note"><ShieldCheck size={16} /><span><strong>O saldo da carteira é o teto absoluto de gasto.</strong> Zero significa sem limite apenas para aquele parâmetro; nunca autoriza gastar além do saldo real disponível.</span></div>
+      <div className="limits-label"><div><p className="eyebrow">Limites de gasto</p><h3>Caps por lance, disputa e dia</h3></div><span>Valores em centavos</span></div>
+      <div className="config-grid">{([
+        ["maxBidCents", "Teto por lance", 0, 100000000],
+        ["perDisputeLimitCents", "Teto por disputa", 0, 100000000],
+        ["dailyLimitCents", "Teto diário", 0, 100000000],
+        ["maxBidsPerDispute", "Lances por disputa", 0, 10000],
+      ] as const).map(([key, label, min, max]) => <label className="config-field" key={key}><span>{label}</span><Input type="number" min={min} max={max} step="1" value={form[key]} onChange={event => { setNumber(key, event.target.value); setSaveFeedback(""); }} disabled={savingBusy} data-testid={`input-${key}`} />{min === 0 && <small className="zero-hint">0 = sem limite para este parâmetro</small>}</label>)}</div>
+      <div className="limits-label timing-heading"><div><p className="eyebrow">Janela de execução</p><h3>Tempo e intervalo</h3></div></div>
+      <div className="config-grid timing-config-grid">
+        <label className="config-field"><span>{form.bidTriggerMode === "at_fixed_time" ? "Dar lance quando faltarem (segundos)" : "Tempo restante mínimo (segundos)"}</span><Input type="number" min="1" max="60" step="1" value={form.minimumSecondsRemaining} onChange={event => { setNumber("minimumSecondsRemaining", event.target.value); setSaveFeedback(""); }} disabled={savingBusy} data-testid="input-minimumSecondsRemaining" /><small className="timing-hint">{form.bidTriggerMode === "at_fixed_time" ? "Dispara quando restar esse tempo ou menos; se o bot liderar, aguarda o próximo reinício." : "Evita responder quando a disputa estiver perto demais do encerramento."}</small></label>
+        {form.bidTriggerMode === "on_outbid" && <label className="config-field"><span>Intervalo após ser superado (segundos)</span><Input type="number" min="1" max="3600" step="1" value={form.minimumDelaySeconds} onChange={event => { setNumber("minimumDelaySeconds", event.target.value); setSaveFeedback(""); }} disabled={savingBusy} data-testid="input-minimumDelaySeconds" /><small className="timing-hint">Aguarda esse tempo após o lance maior antes de responder.</small></label>}
+      </div>
+      {!consistent && <div className="inline-error" role="alert" data-testid="automation-limit-error">Ignore os limites em zero: os limites positivos precisam seguir a ordem lance ≤ disputa ≤ dia.</div>}
+      {formError && <div className="inline-error" role="alert" data-testid="automation-save-error">{formError}</div>}
+      {!numericValid && <div className="inline-error" role="alert">Revise os valores: um ou mais parâmetros estão fora dos intervalos permitidos.</div>}
+      <div className="config-footer settings-save-footer">
+        <span>{dirty ? "Alterações locais ainda não aplicadas." : `Regras salvas · ${date(config.updatedAt)}`}</span>
+        <div>{saveFeedback && <span className="save-feedback" data-testid="automation-save-feedback"><Check size={13} />{saveFeedback}</span>}
+          <Button className="btn primary" disabled={savingBusy || saveBlocked || !dirty} onClick={() => { setFormError(""); setSaveFeedback(""); update.mutate({ ...form, enabled: config.enabled }); }} data-testid="button-save-automation">{update.isPending ? "Salvando…" : "Salvar regras"} <Check size={14} /></Button>
+        </div>
+      </div>
+    </section>
+
+    <section className="panel settings-section funding-section" data-testid="automation-funding-section">
+      <div className="settings-section-heading"><div><p className="eyebrow">03 / Saldo da conta</p><h2>Aporte confirmado</h2><p>Registre somente valores já recebidos e vinculados a um comprovante.</p></div><CircleDollarSign size={19} /></div>
+      <div className="funding-form-grid">
+        <div className="funding-balance-card"><span>CARTEIRA DA CONTA SALVA</span><strong>{config.botUserId ? config.botName : "Nenhuma conta salva"}</strong><b>{money(config.botWalletBalanceCents)}</b><small>Saldo real informado pelo serviço</small></div>
+        <div className="funding-form">
+          {form.botUserId !== config.botUserId && <div className="field-hint funding-selection-warning">Salve as regras da conta antes de registrar um aporte para ela.</div>}
+          <label className="input-label" htmlFor="fund-amount">Valor a creditar (centavos)</label><Input id="fund-amount" type="number" min="1" max="100000000" step="1" value={fundingAmount} onChange={event => setFundingAmount(event.target.value)} data-testid="input-funding-amount" placeholder="Ex.: 5000" />
           <label className="input-label" htmlFor="receipt-reference">Referência do comprovante</label><Input id="receipt-reference" minLength={3} maxLength={120} value={receipt} onChange={event => setReceipt(event.target.value)} data-testid="input-funding-reference" placeholder="Identificador do comprovante" />
           <label className="confirm-row"><input type="checkbox" checked={cashConfirmed} onChange={event => setCashConfirmed(event.target.checked)} data-testid="checkbox-cash-confirmed" /> Confirmo que o valor foi recebido.</label>
-          {fundingResult && <p className="success-note"><Check size={14} />{fundingResult}</p>}
+          {fundingResult && <p className="success-note" data-testid="funding-success"><Check size={14} />{fundingResult}</p>}
           {fund.isError && <div className="inline-error" role="alert">{errorMessage(fund.error)}</div>}
-           {form.botUserId !== config.botUserId && <p className="field-hint">Salve a conta selecionada antes de registrar o aporte.</p>}
-           <Button className="btn primary full-button" disabled={fund.isPending || form.botUserId !== config.botUserId || !cashConfirmed || Number(fundingAmount) < 1 || receipt.trim().length < 3} onClick={() => fund.mutate({ amountCents: Number(fundingAmount), receiptReference: receipt.trim(), cashReceived: true })} data-testid="button-record-funding">{fund.isPending ? 'Registrando…' : 'Confirmar aporte'} <ArrowRight size={14} /></Button>
-        </section>
+          <Button className="btn primary full-button" disabled={fund.isPending || form.botUserId !== config.botUserId || !cashConfirmed || !Number.isInteger(Number(fundingAmount)) || Number(fundingAmount) < 1 || Number(fundingAmount) > 100000000 || receipt.trim().length < 3} onClick={() => fund.mutate({ amountCents: Number(fundingAmount), receiptReference: receipt.trim(), cashReceived: true })} data-testid="button-record-funding">{fund.isPending ? "Registrando…" : "Confirmar aporte"} <ArrowRight size={14} /></Button>
+          <p className="funding-assurance"><ShieldCheck size={13} /> A carteira só recebe crédito após sua confirmação explícita.</p>
+        </div>
       </div>
-    </div>
-    <section className="panel section-panel events-panel"><div className="section-head"><div><p className="eyebrow">Registro de atividade</p><h2 className="section-title">Histórico da automação</h2></div><span className="section-kicker">{eventsQuery.data?.total ?? '—'} eventos</span></div>
-      {eventsQuery.isPending ? <div className="event-skeleton"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div> : eventsQuery.isError ? <QueryError error={eventsQuery.error} retry={() => void eventsQuery.refetch()} /> : eventsQuery.data?.items.length ? <div className="event-list">{eventsQuery.data.items.map(event => <div className="event-row" key={event.id}><div className="event-mark">{event.eventType === 'funding' ? <CircleDollarSign size={14} /> : event.eventType === 'bid' ? <ArrowDownLeft size={14} /> : <Activity size={14} />}</div><div className="event-body"><div className="event-title"><strong>{event.summary}</strong><span className={`event-type ${event.eventType}`}>{event.eventType.replaceAll('_', ' ')}</span></div><div className="event-text">{event.disputeNumber != null && <span>Disputa #{event.disputeNumber} · </span>}{event.amountCents != null && <span>{money(event.amountCents)} · </span>}<span>{date(event.createdAt)}</span></div></div></div>)}</div> : <Empty title="Sem eventos registrados" text="A API não retornou eventos para o histórico de automação." />}
     </section>
-  </>;
+  </div>;
 }
 function App() {
   return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><ErrorBoundary><AuthGate /></ErrorBoundary></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;

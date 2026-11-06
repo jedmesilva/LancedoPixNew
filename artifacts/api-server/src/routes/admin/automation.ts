@@ -56,8 +56,6 @@ router.put("/automation/config", async (req, res): Promise<void> => {
               ? "A conta selecionada não possui uma carteira disponível."
               : code === "LIMIT_ORDER_INVALID"
                 ? "Os limites devem seguir a ordem: lance, disputa e dia."
-                : code === "LIMITS_REQUIRED"
-                  ? "Informe limites positivos para ativar a automação."
                   : "Não foi possível salvar as regras da automação.";
     res.status(status).json(ApiErrorBody.parse({ error: message }));
   }

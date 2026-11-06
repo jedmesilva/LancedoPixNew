@@ -20,3 +20,4 @@
 - [Dispute intermission](dispute-intermission.md) — Keep the completed result and next-dispute countdown visible together until the next dispute starts.
 - [Managed workflow dependencies](managed-workflow-dependencies.md) — Sync filtered pnpm dependencies before restarting when a declared package cannot be resolved.
 - [Admin access key](admin-access-key.md) — Validate the configured operator secret directly; do not require the user to generate a hash.
+- [Automation cap semantics](automation-cap-semantics.md) — Zero disables an individual cap; the selected wallet balance remains the hard spend ceiling.

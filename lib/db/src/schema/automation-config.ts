@@ -21,6 +21,13 @@ export const AUTOMATION_MODES = [
 ] as const;
 export type AutomationMode = (typeof AUTOMATION_MODES)[number];
 
+export const AUTOMATION_BID_TRIGGER_MODES = [
+  "on_outbid",
+  "at_fixed_time",
+] as const;
+export type AutomationBidTriggerMode =
+  (typeof AUTOMATION_BID_TRIGGER_MODES)[number];
+
 export const automationConfigTable = pgTable(
   "automation_config",
   {
@@ -30,6 +37,10 @@ export const automationConfigTable = pgTable(
       .$type<AutomationMode>()
       .notNull()
       .default("counterbids_only"),
+    bidTriggerMode: text("bid_trigger_mode")
+      .$type<AutomationBidTriggerMode>()
+      .notNull()
+      .default("on_outbid"),
     botUserId: uuid("bot_user_id").references(() => usersTable.id, {
       onDelete: "restrict",
     }),
@@ -63,6 +74,10 @@ export const automationConfigTable = pgTable(
     check(
       "automation_config_mode_check",
       sql`${table.mode} IN ('counterbids_only', 'bids_and_counterbids', 'bids_only')`,
+    ),
+    check(
+      "automation_config_bid_trigger_mode_check",
+      sql`${table.bidTriggerMode} IN ('on_outbid', 'at_fixed_time')`,
     ),
     check(
       "automation_config_limits_nonnegative_check",

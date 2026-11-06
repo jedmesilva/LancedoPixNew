@@ -485,6 +485,7 @@ components:
       properties:
         enabled: { type: boolean }
         mode: { type: string, enum: [counterbids_only, bids_and_counterbids, bids_only] }
+        bidTriggerMode: { type: string, enum: [on_outbid, at_fixed_time] }
         botUserId: { type: ["string", "null"], format: uuid }
         botExists: { type: boolean }
         botName: { type: string }
@@ -503,6 +504,7 @@ components:
       required:
         - enabled
         - mode
+        - bidTriggerMode
         - botUserId
         - botExists
         - botName
@@ -521,6 +523,7 @@ components:
       properties:
         enabled: { type: boolean }
         mode: { type: string, enum: [counterbids_only, bids_and_counterbids, bids_only] }
+        bidTriggerMode: { type: string, enum: [on_outbid, at_fixed_time] }
         botUserId: { type: ["string", "null"], format: uuid }
         maxBidCents: { type: integer, minimum: 0, maximum: 100000000 }
         perDisputeLimitCents: { type: integer, minimum: 0, maximum: 100000000 }
@@ -531,6 +534,7 @@ components:
       required:
         - enabled
         - mode
+        - bidTriggerMode
         - botUserId
         - maxBidCents
         - perDisputeLimitCents

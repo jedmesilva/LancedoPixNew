@@ -226,6 +226,7 @@ export const ListAutomationAccountsResponse = zod.object({
 export const GetAutomationConfigResponse = zod.object({
   "enabled": zod.boolean(),
   "mode": zod.enum(['counterbids_only', 'bids_and_counterbids', 'bids_only']),
+  "bidTriggerMode": zod.enum(['on_outbid', 'at_fixed_time']),
   "botUserId": zod.string().uuid().nullable(),
   "botExists": zod.boolean(),
   "botName": zod.string(),
@@ -266,6 +267,7 @@ export const updateAutomationConfigBodyMinimumDelaySecondsMax = 3600;
 export const UpdateAutomationConfigBody = zod.object({
   "enabled": zod.boolean(),
   "mode": zod.enum(['counterbids_only', 'bids_and_counterbids', 'bids_only']),
+  "bidTriggerMode": zod.enum(['on_outbid', 'at_fixed_time']),
   "botUserId": zod.string().uuid().nullable(),
   "maxBidCents": zod.number().int().min(updateAutomationConfigBodyMaxBidCentsMin).max(updateAutomationConfigBodyMaxBidCentsMax),
   "perDisputeLimitCents": zod.number().int().min(updateAutomationConfigBodyPerDisputeLimitCentsMin).max(updateAutomationConfigBodyPerDisputeLimitCentsMax),
@@ -278,6 +280,7 @@ export const UpdateAutomationConfigBody = zod.object({
 export const UpdateAutomationConfigResponse = zod.object({
   "enabled": zod.boolean(),
   "mode": zod.enum(['counterbids_only', 'bids_and_counterbids', 'bids_only']),
+  "bidTriggerMode": zod.enum(['on_outbid', 'at_fixed_time']),
   "botUserId": zod.string().uuid().nullable(),
   "botExists": zod.boolean(),
   "botName": zod.string(),

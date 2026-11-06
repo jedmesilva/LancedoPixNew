@@ -5,11 +5,13 @@
  * API privada e isolada para operações administrativas do Lance do Pix.
  * OpenAPI spec version: 1.0.0
  */
+import type { AutomationConfigInputBidTriggerMode } from './automationConfigInputBidTriggerMode';
 import type { AutomationConfigInputMode } from './automationConfigInputMode';
 
 export interface AutomationConfigInput {
   enabled: boolean;
   mode: AutomationConfigInputMode;
+  bidTriggerMode: AutomationConfigInputBidTriggerMode;
   /** @nullable */
   botUserId: string | null;
   /**
