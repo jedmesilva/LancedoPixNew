@@ -258,7 +258,8 @@ function DisputesPage() {
   const limit = 20;
   const query = useQuery({ queryKey: ['/api/admin/disputes', { q, limit, offset }], queryFn: () => listAdminDisputes({ q: q || undefined, limit, offset }) });
   const total = query.data?.total || 0;
-  return <div className="disputes-page">
+  return <div className="disputes-page appear">
+    <Heading eyebrow="Operação / histórico" title="Disputas" description="Acompanhe disputas em andamento e consulte os lances registrados." />
     <section className="prototype-section">
       <div className="prototype-section-head"><p className="ey">Histórico de disputas</p><span className="prototype-note">{total.toLocaleString('pt-BR')} registros</span></div>
       <form className="prototype-search" onSubmit={event => { event.preventDefault(); setOffset(0); setQ(input.trim()); }}>
@@ -316,7 +317,8 @@ function PayoutsPage() {
   const limit = 20;
   const query = useQuery({ queryKey: ['/api/admin/payouts', { status, q, limit, offset }], queryFn: () => listAdminPayouts({ status: (status || undefined) as AdminPayoutStatus | undefined, q: q || undefined, limit, offset }) });
   const total = query.data?.total || 0;
-  return <>
+  return <div className="payouts-page appear">
+    <Heading eyebrow="Financeiro / operações" title="Resgates" description="Revise solicitações, registre pagamentos e mantenha decisões justificadas." />
     <section className="prototype-section" aria-label="Buscar e filtrar resgates">
       <div className="prototype-section-head"><p className="ey">Resgates</p><span className="prototype-note">{total.toLocaleString('pt-BR')} solicitações</span></div>
       <form className="prototype-search" onSubmit={event => { event.preventDefault(); const search = input.trim(); setInput(search); setOffset(0); setQ(search); }}>
@@ -332,7 +334,7 @@ function PayoutsPage() {
     </section>
     {notice && <div className="automation-feedback" role="status" data-testid="payout-action-success"><Check size={15} />{notice}</div>}
     {query.isPending ? <LoadingPanel /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : query.data?.items.length ? <><PayoutRows items={query.data.items} onUpdated={setNotice} /><Pagination offset={offset} limit={limit} total={total} setOffset={setOffset} /></> : <Empty title={q ? 'Nenhuma solicitação encontrada' : 'Fila vazia'} text={q ? 'Tente outro nome, e-mail ou ID de solicitação.' : 'A API não retornou solicitações com este filtro.'} />}
-  </>;
+  </div>;
 }
 function PayoutRows({ items, onUpdated }: { items: AdminPayout[]; onUpdated: (message: string) => void }) {
   const keyNames: Record<string, string> = { cpf: 'CPF', email: 'E-mail', phone: 'Telefone', random: 'Aleatória' };
@@ -411,13 +413,14 @@ function TreasuryPage() {
   const [filter, setFilter] = useState<'all' | AdminTreasuryMovement['category']>('all');
   const [contributionOpen, setContributionOpen] = useState(false);
   const [contributionNotice, setContributionNotice] = useState('');
+  const heading = <Heading eyebrow="Financeiro / caixa" title="Caixa" description="Acompanhe entradas confirmadas, obrigações e saídas liquidadas." />;
   const dashboardQuery = useQuery({ queryKey: DASHBOARD_KEY, queryFn: getAdminDashboard });
   const movementQuery = useQuery({
     queryKey: ['/api/admin/treasury/movements', { limit: 50, offset: 0 }],
     queryFn: () => listAdminTreasuryMovements({ limit: 50, offset: 0 }),
   });
-  if (dashboardQuery.isPending || movementQuery.isPending) return <LoadingPanel />;
-  if (dashboardQuery.isError || !dashboardQuery.data) return <QueryError error={dashboardQuery.error} retry={() => void dashboardQuery.refetch()} />;
+  if (dashboardQuery.isPending || movementQuery.isPending) return <div className="treasury-page prototype-dashboard">{heading}<LoadingPanel /></div>;
+  if (dashboardQuery.isError || !dashboardQuery.data) return <div className="treasury-page prototype-dashboard">{heading}<QueryError error={dashboardQuery.error} retry={() => void dashboardQuery.refetch()} /></div>;
   const dashboard = dashboardQuery.data;
   const data = dashboard.treasury;
   const bidVolume = dashboard.platformRevenueCents + dashboard.prizeCoverageCents;
@@ -439,7 +442,8 @@ function TreasuryPage() {
     { value: 'ad_revenue', label: 'Publicidade' },
   ];
   const movements = (movementQuery.data?.items ?? []).filter(item => filter === 'all' || item.category === filter);
-  return <div className="prototype-dashboard appear">
+  return <div className="treasury-page prototype-dashboard appear">
+    {heading}
     <section className="prototype-section" data-testid="treasury-summary">
       <div className="prototype-section-head"><p className="ey">Caixa</p><div className="treasury-actions">
         <button className="prototype-refresh" onClick={() => { void dashboardQuery.refetch(); void movementQuery.refetch(); }} data-testid="button-refresh-treasury"><RefreshCw size={14} /> Atualizar</button>
