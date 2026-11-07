@@ -19,10 +19,16 @@ export interface AdminDisputeSummary {
   /** @nullable */
   startedAt: Date | null;
   /** @nullable */
+  timerDeadlineAt: Date | null;
+  /** @nullable */
   endedAt: Date | null;
   createdAt: Date;
   /** @nullable */
   leaderName: string | null;
   /** @nullable */
   winnerName: string | null;
+  /** @minimum 0 */
+  automationBidCount: number;
+  automationBotLeading: boolean;
+  automationBotWon: boolean;
 }

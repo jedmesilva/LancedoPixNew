@@ -80,35 +80,77 @@ function Metric({ label, value, note }: { label: string; value: ReactNode; note:
 function DisputeRows({ items }: { items: AdminDisputeSummary[] }) {
   return <div className="record-list">{items.map(item => <DisputeRow item={item} key={item.id} />)}</div>;
 }
-function DisputeRow({ item }: { item: AdminDisputeSummary }) {
-  const [expanded, setExpanded] = useState(false);
+function DisputeRow({
+  item,
+  monitoring = false,
+  expandOnMount = false,
+  showDetailLink = true,
+}: {
+  item: AdminDisputeSummary;
+  monitoring?: boolean;
+  expandOnMount?: boolean;
+  showDetailLink?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(expandOnMount);
   const detail = useQuery({
     queryKey: ['/api/admin/disputes', item.id],
-    queryFn: () => getAdminDispute(item.id),
+    queryFn: () => getAdminDispute(item.id, { cache: 'no-store' }),
     enabled: expanded,
-    staleTime: 60_000,
+    staleTime: 0,
   });
+  const botOutcome = !monitoring
+    ? null
+    : item.status === 'ended'
+      ? item.bidsCount === 0
+        ? 'Sem lances'
+        : item.automationBotWon
+          ? 'Bot venceu'
+          : 'Bot não venceu'
+      : item.status === 'live'
+        ? item.automationBotLeading
+          ? 'Bot lidera'
+          : item.automationBidCount > 0
+            ? 'Bot participou'
+            : 'Bot ainda não deu lance'
+        : item.status === 'paused'
+          ? 'Disputa pausada'
+          : null;
+  const botOutcomeTone = botOutcome === 'Bot venceu' || botOutcome === 'Bot lidera'
+    ? 'positive'
+    : botOutcome === 'Bot não venceu'
+      ? 'negative'
+      : 'neutral';
   return <article className={`dispute-record ${expanded ? 'expanded' : ''}`} data-testid={`card-dispute-${item.id}`}>
     <button type="button" className="record-trigger" aria-expanded={expanded} onClick={() => setExpanded(value => !value)} data-testid={`button-expand-dispute-${item.id}`}>
-      <span className="record-copy"><strong>Disputa #{item.number}</strong><small>{date(item.createdAt)} · {item.bidsCount} lances · {item.winnerName || item.leaderName || 'Sem lances'}</small></span>
-      <span className="record-trailing"><Status value={item.status} /><strong>{item.currentValueCents == null ? 'Sem lances' : money(item.currentValueCents)}</strong><ChevronDown size={16} className="record-chevron" /></span>
+      <span className="record-copy">
+        <strong>Disputa #{item.number}</strong>
+        <small>{date(item.createdAt)} · {item.bidsCount} lances · {item.status === 'ended' ? item.winnerName ? `Vencedor: ${item.winnerName}` : 'Encerrada sem vencedor' : item.leaderName ? `Líder: ${item.leaderName}` : 'Sem lances'}</small>
+      </span>
+      <span className="record-trailing">
+        <Status value={item.status} />
+        {botOutcome && <span className={`automation-result-pill ${botOutcomeTone}`}>{botOutcome}</span>}
+        <strong>{item.currentValueCents == null ? 'Sem lances' : money(item.currentValueCents)}</strong>
+        <ChevronDown size={16} className="record-chevron" />
+      </span>
     </button>
     {expanded && <div className="record-expanded">
-      <div className="record-facts">
+      <div className={`record-facts ${monitoring ? 'automation-record-facts' : ''}`}>
         <span><small>Prêmio</small><strong>{money(item.prizeCents)}</strong></span>
         <span><small>Incremento mínimo</small><strong>{money(item.stepCents)}</strong></span>
         <span><small>Vencedor</small><strong>{item.winnerName || '—'}</strong></span>
+        {monitoring && <span><small>Lances do bot</small><strong>{item.automationBidCount}</strong></span>}
+        {monitoring && <span><small>Resultado do bot</small><strong>{botOutcome || '—'}</strong></span>}
       </div>
       {detail.isPending ? <div className="record-loading">Carregando lances registrados…</div>
         : detail.isError ? <QueryError error={detail.error} retry={() => void detail.refetch()} />
         : detail.data?.bids.length ? <div className="bid-record-list" aria-label={`Lances da disputa ${item.number}`}>
           {detail.data.bids.map(bid => <div className="bid-record" key={bid.id} data-testid={`row-bid-${bid.id}`}>
-            <span><strong>{bid.bidderName}</strong>{bid.automated && <small>Participante automatizado</small>}</span>
+            <span><strong>{bid.bidderName}</strong>{bid.automated && <small>{monitoring ? 'Lance do bot' : 'Participante automatizado'}</small>}</span>
             <span><strong>{money(bid.amountCents)}</strong><small>{date(bid.createdAt)}</small></span>
             <span className={`result-pill ${bid.result || ''}`}>{bid.result === 'won' ? 'Venceu' : bid.result === 'lost' ? 'Não venceu' : 'Em aberto'}</span>
           </div>)}
         </div> : <div className="record-loading">Nenhum lance registrado nesta disputa.</div>}
-      <Link href={`/disputes/${encodeURIComponent(item.id)}`} className="table-link record-detail-link" data-testid={`link-dispute-${item.id}`}>Abrir detalhes completos <ArrowRight size={13} /></Link>
+      {showDetailLink && <Link href={`/disputes/${encodeURIComponent(item.id)}`} className="table-link record-detail-link" data-testid={`link-dispute-${item.id}`}>Abrir detalhes completos <ArrowRight size={13} /></Link>}
     </div>}
   </article>;
 }
@@ -592,6 +634,16 @@ function AutomationPage() {
       ),
     refetchInterval: realtimeConnected ? false : 5_000,
   });
+  const disputesLimit = 50;
+  const disputesQuery = useQuery({
+    queryKey: ["/api/admin/disputes", { limit: disputesLimit, offset: 0 }],
+    queryFn: () =>
+      listAdminDisputes(
+        { limit: disputesLimit, offset: 0 },
+        { cache: "no-store" },
+      ),
+    refetchInterval: realtimeConnected ? false : 5_000,
+  });
   const [form, setForm] = useState<AutomationConfigInput | null>(null);
   const [dirty, setDirty] = useState(false);
   const [validation, setValidation] = useState<{ ok: boolean; messages: string[] } | null>(null);
@@ -664,6 +716,10 @@ function AutomationPage() {
   const accountReady = Boolean(selected);
   const walletCents = selected?.walletBalanceCents ?? (config.botUserId === draft.botUserId ? config.botWalletBalanceCents : 0);
   const realBids = (eventsQuery.data?.items ?? []).filter(event => event.eventType === "bid");
+  const disputeItems = disputesQuery.data?.items ?? [];
+  const activeDisputes = disputeItems.filter(item => item.status === "live" || item.status === "paused");
+  const scheduledDisputes = disputeItems.filter(item => item.status === "scheduled").slice(0, 3);
+  const recentResults = disputeItems.filter(item => item.status === "ended").slice(0, 8);
   const draftReady = Boolean(accountReady && (draft.operatorRules.opening.on || draft.operatorRules.counter.on));
   const setDraft = (next: AutomationConfigInput) => { setForm(next); setDirty(true); setFeedback(""); setValidation(null); };
   const patchRule = (key: AutomationRuleKey, patch: Partial<AutomationConfigInput["operatorRules"][AutomationRuleKey]>) => {
@@ -694,6 +750,7 @@ function AutomationPage() {
   const accountName = selected?.publicName || (config.botUserId === draft.botUserId ? config.botName : "Selecione uma conta");
   const winCount = selected?.wonDisputeCount ?? 0;
   const wonTotal = selected?.wonPrizeTotalCents ?? 0;
+  const botLeadingCount = activeDisputes.filter(item => item.status === "live" && item.automationBotLeading).length;
   const statusBusy = changeStatus.isPending;
   const statusActions: Array<{
     id: "start" | "resume" | "pause" | "stop";
@@ -713,7 +770,7 @@ function AutomationPage() {
         ]
       : [{ id: "start", status: "ativa", label: "Iniciar", icon: Play, style: "primary" }];
   return <div className="automation-page automation-console appear" data-testid="automation-console">
-    <Heading eyebrow="Operação / automação" title="Automação" description="Configure regras, valide a conta real e acompanhe os lances do bot." />
+    <Heading eyebrow="Operação / automação" title="Automação" description="Acompanhe disputas, lances e resultados, e controle o bot sem sair desta tela." />
     {configQuery.isFetching && <div className="refresh-note"><span className="pulse-dot" /> Atualizando configuração…</div>}
     {feedback && <div className="automation-feedback" role="status"><Check size={15} />{feedback}</div>}
     {statusError && <div className="automation-message error" role="alert">{statusError}</div>}
@@ -767,6 +824,69 @@ function AutomationPage() {
         <div className="automation-fact"><span>Disputas vencidas pela conta</span><strong>{winCount.toLocaleString("pt-BR")} · {money(wonTotal)}</strong><small>Vitórias · prêmios vencidos</small></div>
       </div>
       <p className="prototype-note">Os lances usam os créditos desta conta e os prêmios vencidos ficam disponíveis para ela. O saldo real da carteira é sempre o teto absoluto de gasto, inclusive quando os limites estão sem limite.</p>
+    </section>
+
+    <section className="automation-operations-board" data-testid="automation-operations-board">
+      <div className="automation-operations-heading">
+        <div>
+          <p className="ey">Central de operação</p>
+          <h2>Disputas, lances e resultados</h2>
+          <p>Veja o que está acontecendo agora, confira quem lidera e acompanhe o resultado de cada disputa.</p>
+        </div>
+        <div className={`automation-live-indicator ${realtimeConnected ? "connected" : "reconnecting"}`} role="status" aria-live="polite">
+          <span />
+          {realtimeConnected ? "Canal ao vivo conectado" : "Reconectando · atualização automática ativa"}
+        </div>
+      </div>
+      <div className="automation-ops-metrics">
+        <article><span>Disputas em andamento</span><strong>{disputesQuery.data ? activeDisputes.length : "—"}</strong></article>
+        <article><span>Bot na liderança</span><strong>{disputesQuery.data ? botLeadingCount : "—"}</strong></article>
+        <article><span>Lances do bot · últimos 100</span><strong>{eventsQuery.data ? realBids.length : "—"}</strong></article>
+        <article><span>Vitórias da conta selecionada</span><strong>{selected ? winCount.toLocaleString("pt-BR") : "—"}</strong></article>
+      </div>
+      {disputesQuery.isPending && !disputesQuery.data
+        ? <LoadingPanel count={2} />
+        : disputesQuery.isError && !disputesQuery.data
+          ? <QueryError error={disputesQuery.error} retry={() => void disputesQuery.refetch()} />
+          : <div className="automation-operations-grid">
+            <section className="automation-monitor-panel" data-testid="automation-active-disputes">
+              <div className="automation-monitor-heading">
+                <div><h3>Disputas em andamento</h3><p>As disputas ativas abrem os lances automaticamente para acompanhamento.</p></div>
+                <span>{activeDisputes.length}</span>
+              </div>
+              {activeDisputes.length
+                ? <div className="record-list">{activeDisputes.map(item => <DisputeRow key={item.id} item={item} monitoring expandOnMount={item.status === "live"} showDetailLink={false} />)}</div>
+                : <Empty title="Nenhuma disputa em andamento" text="As disputas ativas aparecerão aqui com liderança e lances." />}
+            </section>
+            <section className="automation-monitor-panel" data-testid="automation-scheduled-disputes">
+              <div className="automation-monitor-heading">
+                <div><h3>Próximas disputas</h3><p>Disputas já agendadas para entrar em operação.</p></div>
+                <span>{scheduledDisputes.length}</span>
+              </div>
+              {scheduledDisputes.length
+                ? <div className="record-list">{scheduledDisputes.map(item => <DisputeRow key={item.id} item={item} monitoring showDetailLink={false} />)}</div>
+                : <Empty title="Nenhuma disputa agendada" text="Não há uma próxima disputa registrada neste momento." />}
+            </section>
+            <section className="automation-monitor-panel automation-results-panel" data-testid="automation-dispute-results">
+              <div className="automation-monitor-heading">
+                <div><h3>Resultados recentes</h3><p>Vencedor, quantidade de lances do bot e resultado da automação.</p></div>
+                <span>{recentResults.length}</span>
+              </div>
+              {recentResults.length
+                ? <div className="record-list">{recentResults.map(item => <DisputeRow key={item.id} item={item} monitoring showDetailLink={false} />)}</div>
+                : <Empty title="Sem resultados recentes" text="As disputas encerradas aparecerão aqui com o vencedor registrado." />}
+            </section>
+          </div>}
+      <section className="prototype-section automation-block automation-bid-history automation-ops-bid-history" data-testid="automated-bid-history">
+        <div className="prototype-section-head"><p className="ey">Lances do bot</p><span className="prototype-note">{eventsQuery.data ? `${realBids.length} eventos · últimos ${eventsLimit}` : "Eventos reais"}</span></div>
+        {eventsQuery.isPending ? <div className="event-skeleton"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div>
+          : eventsQuery.isError ? <QueryError error={eventsQuery.error} retry={() => void eventsQuery.refetch()} />
+          : realBids.length ? <div className="event-list">{realBids.map(event => <article className="event-row event-bid" key={event.id} data-testid={`bid-row-${event.id}`}>
+            <div className="event-mark"><Activity size={15} /></div><div className="event-body"><div className="event-title"><strong>{event.summary || "Lance automático"}</strong><span className="event-type bid">Lance do bot</span></div>
+              <div className="event-text">{event.disputeNumber != null && <span>Disputa #{event.disputeNumber} · </span>}{event.amountCents != null && <span>{money(event.amountCents)} · </span>}{date(event.createdAt)}</div></div>
+          </article>)}</div>
+          : <Empty title="Nenhum lance automático ainda" text="Os registros aparecerão aqui quando houver eventos reais de lance." />}
+      </section>
     </section>
 
     {([
@@ -839,16 +959,6 @@ function AutomationPage() {
       </div>}
     </section>
 
-    <section className="prototype-section automation-block automation-bid-history" data-testid="automated-bid-history">
-      <div className="prototype-section-head"><p className="ey">Lances do bot</p><span className="prototype-note">{eventsQuery.data ? `${realBids.length} eventos · últimos ${eventsLimit}` : "Eventos reais"}</span></div>
-      {eventsQuery.isPending ? <div className="event-skeleton"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div>
-        : eventsQuery.isError ? <QueryError error={eventsQuery.error} retry={() => void eventsQuery.refetch()} />
-        : realBids.length ? <div className="event-list">{realBids.map(event => <article className="event-row event-bid" key={event.id} data-testid={`bid-row-${event.id}`}>
-          <div className="event-mark"><Activity size={15} /></div><div className="event-body"><div className="event-title"><strong>{event.summary || "Lance automático"}</strong><span className="event-type bid">Lance</span></div>
-            <div className="event-text">{event.disputeNumber != null && <span>Disputa #{event.disputeNumber} · </span>}{event.amountCents != null && <span>{money(event.amountCents)} · </span>}{date(event.createdAt)}</div></div>
-        </article>)}</div>
-        : <Empty title="Nenhum lance automático ainda" text="Os registros aparecerão aqui quando houver eventos reais de lance." />}
-    </section>
   </div>;
 }
 function App() {

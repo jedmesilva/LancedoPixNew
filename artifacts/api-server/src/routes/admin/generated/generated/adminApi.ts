@@ -43,6 +43,14 @@ export const EndAdminSessionResponse = zod.object({
 /**
  * @summary Obter resumo das disputas, espectadores, caixa e resgates
  */
+export const getAdminDashboardResponseCurrentDisputeOneAutomationBidCountMin = 0;
+
+export const getAdminDashboardResponseLiveDisputesItemAutomationBidCountMin = 0;
+
+export const getAdminDashboardResponseRecentDisputesItemAutomationBidCountMin = 0;
+
+
+
 export const GetAdminDashboardResponse = zod.object({
   "currentDispute": zod.union([zod.object({
   "id": zod.string().uuid(),
@@ -53,10 +61,14 @@ export const GetAdminDashboardResponse = zod.object({
   "stepCents": zod.number().int(),
   "bidsCount": zod.number().int(),
   "startedAt": zod.coerce.date().nullable(),
+  "timerDeadlineAt": zod.coerce.date().nullable(),
   "endedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "leaderName": zod.string().nullable(),
-  "winnerName": zod.string().nullable()
+  "winnerName": zod.string().nullable(),
+  "automationBidCount": zod.number().int().min(getAdminDashboardResponseCurrentDisputeOneAutomationBidCountMin),
+  "automationBotLeading": zod.boolean(),
+  "automationBotWon": zod.boolean()
 }),zod.null()]),
   "activeConnections": zod.number().int(),
   "totalVisitors": zod.number().int(),
@@ -74,10 +86,14 @@ export const GetAdminDashboardResponse = zod.object({
   "stepCents": zod.number().int(),
   "bidsCount": zod.number().int(),
   "startedAt": zod.coerce.date().nullable(),
+  "timerDeadlineAt": zod.coerce.date().nullable(),
   "endedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "leaderName": zod.string().nullable(),
-  "winnerName": zod.string().nullable()
+  "winnerName": zod.string().nullable(),
+  "automationBidCount": zod.number().int().min(getAdminDashboardResponseLiveDisputesItemAutomationBidCountMin),
+  "automationBotLeading": zod.boolean(),
+  "automationBotWon": zod.boolean()
 })),
   "historyDisputeCount": zod.number().int(),
   "historyBidCount": zod.number().int(),
@@ -101,10 +117,14 @@ export const GetAdminDashboardResponse = zod.object({
   "stepCents": zod.number().int(),
   "bidsCount": zod.number().int(),
   "startedAt": zod.coerce.date().nullable(),
+  "timerDeadlineAt": zod.coerce.date().nullable(),
   "endedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "leaderName": zod.string().nullable(),
-  "winnerName": zod.string().nullable()
+  "winnerName": zod.string().nullable(),
+  "automationBidCount": zod.number().int().min(getAdminDashboardResponseRecentDisputesItemAutomationBidCountMin),
+  "automationBotLeading": zod.boolean(),
+  "automationBotWon": zod.boolean()
 }))
 })
 
@@ -129,6 +149,10 @@ export const ListAdminDisputesQueryParams = zod.object({
   "offset": zod.coerce.number().int().min(listAdminDisputesQueryOffsetMin).max(listAdminDisputesQueryOffsetMax).default(listAdminDisputesQueryOffsetDefault)
 })
 
+export const listAdminDisputesResponseItemsItemAutomationBidCountMin = 0;
+
+
+
 export const ListAdminDisputesResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -139,10 +163,14 @@ export const ListAdminDisputesResponse = zod.object({
   "stepCents": zod.number().int(),
   "bidsCount": zod.number().int(),
   "startedAt": zod.coerce.date().nullable(),
+  "timerDeadlineAt": zod.coerce.date().nullable(),
   "endedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "leaderName": zod.string().nullable(),
-  "winnerName": zod.string().nullable()
+  "winnerName": zod.string().nullable(),
+  "automationBidCount": zod.number().int().min(listAdminDisputesResponseItemsItemAutomationBidCountMin),
+  "automationBotLeading": zod.boolean(),
+  "automationBotWon": zod.boolean()
 })),
   "total": zod.number().int()
 })
@@ -155,6 +183,10 @@ export const GetAdminDisputeParams = zod.object({
   "id": zod.coerce.string().uuid()
 })
 
+export const getAdminDisputeResponseDisputeAutomationBidCountMin = 0;
+
+
+
 export const GetAdminDisputeResponse = zod.object({
   "dispute": zod.object({
   "id": zod.string().uuid(),
@@ -165,10 +197,14 @@ export const GetAdminDisputeResponse = zod.object({
   "stepCents": zod.number().int(),
   "bidsCount": zod.number().int(),
   "startedAt": zod.coerce.date().nullable(),
+  "timerDeadlineAt": zod.coerce.date().nullable(),
   "endedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "leaderName": zod.string().nullable(),
-  "winnerName": zod.string().nullable()
+  "winnerName": zod.string().nullable(),
+  "automationBidCount": zod.number().int().min(getAdminDisputeResponseDisputeAutomationBidCountMin),
+  "automationBotLeading": zod.boolean(),
+  "automationBotWon": zod.boolean()
 }),
   "bids": zod.array(zod.object({
   "id": zod.string().uuid(),

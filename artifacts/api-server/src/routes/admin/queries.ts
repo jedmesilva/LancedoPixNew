@@ -1,6 +1,8 @@
 import { count, eq, inArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
+  automationConfigTable,
+  automationEventsTable,
   bidsTable,
   db,
   disputesTable,
@@ -30,6 +32,27 @@ export function adminDisputeSummaryQuery() {
       createdAt: disputesTable.createdAt,
       leaderName: leader.publicName,
       winnerName: winner.publicName,
+      automationBidCount: sql<number>`(
+        SELECT COUNT(*)::integer
+        FROM ${automationEventsTable}
+        WHERE ${automationEventsTable.disputeId} = ${disputesTable.id}
+          AND ${automationEventsTable.eventType} = 'bid'
+      )`,
+      automationBotLeading: sql<boolean>`COALESCE(
+        ${leaderBid.userId} = (
+          SELECT ${automationConfigTable.botUserId}
+          FROM ${automationConfigTable}
+          WHERE ${automationConfigTable.id} = 1
+        ),
+        false
+      )`,
+      automationBotWon: sql<boolean>`EXISTS (
+        SELECT 1
+        FROM ${automationEventsTable}
+        WHERE ${automationEventsTable.disputeId} = ${disputesTable.id}
+          AND ${automationEventsTable.eventType} = 'bid'
+          AND ${automationEventsTable.botUserId} = ${disputesTable.winnerId}
+      )`,
     })
     .from(disputesTable)
     .leftJoin(leaderBid, eq(leaderBid.id, disputesTable.leaderBidId))
@@ -52,6 +75,9 @@ export function serializeDisputeSummary(row: {
   createdAt: Date;
   leaderName: string | null;
   winnerName: string | null;
+  automationBidCount: number;
+  automationBotLeading: boolean;
+  automationBotWon: boolean;
 }) {
   const timerDeadlineAt =
     row.status === "live"
@@ -76,6 +102,9 @@ export function serializeDisputeSummary(row: {
     createdAt: row.createdAt.toISOString(),
     leaderName: row.leaderName,
     winnerName: row.winnerName,
+    automationBidCount: row.automationBidCount,
+    automationBotLeading: row.automationBotLeading,
+    automationBotWon: row.automationBotWon,
   };
 }
 

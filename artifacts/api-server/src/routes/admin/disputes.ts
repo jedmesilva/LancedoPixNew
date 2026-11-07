@@ -24,6 +24,7 @@ import {
 const router: IRouter = Router();
 
 router.get("/disputes", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
   const parsed = ListAdminDisputesQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json(ApiErrorBody.parse({ error: "Os filtros de disputa são inválidos." }));
@@ -55,6 +56,7 @@ router.get("/disputes", async (req, res): Promise<void> => {
 });
 
 router.get("/disputes/:id", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
   const parsed = GetAdminDisputeParams.safeParse(req.params);
   if (!parsed.success) {
     res.status(404).json(ApiErrorBody.parse({ error: "Disputa não encontrada." }));

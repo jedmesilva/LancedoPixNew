@@ -488,6 +488,9 @@ components:
         createdAt: { type: string, format: date-time }
         leaderName: { type: ["string", "null"] }
         winnerName: { type: ["string", "null"] }
+        automationBidCount: { type: integer, minimum: 0 }
+        automationBotLeading: { type: boolean }
+        automationBotWon: { type: boolean }
       required:
         - id
         - number
@@ -502,6 +505,9 @@ components:
         - createdAt
         - leaderName
         - winnerName
+        - automationBidCount
+        - automationBotLeading
+        - automationBotWon
     TreasurySnapshot:
       type: object
       properties:

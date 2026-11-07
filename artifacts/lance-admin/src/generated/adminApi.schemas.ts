@@ -47,12 +47,18 @@ export interface AdminDisputeSummary {
   /** @nullable */
   startedAt: string | null;
   /** @nullable */
+  timerDeadlineAt: string | null;
+  /** @nullable */
   endedAt: string | null;
   createdAt: string;
   /** @nullable */
   leaderName: string | null;
   /** @nullable */
   winnerName: string | null;
+  /** @minimum 0 */
+  automationBidCount: number;
+  automationBotLeading: boolean;
+  automationBotWon: boolean;
 }
 
 export interface TreasurySnapshot {
