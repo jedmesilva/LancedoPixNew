@@ -4,8 +4,9 @@ import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient
 import { Link, Route, Switch as RouteSwitch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import {
   Activity, ArrowDownLeft, ArrowLeft, ArrowRight, Bot, Check, ChevronDown,
-  CircleAlert, CircleCheck, CircleDollarSign, CircleX, FileSearch, KeyRound, LayoutDashboard,
-  LogOut, Pause, Play, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Square, Wallet, X,
+  ChevronRight, CircleAlert, CircleCheck, CircleDollarSign, CircleX, Command,
+  FileSearch, Fingerprint, KeyRound, Layers3, LogOut, Pause, Play, RefreshCw, Search,
+  Settings2, ShieldCheck, SlidersHorizontal, Square, Wallet, X,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -16,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch as ToggleSwitch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { AdminApiError } from './custom-fetch';
+import ActionCenterPage from './pages/action-center';
 import {
   createAdminSession, endAdminSession, getAdminDashboard, getAdminDispute, getAdminSession,
   getAutomationConfig, listAdminDisputes, listAdminPayouts,
@@ -157,129 +159,97 @@ function AuthGate() {
   </main>;
 }
 const navItems = [
-  { href: '/', label: 'Painel', icon: LayoutDashboard },
-  { href: '/treasury', label: 'Caixa', icon: Wallet },
+  { href: '/', label: 'Central de trabalho', icon: Layers3 },
   { href: '/payouts', label: 'Resgates', icon: ArrowDownLeft },
   { href: '/disputes', label: 'Disputas', icon: FileSearch },
+  { href: '/treasury', label: 'Caixa', icon: Wallet },
   { href: '/automation', label: 'Automação', icon: Bot },
 ];
 function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boolean }) {
   const [path] = useLocation();
   const automation = useQuery({ queryKey: CONFIG_KEY, queryFn: getAutomationConfig });
+  const dashboard = useQuery({ queryKey: DASHBOARD_KEY, queryFn: getAdminDashboard });
   const automationStatus = automation.data?.operatorRules.status;
-  const activeLabel = navItems.find(item => item.href === (path.startsWith('/disputes') ? '/disputes' : path.startsWith('/automation') ? '/automation' : path))?.label || 'Painel';
-  return <div className="shell">
-    <header className="topbar">
-      <div className="topbar-inner">
-        <Link href="/" className="brand" data-testid="link-admin-home">
-          <span className="brand-copy"><span className="brand-name">Lance do Pix</span></span>
-          <span className="login-tag">ADMIN</span>
-        </Link>
-        <div className="topbar-right">
-          <span
-            className={`automation-indicator ${
-              automationStatus === "ativa"
-                ? "is-active"
-                : automationStatus === "pausada"
-                  ? "is-paused"
-                  : ""
-            }`}
-            data-testid="header-automation-status"
-            aria-live="polite"
-          >
-            <i />
-            Automação {automationStatus ?? (automation.isError ? "indisponível" : "verificando…")}
-          </span>
-          <button className="btn logout" onClick={signOut} disabled={signOutBusy} data-testid="button-admin-logout"><LogOut size={15} />{signOutBusy ? 'Saindo…' : 'Sair'}</button>
-        </div>
+  const activeItem = navItems.find(item => item.href === '/' ? path === '/' : path.startsWith(item.href));
+  const linkGroup = (items: typeof navItems) => items.map(item => {
+    const active = item.href === '/' ? path === '/' : path.startsWith(item.href);
+    const Icon = item.icon;
+    const count = item.href === '/payouts'
+      ? dashboard.data?.pendingPayoutCount
+      : item.href === '/disputes'
+        ? dashboard.data?.liveDisputes.length
+        : undefined;
+    return <Link key={item.href} href={item.href} className={`ac-side-link${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined} data-testid={`nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>
+      <Icon size={16} />{item.label}{count !== undefined && <span className="ac-side-count">{count.toLocaleString('pt-BR')}</span>}{active && item.href === '/' && <ChevronRight size={14} />}
+    </Link>;
+  });
+  const statusLabel = automationStatus === 'ativa'
+    ? 'Automação ativa'
+    : automationStatus === 'pausada'
+      ? 'Automação pausada'
+      : automationStatus === 'desativada'
+        ? 'Automação desativada'
+        : automation.isError
+          ? 'Automação indisponível'
+          : 'Verificando automação…';
+  const statusClass = automationStatus === 'ativa'
+    ? 'ac-status-active'
+    : automationStatus === 'pausada'
+      ? 'ac-status-paused'
+      : 'ac-status-inactive';
+  return <div className="ac-root" data-testid="admin-app-shell">
+    <header className="ac-topbar">
+      <Link href="/" className="ac-brand" data-testid="link-admin-home">
+        <span className="ac-brand-mark" aria-hidden="true"><Command size={18} strokeWidth={2.3} /></span>
+        <span className="ac-brand-name">Lance do Pix</span>
+        <span className="ac-admin-tag">OPERAÇÕES</span>
+      </Link>
+      <div className="ac-top-right">
+        <span className={`ac-preview-label ${statusClass}`} data-testid="header-automation-status" aria-live="polite">
+          <i className="ac-preview-dot" />{statusLabel}
+        </span>
+        <button className="ac-button ac-logout" onClick={signOut} disabled={signOutBusy} data-testid="button-admin-logout"><LogOut size={15} />{signOutBusy ? 'Saindo…' : 'Sair'}</button>
       </div>
     </header>
-    <main className="content">
-      <nav className="tabs" aria-label="Navegação principal">
-        {navItems.map(item => {
-          const active = item.href === '/' ? path === '/' : path.startsWith(item.href);
-          return <Link key={item.href} href={item.href} className={`navlink ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined} data-testid={`nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>{item.label}</Link>;
-        })}
-      </nav>
-      <div className="route-content" data-page={activeLabel}><RouteSwitch>
-        <Route path="/" component={Overview} />
-        <Route path="/disputes" component={DisputesPage} />
-        <Route path="/disputes/:id" component={DisputeDetailPage} />
-        <Route path="/payouts" component={PayoutsPage} />
-        <Route path="/treasury" component={TreasuryPage} />
-         <Route path="/automation/settings" component={AutomationPage} />
-        <Route path="/automation" component={AutomationPage} />
-        <Route component={NotFound} />
-      </RouteSwitch></div>
-    </main>
+    <div className="ac-layout">
+      <aside className="ac-sidebar" aria-label="Navegação administrativa">
+        <div className="ac-sidebar-group">
+          <p className="ac-side-heading">Operação</p>
+          {linkGroup(navItems.slice(0, 3))}
+          <button className="ac-side-link ac-sidebar-link-disabled" type="button" disabled title="A API administrativa ainda não fornece uma fila de fraude"><Fingerprint size={16} />Fraude<span className="ac-side-count">—</span></button>
+          <button className="ac-side-link ac-sidebar-link-disabled" type="button" disabled title="A API administrativa ainda não fornece uma fila de incidentes"><Activity size={16} />Incidentes<span className="ac-side-count">—</span></button>
+        </div>
+        <div className="ac-sidebar-group">
+          <p className="ac-side-heading">Gestão</p>
+          {linkGroup(navItems.slice(3))}
+        </div>
+        <div className="ac-sidebar-group ac-governance-group">
+          <p className="ac-side-heading">Governança</p>
+          <button className="ac-side-link ac-sidebar-link-disabled" type="button" disabled title="A API administrativa ainda não oferece este módulo"><FileSearch size={16} />Auditoria</button>
+          <button className="ac-side-link ac-sidebar-link-disabled" type="button" disabled title="A API administrativa ainda não oferece este módulo"><ShieldCheck size={16} />Acessos e permissões</button>
+        </div>
+        <div className="ac-sidebar-note">
+          <div className="ac-sidebar-note-title"><ShieldCheck size={15} />Decisão segura</div>
+          <p>Confirme o contexto e as obrigações antes de liberar pagamentos ou alterar uma disputa.</p>
+        </div>
+      </aside>
+      <main className="ac-main">
+        <div className="ac-route-content" data-page={activeItem?.label || 'Central de trabalho'}><RouteSwitch>
+          <Route path="/" component={Overview} />
+          <Route path="/disputes" component={DisputesPage} />
+          <Route path="/disputes/:id" component={DisputeDetailPage} />
+          <Route path="/payouts" component={PayoutsPage} />
+          <Route path="/treasury" component={TreasuryPage} />
+          <Route path="/automation/settings" component={AutomationPage} />
+          <Route path="/automation" component={AutomationPage} />
+          <Route component={NotFound} />
+        </RouteSwitch></div>
+      </main>
+    </div>
   </div>;
 }
 function Overview() {
-  const query = useQuery({ queryKey: DASHBOARD_KEY, queryFn: getAdminDashboard });
-  const dashboard = query.data as AdminDashboard | undefined;
-  if (query.isPending) return <LoadingPanel />;
-  if (query.isError || !dashboard) return <QueryError error={query.error} retry={() => void query.refetch()} />;
-  const treasury = dashboard.treasury;
-  const activeBids = dashboard.liveDisputes.reduce((sum, dispute) => sum + dispute.bidsCount, 0);
-  const livePrizeTotal = dashboard.liveDisputes.reduce((sum, dispute) => sum + dispute.prizeCents, 0);
-  const bidVolume = dashboard.platformRevenueCents + dashboard.prizeCoverageCents;
-  return <div className="prototype-dashboard appear">
-    <section className="prototype-section" data-testid="overview-system">
-      <div className="prototype-section-head"><p className="ey">Sistema</p><button className="prototype-refresh" onClick={() => void query.refetch()} data-testid="button-refresh-dashboard"><RefreshCw size={14} /> Atualizar</button></div>
-      <div className="prototype-kpis">
-        <Metric label="Servidor" value={<span className="prototype-status success"><i />No ar</span>} note="API respondeu com dados atuais" />
-        <Metric label="Online agora" value={dashboard.activeConnections.toLocaleString('pt-BR')} note="Acompanhando as disputas" />
-        <Metric label="Visitantes" value={dashboard.totalVisitors.toLocaleString('pt-BR')} note={`${dashboard.visitorsToday.toLocaleString('pt-BR')} hoje`} />
-      </div>
-    </section>
-
-    <section className="prototype-section" data-testid="overview-current-dispute">
-      <p className="ey">Agora</p>
-      <div className="prototype-kpis">
-        <Metric label="Disputas em andamento" value={dashboard.liveDisputes.length.toLocaleString('pt-BR')} note={`Prêmios em disputa: ${money(livePrizeTotal)}`} />
-        <Metric label="Lances em andamento" value={activeBids.toLocaleString('pt-BR')} note="Lances registrados nas disputas ativas" />
-      </div>
-      <div className="prototype-record-list">
-        {dashboard.liveDisputes.map(dispute => <Link key={dispute.id} href={`/disputes/${encodeURIComponent(dispute.id)}`} className="prototype-card prototype-live-card" data-testid={`link-live-dispute-${dispute.id}`}>
-          <div><strong>{money(dispute.prizeCents)}</strong><small>Disputa #{dispute.number} · {dispute.leaderName ? `${money(dispute.currentValueCents)} · ${dispute.leaderName}` : 'Sem lances'} · {dispute.bidsCount} lances</small></div>
-          <Status value={dispute.status} />
-        </Link>)}
-        {!dashboard.liveDisputes.length && <Empty title="Nenhuma disputa em andamento" text="A API não informou uma disputa ativa neste momento." />}
-      </div>
-    </section>
-
-    <section className="prototype-section" data-testid="overview-cash">
-      <div className="prototype-section-head"><p className="ey">Caixa</p><Link href="/treasury" className="prototype-text-link" data-testid="link-treasury-details">Ver movimentações <ArrowRight size={13} /></Link></div>
-      <div className="prototype-card prototype-cash-card">
-        <div className="ey">Entradas brutas confirmadas</div>
-        <strong className="prototype-cash-total" data-testid="metric-gross-cash">{money(treasury.settledCashCents)}</strong>
-        <small className="prototype-note">Recargas, aportes e outras entradas recebidas; sem simulações.</small>
-        <div className="prototype-cash-grid">
-          <LedgerRow title="Caixa livre após obrigações" detail="Disponível depois de saídas, carteiras e valores reservados" value={treasury.freeCashCents} tone="positive" />
-          <LedgerRow title="Créditos ainda nas carteiras" detail="Saldo não usado pelos usuários" value={treasury.lockedWalletCents} />
-          <LedgerRow title="Total consumido em lances" detail="Soma das parcelas da plataforma e dos prêmios" value={bidVolume} />
-          <LedgerRow title="Prêmios ainda não pagos" detail="Obrigações de prêmio em aberto" value={treasury.unpaidPrizeCents} />
-        </div>
-      </div>
-    </section>
-
-    <section className="prototype-section" data-testid="overview-payouts">
-      <div className="prototype-section-head"><p className="ey">Resgates</p><Link href="/payouts" className="prototype-text-link" data-testid="link-pending-payouts">Abrir resgates <ArrowRight size={13} /></Link></div>
-      <div className="prototype-kpis">
-        <Metric label="A pagar" value={money(dashboard.pendingPayoutAmountCents)} note={`${dashboard.pendingPayoutCount.toLocaleString('pt-BR')} na fila`} />
-        <Metric label="Pagos" value={money(dashboard.paidPayoutAmountCents)} note={`${dashboard.paidPayoutCount.toLocaleString('pt-BR')} realizados`} />
-      </div>
-    </section>
-
-    <section className="prototype-section" data-testid="overview-history">
-      <div className="prototype-section-head"><p className="ey">Histórico</p><Link href="/disputes" className="prototype-text-link" data-testid="link-disputes-search">Ver disputas <ArrowRight size={13} /></Link></div>
-      <div className="prototype-kpis">
-        <Metric label="Disputas realizadas" value={dashboard.historyDisputeCount.toLocaleString('pt-BR')} note={`${dashboard.historyBidCount.toLocaleString('pt-BR')} lances registrados`} />
-        <Metric label="Receita da plataforma" value={money(dashboard.platformRevenueCents)} note="Parcela registrada nos lances" />
-        <Metric label="Cobertura para prêmios" value={money(dashboard.prizeCoverageCents)} note="Parcela destinada aos prêmios" />
-      </div>
-    </section>
-  </div>;
+  return <ActionCenterPage />;
 }
 function DisputesPage() {
   const [input, setInput] = useState('');

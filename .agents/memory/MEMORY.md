@@ -21,4 +21,4 @@
 - [Managed workflow dependencies](managed-workflow-dependencies.md) — Sync filtered pnpm dependencies before restarting when a declared package cannot be resolved.
 - [Admin access key](admin-access-key.md) — Validate the configured operator secret directly; do not require the user to generate a hash.
 - [Automation cap semantics](automation-cap-semantics.md) — Zero disables an individual cap; the selected wallet balance remains the hard spend ceiling.
-- [Admin prototype is authoritative](admin-prototype-source-of-truth.md) — Keep the admin interface faithful to the user's HTML; implement real measurements rather than replacing unavailable values with guesses.
+- [Admin redesign source of truth](admin-prototype-source-of-truth.md) — The approved Mockup A sets the admin layout; preserve real API-backed data and actions.
