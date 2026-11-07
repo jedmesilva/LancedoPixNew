@@ -3,7 +3,7 @@
           --ac-paper: #fbfcf6;
           --ac-panel: #f7f8f0;
           --ac-ink: #1c261f;
-          --ac-muted: #69746a;
+          --ac-muted: #526052;
           --ac-line: #dce1d4;
           --ac-strong-line: #c5cdbd;
           --ac-lime: #d4ff4f;
@@ -11,6 +11,20 @@
           --ac-soft-green: #e4eddf;
           --ac-amber: #a96421;
           --ac-radius: 17px;
+          /* Keep legacy admin pages on this light palette too. The global
+             tokens may follow the OS theme, but this shell stays light. */
+          --lp-bg: var(--ac-bg);
+          --lp-surface: var(--ac-paper);
+          --lp-line: var(--ac-line);
+          --lp-ink: var(--ac-ink);
+          --lp-muted: var(--ac-muted);
+          --lp-lime: var(--ac-lime);
+          --lp-green: var(--ac-forest);
+          --lp-green-deep: var(--ac-forest);
+          --lp-soft: var(--ac-soft-green);
+          --lp-danger: #a23321;
+          --lp-dim: var(--ac-muted);
+          --lp-on-lime: var(--ac-ink);
           min-height: 100vh;
           background:
             radial-gradient(ellipse at 86% 0%, rgba(212, 255, 79, .15), transparent 32rem),
@@ -120,7 +134,7 @@
         .ac-side-heading {
           margin: 0 0 3px;
           padding: 0 11px;
-          color: #899187;
+          color: #526052;
           font: 700 10px/1.3 var(--lp-mono), monospace;
           letter-spacing: .1em;
           text-transform: uppercase;
@@ -146,7 +160,7 @@
         .ac-side-link.active svg { color: var(--ac-forest); }
         .ac-side-count {
           margin-left: auto;
-          color: #828b81;
+          color: #526052;
           font: 700 11px var(--lp-mono), monospace;
         }
         .ac-sidebar-note {
@@ -227,7 +241,7 @@
         }
         .ac-button-primary { border-color: var(--ac-forest); background: var(--ac-forest); color: #f7f8f0 !important; }
         .ac-button-primary:hover:not(:disabled) { border-color: #193a2a; background: #193a2a; }
-        .ac-button:disabled { opacity: .55; cursor: not-allowed; }
+        .ac-button:disabled { opacity: 1; background: #e7ebe2; color: #526052; cursor: not-allowed; }
         .ac-topline {
           display: grid;
           grid-template-columns: minmax(0, 1.6fr) minmax(240px, .8fr);
@@ -384,7 +398,7 @@
           padding: 2px 5px;
           border-radius: 6px;
           background: rgba(255,255,255,.72);
-          color: #788178;
+          color: #59645a;
           font: 700 10px var(--lp-mono), monospace;
           text-align: center;
         }
@@ -417,7 +431,7 @@
           color: var(--ac-ink);
           font-size: 11px;
         }
-        .ac-search input::placeholder { color: #8b938a; }
+        .ac-search input::placeholder { color: #59645a; }
         .ac-control-actions { display: flex; align-items: center; gap: 7px; }
         .ac-small-button {
           min-height: 34px;
@@ -441,7 +455,7 @@
           grid-template-columns: minmax(120px, 1.1fr) minmax(110px, .8fr) minmax(140px, 1fr) minmax(90px, .65fr);
           gap: 12px;
           padding: 11px 20px;
-          color: #899187;
+          color: #526052;
           font: 700 9px var(--lp-mono), monospace;
           letter-spacing: .07em;
           text-transform: uppercase;
@@ -483,7 +497,7 @@
           border: 1px solid var(--ac-line);
           border-radius: 7px;
           background: rgba(251,252,246,.86);
-          color: #768075;
+          color: #59645a;
           font: 700 9px var(--lp-mono), monospace;
           letter-spacing: .02em;
         }
@@ -576,7 +590,7 @@
         }
         .ac-mini-status:last-child { border-bottom: 0; }
         .ac-mini-icon { display: grid; place-items: center; color: var(--ac-forest); }
-        .ac-mini-status strong { margin-left: auto; color: #757f74; font: 700 10px var(--lp-mono), monospace; }
+        .ac-mini-status strong { margin-left: auto; color: #526052; font: 700 10px var(--lp-mono), monospace; }
         .ac-state-line {
           display: flex;
           align-items: center;
@@ -585,7 +599,7 @@
           padding: 9px 10px;
           border-radius: 8px;
           background: #f0f2e9;
-          color: #6f796f;
+          color: #526052;
           font-size: 10px;
         }
         .ac-state-line svg { flex: 0 0 auto; }
@@ -614,7 +628,7 @@
           place-items: center;
           border-radius: 9px;
           background: #f0f3e9;
-          color: #738171;
+          color: #526052;
         }
         .ac-alert-placeholder {
           display: flex;
@@ -628,9 +642,9 @@
           font-size: 10px;
           line-height: 1.45;
         }
-        .ac-alert-placeholder svg { flex: 0 0 auto; color: #8b7b5c; }
+        .ac-alert-placeholder svg { flex: 0 0 auto; color: #665443; }
         .ac-emergency { border-color: #e1d5c7; background: #fbf8f1; }
-        .ac-emergency .ac-panel-icon { background: #f1e7da; color: #8a5b2b; }
+        .ac-emergency .ac-panel-icon { background: #f1e7da; color: #71451f; }
         .ac-emergency-text { margin: 0 0 12px; color: var(--ac-muted); font-size: 10px; line-height: 1.5; }
         .ac-lock-controls { display: flex; flex-wrap: wrap; gap: 7px; }
         .ac-locked-control {
@@ -642,7 +656,7 @@
           border: 1px solid #e3d7c8;
           border-radius: 8px;
           background: #f7f0e6;
-          color: #8a7561;
+          color: #665443;
           font-size: 9px;
           font-weight: 700;
           cursor: not-allowed;
@@ -654,7 +668,7 @@
           margin-top: 17px;
           padding: 11px 1px 0;
           border-top: 1px solid var(--ac-line);
-          color: #7b8579;
+          color: #526052;
           font-size: 9px;
         }
         .ac-footer-note span { display: inline-flex; align-items: center; gap: 6px; }
@@ -668,7 +682,7 @@
           color: var(--ac-muted);
           font-size: 10px;
         }
-        .ac-filter-chip { padding: 5px 8px; border: 1px solid var(--ac-line); border-radius: 999px; background: var(--ac-paper); color: #627063; font-size: 9px; font-weight: 650; }
+        .ac-filter-chip { padding: 5px 8px; border: 1px solid var(--ac-line); border-radius: 999px; background: var(--ac-paper); color: #526052; font-size: 9px; font-weight: 650; }
         .ac-notice {
           position: fixed;
           right: 24px;
@@ -753,8 +767,8 @@
         .ac-status-paused .ac-preview-dot { background: #a76a21; }
         .ac-status-inactive .ac-preview-dot { background: #858d83; box-shadow: 0 0 0 3px rgba(133,141,131,.13); }
         .ac-sidebar-group { align-content: start; }
-        .ac-sidebar-link-disabled { opacity: .58; cursor: not-allowed; }
-        .ac-sidebar-link-disabled:hover { transform: none; background: transparent; color: #566258; }
+        .ac-sidebar-link-disabled { opacity: 1; color: #526052; cursor: not-allowed; }
+        .ac-sidebar-link-disabled:hover { transform: none; background: transparent; color: #526052; }
         .ac-live-queue { border-top: 1px solid #edf0e9; }
         .ac-live-row {
           min-height: 69px;
