@@ -1,4 +1,6 @@
 import "./_group.css";
+import type { ReactNode } from "react";
+import { LogOut } from "lucide-react";
 
 const navItems = [
   "Painel",
@@ -24,7 +26,7 @@ function Section({
   action,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   action?: string;
 }) {
   return (
@@ -44,16 +46,18 @@ export function Current() {
       <header className="current-topbar">
         <div className="current-topbar-inner">
           <a className="current-brand" href="#painel">
-            <span className="current-mark" aria-hidden="true">
-              ◆
-            </span>
             <span className="current-brand-name">Lance do Pix</span>
             <span className="current-admin-tag">ADMIN</span>
           </a>
-          <span className="current-connection">
-            <i aria-hidden="true" />
-            Dados não conectados nesta prévia
-          </span>
+          <div className="current-header-actions">
+            <span className="current-connection">
+              <i aria-hidden="true" />
+              Automação aguardando dados
+            </span>
+            <button className="current-logout" type="button" disabled>
+              <LogOut size={14} /> Sair
+            </button>
+          </div>
         </div>
       </header>
 

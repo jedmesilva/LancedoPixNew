@@ -119,17 +119,6 @@ body {
   text-decoration: none;
 }
 
-.current-mark {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--lp-lime);
-  color: var(--lp-on-lime);
-  font: 800 19px/1 var(--lp-display);
-}
-
 .current-brand-name {
   font: 800 15px/1.1 var(--lp-display);
   letter-spacing: -0.35px;
@@ -154,6 +143,27 @@ body {
   gap: 8px;
   color: var(--lp-muted);
   font-size: 12px;
+}
+
+.current-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.current-logout {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-r-pill);
+  background: transparent;
+  color: var(--lp-ink);
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.55;
 }
 
 .current-connection i {

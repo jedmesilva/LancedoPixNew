@@ -4,5 +4,6 @@ export const modules: ModuleMap = {
   "./components/mockups/lance-admin-redesign/ActionCenter.tsx": () => import("../components/mockups/lance-admin-redesign/ActionCenter.tsx"),
   "./components/mockups/lance-admin-redesign/CashProtection.tsx": () => import("../components/mockups/lance-admin-redesign/CashProtection.tsx"),
   "./components/mockups/lance-admin-redesign/Current.tsx": () => import("../components/mockups/lance-admin-redesign/Current.tsx"),
-  "./components/mockups/lance-admin-redesign/LiveCockpit.tsx": () => import("../components/mockups/lance-admin-redesign/LiveCockpit.tsx")
+  "./components/mockups/lance-admin-redesign/LiveCockpit.tsx": () => import("../components/mockups/lance-admin-redesign/LiveCockpit.tsx"),
+  "./components/mockups/lance-admin-redesign/OperationsTimeline.tsx": () => import("../components/mockups/lance-admin-redesign/OperationsTimeline.tsx")
 };
