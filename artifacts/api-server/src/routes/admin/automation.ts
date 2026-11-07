@@ -89,6 +89,7 @@ router.post("/automation/funding", async (req, res): Promise<void> => {
 });
 
 router.get("/automation/events", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
   const parsed = ListAutomationEventsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json(

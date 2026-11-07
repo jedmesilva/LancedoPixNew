@@ -186,7 +186,11 @@ function ActionCenterPage() {
   const automationQuery = useQuery({ queryKey: ["/api/admin/automation/config"], queryFn: getAutomationConfig });
   const eventsQuery = useQuery({
     queryKey: ["/api/admin/automation/events", { limit: 20, offset: 0 }],
-    queryFn: () => listAutomationEvents({ limit: 20, offset: 0 }),
+    queryFn: () =>
+      listAutomationEvents(
+        { limit: 20, offset: 0 },
+        { cache: "no-store" },
+      ),
     refetchInterval: realtimeConnected ? false : 5_000,
   });
   const payoutQuery = useQuery({

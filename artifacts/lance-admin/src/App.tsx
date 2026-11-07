@@ -585,7 +585,11 @@ function AutomationPage() {
   const eventsLimit = 100;
   const eventsQuery = useQuery({
     queryKey: [...EVENTS_KEY, { limit: eventsLimit, offset: 0 }],
-    queryFn: () => listAutomationEvents({ limit: eventsLimit, offset: 0 }),
+    queryFn: () =>
+      listAutomationEvents(
+        { limit: eventsLimit, offset: 0 },
+        { cache: "no-store" },
+      ),
     refetchInterval: realtimeConnected ? false : 5_000,
   });
   const [form, setForm] = useState<AutomationConfigInput | null>(null);
