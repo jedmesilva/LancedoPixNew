@@ -21,6 +21,8 @@ export function adminDisputeSummaryQuery() {
       status: disputesTable.status,
       prizeCents: disputesTable.prizeCents,
       currentValueCents: leaderBid.valueCents,
+      leaderBidExpiresAt: leaderBid.expiresAt,
+      bidDurationS: disputesTable.bidDurationS,
       stepCents: disputesTable.stepCents,
       bidsCount: disputesTable.bidsCount,
       startedAt: disputesTable.startedAt,
@@ -41,6 +43,8 @@ export function serializeDisputeSummary(row: {
   status: string;
   prizeCents: bigint;
   currentValueCents: bigint | null;
+  leaderBidExpiresAt: Date | null;
+  bidDurationS: number;
   stepCents: bigint;
   bidsCount: number;
   startedAt: Date | null;
@@ -49,6 +53,14 @@ export function serializeDisputeSummary(row: {
   leaderName: string | null;
   winnerName: string | null;
 }) {
+  const timerDeadlineAt =
+    row.status === "live"
+      ? row.leaderBidExpiresAt ??
+        (row.startedAt
+          ? new Date(row.startedAt.getTime() + row.bidDurationS * 1_000)
+          : null)
+      : null;
+
   return {
     id: row.id,
     number: row.number,
@@ -59,6 +71,7 @@ export function serializeDisputeSummary(row: {
     stepCents: safeNumber(row.stepCents),
     bidsCount: row.bidsCount,
     startedAt: row.startedAt?.toISOString() ?? null,
+    timerDeadlineAt: timerDeadlineAt?.toISOString() ?? null,
     endedAt: row.endedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     leaderName: row.leaderName,

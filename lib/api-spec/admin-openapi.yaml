@@ -483,6 +483,7 @@ components:
         stepCents: { type: integer }
         bidsCount: { type: integer }
         startedAt: { type: ["string", "null"], format: date-time }
+        timerDeadlineAt: { type: ["string", "null"], format: date-time }
         endedAt: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
         leaderName: { type: ["string", "null"] }
@@ -496,6 +497,7 @@ components:
         - stepCents
         - bidsCount
         - startedAt
+        - timerDeadlineAt
         - endedAt
         - createdAt
         - leaderName
