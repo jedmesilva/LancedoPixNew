@@ -447,7 +447,7 @@ function ActionCenterPage() {
               <MiniStatus label="Eventos registrados" icon={ArrowUpRight} value={eventsQuery.data?.total.toLocaleString("pt-BR") ?? (eventsQuery.isError ? "Indisponível" : "—")} />
               <MiniStatus label="Último evento" icon={AlertTriangle} value={latestEvent?.summary ?? (eventsQuery.isError ? "Indisponível" : "—")} />
             </div>
-            <div className="ac-state-line"><Clock3 size={13} /> Estado da automação: {automationStatus ?? (automationQuery.isError ? "indisponível" : "verificando…")}</div>
+            <div className="ac-state-line"><Clock3 size={13} /><span>Estado da automação: {automationStatus ?? (automationQuery.isError ? "indisponível" : "verificando…")}</span></div>
           </section>
         </aside>
       </div>
@@ -460,7 +460,7 @@ function ActionCenterPage() {
             <MiniStatus label="Conexões ativas" icon={Users} value={dashboard.activeConnections.toLocaleString("pt-BR")} />
             <MiniStatus label="Visitantes hoje" icon={Activity} value={dashboard.visitorsToday.toLocaleString("pt-BR")} />
           </div>
-          <div className="ac-state-line"><Clock3 size={13} /> Pagamentos e notificações sem telemetria própria.</div>
+          <div className="ac-state-line"><Clock3 size={13} /><span>Pagamentos e notificações sem telemetria própria.</span></div>
         </section>
 
         <section className="ac-panel" id="auditoria" aria-labelledby="ac-audit-title">

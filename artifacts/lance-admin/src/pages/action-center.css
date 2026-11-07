@@ -865,3 +865,75 @@
           .ac-brand-name { max-width: 86px; }
           .ac-top-right .ac-preview-label { max-width: 76px; font-size: 8px; }
         }
+        .ac-safety-chip { width: 100%; min-width: 0; }
+        .ac-safety-text { min-width: 0; flex: 1 1 0; overflow-wrap: anywhere; }
+        .ac-safety-text span, .ac-safety-text strong, .ac-safety-text small {
+          max-width: 100%;
+          overflow-wrap: anywhere;
+        }
+        .ac-safety-value {
+          min-width: 0;
+          max-width: 38%;
+          flex: 0 1 38%;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+        .ac-panel-head, .ac-panel-title { min-width: 0; }
+        .ac-panel-title { flex: 1 1 auto; }
+        .ac-panel-action { min-width: 0; flex: 0 0 auto; white-space: nowrap; }
+        .ac-panel-title h2, .ac-panel-title p { max-width: 100%; overflow-wrap: anywhere; }
+        .ac-status-list { width: 100%; min-width: 0; }
+        .ac-mini-status { width: 100%; min-width: 0; }
+        .ac-mini-status > span:not(.ac-mini-icon) {
+          min-width: 0;
+          flex: 1 1 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .ac-mini-status strong {
+          min-width: 0;
+          max-width: 42%;
+          flex: 0 1 42%;
+          overflow: hidden;
+          text-align: right;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .ac-state-line { min-width: 0; align-items: flex-start; }
+        .ac-state-line > span { min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; }
+        .ac-value-pair {
+          min-width: 0;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 48%);
+          gap: 6px;
+        }
+        .ac-value-pair > strong {
+          min-width: 0;
+          max-width: 100%;
+          justify-self: end;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+        @media (max-width: 1000px) {
+          .ac-topline { grid-template-columns: minmax(0, 1fr); }
+        }
+        @media (max-width: 560px) {
+          .ac-safety-chip {
+            display: grid;
+            grid-template-columns: 40px minmax(0, 1fr);
+            align-items: start;
+            gap: 6px 12px;
+          }
+          .ac-safety-icon { grid-column: 1; grid-row: 1 / span 2; }
+          .ac-safety-text { grid-column: 2; grid-row: 1; }
+          .ac-safety-value {
+            grid-column: 2;
+            grid-row: 2;
+            max-width: 100%;
+            margin: 0;
+            justify-self: start;
+            text-align: left;
+          }
+        }
