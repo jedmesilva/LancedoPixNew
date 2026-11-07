@@ -24,6 +24,7 @@ import {
   walletsTable,
 } from "@workspace/db";
 import { getDisputeDeadline, getDisputeCountdownDeadline } from "./dispute-progression";
+import { notifyLanceStateChanged } from "./realtime";
 import {
   exceedsAutomationCap,
   hasInconsistentAutomationCaps,
@@ -551,7 +552,7 @@ function recordBlockedEvent(
 
 export async function runAutomationTick(): Promise<boolean> {
   const now = new Date();
-  return db.transaction(async (transaction) => {
+  const bidPlaced = await db.transaction(async (transaction) => {
     const [config] = await transaction
       .select()
       .from(automationConfigTable)
@@ -845,4 +846,6 @@ export async function runAutomationTick(): Promise<boolean> {
     });
     return true;
   });
+  if (bidPlaced) notifyLanceStateChanged();
+  return bidPlaced;
 }

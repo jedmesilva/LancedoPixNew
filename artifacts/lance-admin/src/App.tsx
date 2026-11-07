@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch as ToggleSwitch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { AdminApiError } from './custom-fetch';
+import { AdminRealtimeProvider, useAdminRealtime } from '@/lib/admin-realtime';
 import ActionCenterPage from './pages/action-center';
 import {
   createAdminSession, endAdminSession, getAdminDashboard, getAdminDispute, getAdminSession,
@@ -167,6 +168,7 @@ const navItems = [
 ];
 function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boolean }) {
   const [path] = useLocation();
+  const realtimeConnected = useAdminRealtime();
   const automation = useQuery({ queryKey: CONFIG_KEY, queryFn: getAutomationConfig });
   const dashboard = useQuery({ queryKey: DASHBOARD_KEY, queryFn: getAdminDashboard });
   const automationStatus = automation.data?.operatorRules.status;
@@ -197,7 +199,7 @@ function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boo
     : automationStatus === 'pausada'
       ? 'ac-status-paused'
       : 'ac-status-inactive';
-  return <div className="ac-root" data-testid="admin-app-shell">
+  return <AdminRealtimeProvider><div className="ac-root" data-testid="admin-app-shell">
     <header className="ac-topbar">
       <Link href="/" className="ac-brand" data-testid="link-admin-home">
         <span className="ac-brand-mark" aria-hidden="true"><Command size={18} strokeWidth={2.3} /></span>
@@ -246,7 +248,7 @@ function Shell({ signOut, signOutBusy }: { signOut: () => void; signOutBusy: boo
         </RouteSwitch></div>
       </main>
     </div>
-  </div>;
+  </div></AdminRealtimeProvider>;
 }
 function Overview() {
   return <ActionCenterPage />;
@@ -577,10 +579,15 @@ const toInputWithRules = (form: AutomationConfigInput, status: AutomationStatus)
 });
 function AutomationPage() {
   const queryClient = useQueryClient();
+  const realtimeConnected = useAdminRealtime();
   const configQuery = useQuery({ queryKey: CONFIG_KEY, queryFn: getAutomationConfig });
   const accountsQuery = useQuery({ queryKey: AUTOMATION_ACCOUNTS_KEY, queryFn: listAutomationAccounts });
   const eventsLimit = 100;
-  const eventsQuery = useQuery({ queryKey: [...EVENTS_KEY, { limit: eventsLimit, offset: 0 }], queryFn: () => listAutomationEvents({ limit: eventsLimit, offset: 0 }) });
+  const eventsQuery = useQuery({
+    queryKey: [...EVENTS_KEY, { limit: eventsLimit, offset: 0 }],
+    queryFn: () => listAutomationEvents({ limit: eventsLimit, offset: 0 }),
+    refetchInterval: realtimeConnected ? false : 5_000,
+  });
   const [form, setForm] = useState<AutomationConfigInput | null>(null);
   const [dirty, setDirty] = useState(false);
   const [validation, setValidation] = useState<{ ok: boolean; messages: string[] } | null>(null);

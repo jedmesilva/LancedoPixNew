@@ -36,6 +36,7 @@ import {
   listAutomationEvents,
 } from "../generated/adminApi";
 import type { AdminDashboard, AdminDisputeSummary, AdminPayout } from "../generated/adminApi.schemas";
+import { useAdminRealtime } from "../lib/admin-realtime";
 import "./action-center.css";
 
 type QueueId = "resgates" | "disputas" | "fraude" | "incidentes";
@@ -175,6 +176,7 @@ function disputeSearchText(dispute: AdminDisputeSummary) {
 }
 
 function ActionCenterPage() {
+  const realtimeConnected = useAdminRealtime();
   const [activeQueue, setActiveQueue] = useState<QueueId>("resgates");
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -185,6 +187,7 @@ function ActionCenterPage() {
   const eventsQuery = useQuery({
     queryKey: ["/api/admin/automation/events", { limit: 20, offset: 0 }],
     queryFn: () => listAutomationEvents({ limit: 20, offset: 0 }),
+    refetchInterval: realtimeConnected ? false : 5_000,
   });
   const payoutQuery = useQuery({
     queryKey: ["/api/admin/action-center/payouts", search.trim()],
