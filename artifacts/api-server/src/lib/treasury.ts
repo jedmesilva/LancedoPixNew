@@ -75,7 +75,11 @@ export async function releaseUnawardedPrizeReservation(
       and(
         eq(disputeCashReservationsTable.disputeId, disputeId),
         eq(disputeCashReservationsTable.reservationType, "prize"),
-        inArray(disputeCashReservationsTable.status, ["obligated", "funded"]),
+        inArray(disputeCashReservationsTable.status, [
+          "obligated",
+          "funded",
+          "reserved",
+        ]),
       ),
     );
 }

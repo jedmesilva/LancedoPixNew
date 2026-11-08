@@ -185,6 +185,10 @@ export const GetAdminDisputeParams = zod.object({
 
 export const getAdminDisputeResponseDisputeAutomationBidCountMin = 0;
 
+export const getAdminDisputeResponseManualClosureOneRefundedBidCountMin = 0;
+
+export const getAdminDisputeResponseManualClosureOneRefundedCreditsCentsMin = 0;
+
 
 
 export const GetAdminDisputeResponse = zod.object({
@@ -214,7 +218,45 @@ export const GetAdminDisputeResponse = zod.object({
   "automated": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "result": zod.union([zod.literal('won'),zod.literal('lost'),zod.literal(null)]).nullable()
-}))
+})),
+  "manualClosure": zod.union([zod.object({
+  "reason": zod.string(),
+  "actorId": zod.string(),
+  "refundedBidCount": zod.number().int().min(getAdminDisputeResponseManualClosureOneRefundedBidCountMin),
+  "refundedCreditsCents": zod.number().int().min(getAdminDisputeResponseManualClosureOneRefundedCreditsCentsMin),
+  "createdAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Encerrar disputa manualmente e estornar todos os lances
+ */
+export const CloseAdminDisputeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const closeAdminDisputeBodyReasonMin = 3;
+export const closeAdminDisputeBodyReasonMax = 500;
+
+
+
+export const CloseAdminDisputeBody = zod.object({
+  "reason": zod.string().min(closeAdminDisputeBodyReasonMin).max(closeAdminDisputeBodyReasonMax)
+})
+
+export const closeAdminDisputeResponseRefundedBidCountMin = 0;
+
+export const closeAdminDisputeResponseRefundedCreditsCentsMin = 0;
+
+
+
+export const CloseAdminDisputeResponse = zod.object({
+  "disputeId": zod.string().uuid(),
+  "status": zod.enum(['ended']),
+  "refundedBidCount": zod.number().int().min(closeAdminDisputeResponseRefundedBidCountMin),
+  "refundedCreditsCents": zod.number().int().min(closeAdminDisputeResponseRefundedCreditsCentsMin),
+  "endedAt": zod.coerce.date()
 })
 
 

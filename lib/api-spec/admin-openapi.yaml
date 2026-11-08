@@ -151,6 +151,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /disputes/{id}/close:
+    post:
+      operationId: closeAdminDispute
+      tags: [disputes]
+      summary: Encerrar disputa manualmente e estornar todos os lances
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminDisputeCloseInput"
+      responses:
+        "200":
+          description: Disputa encerrada e créditos devolvidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDisputeCloseResult"
+        "400":
+          description: Motivo inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Disputa não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Disputa não está em andamento ou pausada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /payouts:
     get:
       operationId: listAdminPayouts
@@ -575,6 +622,25 @@ components:
           items: { $ref: "#/components/schemas/AdminDisputeSummary" }
         total: { type: integer }
       required: [items, total]
+    AdminDisputeCloseInput:
+      type: object
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 500 }
+      required: [reason]
+    AdminDisputeCloseResult:
+      type: object
+      properties:
+        disputeId: { type: string, format: uuid }
+        status: { type: string, enum: [ended] }
+        refundedBidCount: { type: integer, minimum: 0 }
+        refundedCreditsCents: { type: integer, minimum: 0 }
+        endedAt: { type: string, format: date-time }
+      required:
+        - disputeId
+        - status
+        - refundedBidCount
+        - refundedCreditsCents
+        - endedAt
     AdminDisputeBid:
       type: object
       properties:
@@ -593,7 +659,25 @@ components:
         bids:
           type: array
           items: { $ref: "#/components/schemas/AdminDisputeBid" }
-      required: [dispute, bids]
+        manualClosure:
+          oneOf:
+            - $ref: "#/components/schemas/AdminDisputeManualClosure"
+            - type: "null"
+      required: [dispute, bids, manualClosure]
+    AdminDisputeManualClosure:
+      type: object
+      properties:
+        reason: { type: string }
+        actorId: { type: string }
+        refundedBidCount: { type: integer, minimum: 0 }
+        refundedCreditsCents: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+      required:
+        - reason
+        - actorId
+        - refundedBidCount
+        - refundedCreditsCents
+        - createdAt
     AdminPayout:
       type: object
       properties:

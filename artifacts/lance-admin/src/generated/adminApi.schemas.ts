@@ -94,6 +94,31 @@ export interface AdminDisputePage {
   total: number;
 }
 
+export interface AdminDisputeCloseInput {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type AdminDisputeCloseResultStatus = typeof AdminDisputeCloseResultStatus[keyof typeof AdminDisputeCloseResultStatus];
+
+
+export const AdminDisputeCloseResultStatus = {
+  ended: 'ended',
+} as const;
+
+export interface AdminDisputeCloseResult {
+  disputeId: string;
+  status: AdminDisputeCloseResultStatus;
+  /** @minimum 0 */
+  refundedBidCount: number;
+  /** @minimum 0 */
+  refundedCreditsCents: number;
+  endedAt: string;
+}
+
 /**
  * @nullable
  */
@@ -116,9 +141,20 @@ export interface AdminDisputeBid {
   result: AdminDisputeBidResult;
 }
 
+export interface AdminDisputeManualClosure {
+  reason: string;
+  actorId: string;
+  /** @minimum 0 */
+  refundedBidCount: number;
+  /** @minimum 0 */
+  refundedCreditsCents: number;
+  createdAt: string;
+}
+
 export interface AdminDisputeDetail {
   dispute: AdminDisputeSummary;
   bids: AdminDisputeBid[];
+  manualClosure: AdminDisputeManualClosure | null;
 }
 
 export type AdminPayoutStatus = typeof AdminPayoutStatus[keyof typeof AdminPayoutStatus];

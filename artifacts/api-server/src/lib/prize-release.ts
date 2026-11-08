@@ -221,6 +221,13 @@ async function getComparableHistory(
         gte(bidsTable.createdAt, lookback),
         lt(bidsTable.createdAt, targetAt),
         eq(usersTable.testAccount, false),
+        sql`NOT EXISTS (
+          SELECT 1
+          FROM wallet_entries refunded_entry
+          WHERE refunded_entry.type = 'refund'
+            AND refunded_entry.ref_type = 'manual'
+            AND refunded_entry.ref_id = ${bidsTable.id}
+        )`,
         sql`extract(isodow from ${localCreatedAt}) = extract(isodow from ${localTargetAt})`,
         sql`extract(hour from ${localCreatedAt}) = extract(hour from ${localTargetAt})`,
       ),

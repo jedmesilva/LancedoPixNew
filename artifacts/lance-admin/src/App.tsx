@@ -20,7 +20,7 @@ import { AdminApiError } from './custom-fetch';
 import { AdminRealtimeProvider, useAdminRealtime } from '@/lib/admin-realtime';
 import ActionCenterPage from './pages/action-center';
 import {
-  createAdminSession, endAdminSession, getAdminDashboard, getAdminDispute, getAdminSession,
+  closeAdminDispute, createAdminSession, endAdminSession, getAdminDashboard, getAdminDispute, getAdminSession,
   getAutomationConfig, listAdminDisputes, listAdminPayouts,
   listAdminTreasuryMovements, recordAdminTreasuryContribution, updateAdminPayout,
   listAutomationAccounts, listAutomationEvents, updateAutomationConfig,
@@ -321,7 +321,21 @@ function Pagination({ offset, limit, total, setOffset }: { offset: number; limit
 function DisputeDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const decoded = decodeURIComponent(id);
+  const queryClient = useQueryClient();
+  const [closeReason, setCloseReason] = useState('');
+  const [closeFormOpen, setCloseFormOpen] = useState(false);
   const query = useQuery({ queryKey: ['/api/admin/disputes', decoded], queryFn: () => getAdminDispute(decoded), enabled: !!decoded });
+  const closeMutation = useMutation({
+    mutationFn: (reason: string) => closeAdminDispute(decoded, { reason }),
+    onSuccess: async () => {
+      setCloseFormOpen(false);
+      setCloseReason('');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/disputes'] }),
+        queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY }),
+      ]);
+    },
+  });
   if (query.isPending) return <><Link href="/disputes" className="back-link" data-testid="link-back-disputes"><ArrowLeft size={14} /> Voltar às disputas</Link><div className="spacer" /><LoadingPanel /></>;
   if (query.isError || !query.data) return <><Link href="/disputes" className="back-link" data-testid="link-back-disputes"><ArrowLeft size={14} /> Voltar às disputas</Link><div className="spacer" /><QueryError error={query.error} retry={() => void query.refetch()} /></>;
   const dispute = query.data.dispute;
@@ -340,6 +354,31 @@ function DisputeDetailPage() {
           <span><small>Encerramento</small><strong>{date(dispute.endedAt)}</strong></span>
           <span><small>Vencedor</small><strong>{dispute.winnerName || '—'}</strong></span>
         </div>
+        {query.data.manualClosure && <section className="manual-close-audit" aria-label="Registro de encerramento manual">
+          <div><strong>Encerrada manualmente</strong><span>{date(query.data.manualClosure.createdAt)}</span></div>
+          <p><b>Motivo:</b> {query.data.manualClosure.reason}</p>
+          <p><b>Créditos devolvidos:</b> {money(query.data.manualClosure.refundedCreditsCents)} em {query.data.manualClosure.refundedBidCount} lances</p>
+        </section>}
+        {closeMutation.data && <div className="manual-close-success" role="status">
+          <CircleCheck size={16} />
+          <span>{closeMutation.data.refundedBidCount} lances estornados; {money(closeMutation.data.refundedCreditsCents)} devolvidos às carteiras.</span>
+        </div>}
+        {(dispute.status === 'live' || dispute.status === 'paused') && <section className="manual-close-panel">
+          <div className="manual-close-heading">
+            <div><p className="ey">Ação operacional</p><h2 className="section-title">Encerrar disputa</h2></div>
+            {!closeFormOpen && <Button className="btn danger-outline" type="button" onClick={() => setCloseFormOpen(true)} data-testid="button-open-manual-close">Encerrar e devolver créditos</Button>}
+          </div>
+          {closeFormOpen && <form className="manual-close-form" onSubmit={event => { event.preventDefault(); closeMutation.mutate(closeReason.trim()); }}>
+            <p>Todos os créditos cobrados pelos lances serão devolvidos. A disputa ficará encerrada sem vencedor e o prêmio não será pago. Esta ação não pode ser desfeita.</p>
+            <label className="input-label" htmlFor="manual-close-reason">Motivo do encerramento</label>
+            <Input id="manual-close-reason" data-testid="input-manual-close-reason" value={closeReason} onChange={event => setCloseReason(event.target.value)} minLength={3} maxLength={500} required disabled={closeMutation.isPending} placeholder="Explique por que a disputa precisa ser encerrada" />
+            {closeMutation.error && <div className="inline-error" role="alert">{closeMutation.error instanceof Error ? closeMutation.error.message : 'Não foi possível encerrar a disputa.'}</div>}
+            <div className="manual-close-actions">
+              <Button className="btn" type="button" onClick={() => { setCloseFormOpen(false); setCloseReason(''); closeMutation.reset(); }} disabled={closeMutation.isPending}>Cancelar</Button>
+              <Button className="btn danger" type="submit" disabled={closeMutation.isPending || closeReason.trim().length < 3} data-testid="button-confirm-manual-close">{closeMutation.isPending ? 'Encerrando e devolvendo…' : 'Confirmar encerramento'}</Button>
+            </div>
+          </form>}
+        </section>}
         <div className="section-head dispute-detail-heading"><div><p className="eyebrow">Histórico público</p><h2 className="section-title">Lances registrados</h2></div><span className="section-kicker">{query.data.bids.length} eventos</span></div>
         {query.data.bids.length ? <div className="bid-record-list">
           {query.data.bids.map(bid => <div className="bid-record" key={bid.id} data-testid={`row-bid-${bid.id}`}>

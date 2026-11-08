@@ -6,9 +6,11 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { AdminDisputeBid } from './adminDisputeBid';
+import type { AdminDisputeManualClosure } from './adminDisputeManualClosure';
 import type { AdminDisputeSummary } from './adminDisputeSummary';
 
 export interface AdminDisputeDetail {
   dispute: AdminDisputeSummary;
   bids: AdminDisputeBid[];
+  manualClosure: AdminDisputeManualClosure | null;
 }

@@ -59,6 +59,7 @@ router.get("/dashboard", async (_req, res): Promise<void> => {
     visitorToday,
     disputeTotals,
     revenueRows,
+    refundShareRows,
     payoutRows,
   ] = await Promise.all([
     getAdminTreasurySnapshot(),
@@ -94,6 +95,19 @@ router.get("/dashboard", async (_req, res): Promise<void> => {
       .groupBy(treasuryLedgerEntriesTable.entryType),
     db
       .select({
+        platformShareCents: sql<string>`COALESCE(SUM((${treasuryLedgerEntriesTable.metadata}->>'platformShareCents')::numeric), 0)::text`,
+        coverageShareCents: sql<string>`COALESCE(SUM((${treasuryLedgerEntriesTable.metadata}->>'coverageShareCents')::numeric), 0)::text`,
+      })
+      .from(treasuryLedgerEntriesTable)
+      .where(
+        and(
+          eq(treasuryLedgerEntriesTable.entryType, "wallet_credit"),
+          eq(treasuryLedgerEntriesTable.sourceType, "bid_refund"),
+          eq(treasuryLedgerEntriesTable.simulated, false),
+        ),
+      ),
+    db
+      .select({
         status: payoutRequestsTable.status,
         count: count(),
         amountCents: sql<string>`COALESCE(SUM(${payoutRequestsTable.amountCents}), 0)::text`,
@@ -108,6 +122,12 @@ router.get("/dashboard", async (_req, res): Promise<void> => {
   );
   const prizeCoverage = revenueRows.find(
     (row) => row.entryType === "prize_coverage",
+  );
+  const refundedPlatformShareCents = BigInt(
+    refundShareRows[0]?.platformShareCents ?? "0",
+  );
+  const refundedCoverageShareCents = BigInt(
+    refundShareRows[0]?.coverageShareCents ?? "0",
   );
   const pendingPayouts = payoutRows.filter((row) =>
     ["requested", "under_review"].includes(row.status),
@@ -137,8 +157,12 @@ router.get("/dashboard", async (_req, res): Promise<void> => {
       liveDisputes: liveRows.map(serializeDisputeSummary),
       historyDisputeCount: disputeTotals[0]?.disputeCount ?? 0,
       historyBidCount: safeNumber(BigInt(disputeTotals[0]?.bidCount ?? "0")),
-      platformRevenueCents: safeNumber(BigInt(bidRevenue?.amountCents ?? "0")),
-      prizeCoverageCents: safeNumber(BigInt(prizeCoverage?.amountCents ?? "0")),
+      platformRevenueCents: safeNumber(
+        BigInt(bidRevenue?.amountCents ?? "0") - refundedPlatformShareCents,
+      ),
+      prizeCoverageCents: safeNumber(
+        BigInt(prizeCoverage?.amountCents ?? "0") - refundedCoverageShareCents,
+      ),
       treasury,
       recentDisputes: recentRows.map(serializeDisputeSummary),
     }),

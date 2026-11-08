@@ -1530,3 +1530,67 @@ body { font-size: 15px; line-height: 1.4; }
   .automation-result-pill { font-size: 8px; }
   .automation-record-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.manual-close-panel {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--lp-danger) 28%, var(--lp-line));
+  border-radius: var(--lp-r-card);
+  background: color-mix(in srgb, var(--lp-danger) 4%, var(--lp-surface));
+}
+.manual-close-heading,
+.manual-close-audit > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.manual-close-heading .ey { margin: 0 0 4px; }
+.manual-close-form { margin-top: 14px; }
+.manual-close-form > p {
+  margin: 0;
+  color: var(--lp-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.manual-close-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.manual-close-audit,
+.manual-close-success {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-r-control);
+  background: var(--lp-bg);
+  color: var(--lp-ink);
+  font-size: 12px;
+}
+.manual-close-audit > div span { color: var(--lp-muted); font-size: 11px; }
+.manual-close-audit p { margin: 0; color: var(--lp-muted); line-height: 1.5; }
+.manual-close-audit p b { color: var(--lp-ink); }
+.manual-close-success {
+  flex-direction: row;
+  align-items: center;
+  border-color: color-mix(in srgb, var(--lp-green-deep) 25%, var(--lp-line));
+  color: var(--lp-green-deep);
+}
+.btn.danger-outline {
+  border-color: color-mix(in srgb, var(--lp-danger) 34%, var(--lp-line));
+  color: var(--lp-danger);
+}
+.btn.danger-outline:hover { background: color-mix(in srgb, var(--lp-danger) 8%, var(--lp-surface)); }
+.btn.danger { background: var(--lp-danger); color: #fff; }
+.btn.danger:disabled { opacity: .55; cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .manual-close-heading { align-items: flex-start; flex-direction: column; }
+  .manual-close-actions { flex-direction: column-reverse; }
+  .manual-close-actions .btn { width: 100%; justify-content: center; }
+}

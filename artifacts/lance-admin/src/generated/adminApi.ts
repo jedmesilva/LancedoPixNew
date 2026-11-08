@@ -26,6 +26,8 @@ import type {
 
 import type {
   AdminDashboard,
+  AdminDisputeCloseInput,
+  AdminDisputeCloseResult,
   AdminDisputeDetail,
   AdminDisputePage,
   AdminLoginInput,
@@ -650,6 +652,95 @@ export function useGetAdminDispute<TData = Awaited<ReturnType<typeof getAdminDis
 
 
 
+
+export const getCloseAdminDisputeUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/disputes/${id}/close`
+}
+
+/**
+ * @summary Encerrar disputa manualmente e estornar todos os lances
+ */
+export const closeAdminDispute = async (id: string,
+    adminDisputeCloseInput: AdminDisputeCloseInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminDisputeCloseResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminDisputeCloseResult>(getCloseAdminDisputeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminDisputeCloseInput)
+  }
+);}
+
+
+
+
+
+export const getCloseAdminDisputeMutationKey = () => ['closeAdminDispute'] as const;
+
+export const getCloseAdminDisputeMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeAdminDispute>>, TError,CloseAdminDisputeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeAdminDispute>>, TError,CloseAdminDisputeMutationVariables, TContext> => {
+
+const mutationKey = getCloseAdminDisputeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeAdminDispute>>, CloseAdminDisputeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  closeAdminDispute(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseAdminDisputeMutationResult = NonNullable<Awaited<ReturnType<typeof closeAdminDispute>>>
+    export type CloseAdminDisputeMutationBody = BodyType<AdminDisputeCloseInput>
+    export type CloseAdminDisputeMutationError = ErrorType<ApiError>
+    export type CloseAdminDisputeMutationVariables = {id: string;data: BodyType<AdminDisputeCloseInput>}
+
+    /**
+ * @summary Encerrar disputa manualmente e estornar todos os lances
+ */
+export const useCloseAdminDispute = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeAdminDispute>>, TError,CloseAdminDisputeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof closeAdminDispute>>,
+        TError,
+        CloseAdminDisputeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCloseAdminDisputeMutationOptions(options), queryClient);
+    }
 
 export const getListAdminPayoutsUrl = (params?: ListAdminPayoutsParams,) => {
   const normalizedParams = new URLSearchParams();
